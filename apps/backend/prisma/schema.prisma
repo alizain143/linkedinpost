@@ -1,0 +1,65 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum DocumentStatus {
+  pending
+  attached
+}
+
+enum DocumentPurpose {
+  profile
+  user_document
+}
+
+enum DocumentAttachedToType {
+  user
+}
+
+model User {
+  id                String    @id @default(uuid()) @db.Uuid
+  clerkId           String    @unique
+  email             String    @unique
+  firstName         String?
+  lastName          String?
+  profileDocumentId String?   @unique @db.Uuid
+  profileImageUrl   String?
+  createdAt         DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt         DateTime  @updatedAt @db.Timestamptz(6)
+  deletedAt         DateTime? @db.Timestamptz(6)
+
+  profileDocument Document?  @relation("UserProfileDocument", fields: [profileDocumentId], references: [id], onDelete: SetNull)
+  documents       Document[] @relation("UserDocuments")
+
+  @@map("users")
+}
+
+model Document {
+  id              String                  @id @default(uuid()) @db.Uuid
+  userId          String                  @db.Uuid
+  status          DocumentStatus          @default(pending)
+  filename        String
+  mimeType        String
+  sizeBytes       BigInt
+  storageKey      String
+  storageBucket   String
+  purpose         DocumentPurpose
+  uploadExpiresAt DateTime                @db.Timestamptz(6)
+  attachedAt      DateTime?               @db.Timestamptz(6)
+  attachedToType  DocumentAttachedToType?
+  attachedToId    String?                 @db.Uuid
+  createdAt       DateTime                @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime                @updatedAt @db.Timestamptz(6)
+
+  user            User  @relation("UserDocuments", fields: [userId], references: [id], onDelete: Cascade)
+  profileForUser  User? @relation("UserProfileDocument")
+
+  @@index([userId])
+  @@index([status, createdAt])
+  @@map("documents")
+}
