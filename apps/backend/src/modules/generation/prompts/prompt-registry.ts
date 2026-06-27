@@ -10,6 +10,8 @@ import { COUNCIL_MEDIA_CREATOR_V1_SYSTEM } from './council-media-creator.v1.syst
 import { COUNCIL_MEDIA_CREATOR_V1_USER } from './council-media-creator.v1.user';
 import { COUNCIL_MEDIA_REVIEWER_V1_SYSTEM } from './council-media-reviewer.v1.system';
 import { COUNCIL_MEDIA_REVIEWER_V1_USER } from './council-media-reviewer.v1.user';
+import { CALENDAR_PLANNER_V1_SYSTEM } from '../../calendar-generation/prompts/calendar-planner.v1.system';
+import { CALENDAR_PLANNER_V1_USER } from '../../calendar-generation/prompts/calendar-planner.v1.user';
 
 export interface PromptTemplate {
   id: string;
@@ -54,6 +56,12 @@ export const PROMPT_REGISTRY: Record<string, PromptTemplate> = {
     version: 1,
     system: COUNCIL_MEDIA_REVIEWER_V1_SYSTEM,
     user: COUNCIL_MEDIA_REVIEWER_V1_USER,
+  },
+  'calendar-planner': {
+    id: 'calendar-planner',
+    version: 1,
+    system: CALENDAR_PLANNER_V1_SYSTEM,
+    user: CALENDAR_PLANNER_V1_USER,
   },
 };
 

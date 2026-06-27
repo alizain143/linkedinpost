@@ -119,6 +119,7 @@ describe('ApprovalsService', () => {
         where: {
           ownerId: userId,
           type: WorkspaceType.client,
+          deletedAt: null,
         },
         select: { id: true },
       });

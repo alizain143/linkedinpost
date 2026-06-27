@@ -3,6 +3,7 @@ import { GenerationJobResponseDto } from '../../common/swagger/responses/generat
 import {
   CouncilEventDto,
   CouncilJobResultDto,
+  CalendarJobResultDto,
   QuickDraftJobResultDto,
 } from '../../common/swagger/responses/generation-job-response.dto';
 import { GenerationJobProgress, QuickDraftVariant } from './generation.types';
@@ -51,7 +52,8 @@ export function toGenerationJobResponse(
 ): GenerationJobResponseDto {
   const progress = job.progress as GenerationJobProgress | null;
 
-  let result: QuickDraftJobResultDto | CouncilJobResultDto | null = null;
+  let result: QuickDraftJobResultDto | CouncilJobResultDto | CalendarJobResultDto | null =
+    null;
 
   if (job.type === GenerationJobType.quick_draft && job.result) {
     result = {
@@ -63,6 +65,10 @@ export function toGenerationJobResponse(
 
   if (job.type === GenerationJobType.council && job.result) {
     result = job.result as unknown as CouncilJobResultDto;
+  }
+
+  if (job.type === GenerationJobType.calendar && job.result) {
+    result = job.result as unknown as CalendarJobResultDto;
   }
 
   return {

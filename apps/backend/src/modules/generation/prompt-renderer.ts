@@ -64,6 +64,13 @@ export class PromptRenderer {
       'input.pillar': input?.pillar ?? '',
       'input.additionalContext': input?.additionalContext ?? '',
       'input.brief': input?.brief ?? '',
+      'calendar.slotCount': String(input?.calendarSlotCount ?? ''),
+      'calendar.durationDays': String(input?.calendarDurationDays ?? ''),
+      'calendar.slots.json': JSON.stringify(
+        (input?.calendarSlotDates ?? []).map((date) => ({ date })),
+        null,
+        2,
+      ),
       'documents.summary':
         documents.length > 0
           ? documents.map((doc) => doc.filename).join(', ')

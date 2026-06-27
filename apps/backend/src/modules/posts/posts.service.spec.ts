@@ -14,6 +14,7 @@ import {
 } from '../../test/fixtures';
 import { createMockPrismaService } from '../../test/prisma.mock';
 import { WorkspacesService } from '../workspaces/workspaces.service';
+import { MediaService } from '../media/media.service';
 import { PostsService } from './posts.service';
 
 describe('PostsService', () => {
@@ -22,16 +23,21 @@ describe('PostsService', () => {
   const workspacesService = {
     assertMember: jest.fn(),
   };
+  const mediaService = {
+    listForPost: jest.fn().mockResolvedValue([]),
+  };
 
   beforeEach(async () => {
     jest.clearAllMocks();
     workspacesService.assertMember.mockResolvedValue(buildPost());
+    mediaService.listForPost.mockResolvedValue([]);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PostsService,
         { provide: PrismaService, useValue: prisma },
         { provide: WorkspacesService, useValue: workspacesService },
+        { provide: MediaService, useValue: mediaService },
       ],
     }).compile();
 
@@ -247,6 +253,63 @@ describe('PostsService', () => {
       await expect(
         service.requestChangesPost(workspaceId, postId, userId, 'Nope'),
       ).rejects.toThrow(ConflictException);
+    });
+  });
+
+  describe('applyApprovalAction', () => {
+    it('approves without member check', async () => {
+      const pending = buildPost({
+        status: PostPackageStatus.ready_for_approval,
+        submittedForApprovalAt: new Date('2026-06-27T10:00:00.000Z'),
+      });
+      prisma.postPackage.update.mockResolvedValue({
+        ...pending,
+        status: PostPackageStatus.approved,
+        approvalFeedback: null,
+        _count: { versions: 1 },
+      });
+
+      const result = await service.applyApprovalAction(pending, 'approve');
+
+      expect(result.status).toBe(PostPackageStatus.approved);
+      expect(workspacesService.assertMember).not.toHaveBeenCalled();
+    });
+
+    it('returns post to draft with feedback', async () => {
+      const pending = buildPost({
+        status: PostPackageStatus.ready_for_approval,
+        submittedForApprovalAt: new Date('2026-06-27T10:00:00.000Z'),
+      });
+      prisma.postPackage.update.mockResolvedValue({
+        ...pending,
+        status: PostPackageStatus.draft,
+        approvalFeedback: 'Revise tone',
+        submittedForApprovalAt: null,
+        _count: { versions: 1 },
+      });
+
+      const result = await service.applyApprovalAction(
+        pending,
+        'request-changes',
+        'Revise tone',
+      );
+
+      expect(result.status).toBe(PostPackageStatus.draft);
+      expect(result.approvalFeedback).toBe('Revise tone');
+    });
+  });
+
+  describe('list', () => {
+    it('excludes soft-deleted posts', async () => {
+      prisma.postPackage.findMany.mockResolvedValue([]);
+
+      await service.list(workspaceId, userId, {});
+
+      expect(prisma.postPackage.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ deletedAt: null }),
+        }),
+      );
     });
   });
 

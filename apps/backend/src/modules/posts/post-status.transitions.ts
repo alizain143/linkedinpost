@@ -14,8 +14,12 @@ export const ALLOWED_TRANSITIONS: Record<
     PostPackageStatus.approved,
     PostPackageStatus.draft,
   ],
-  [PostPackageStatus.approved]: [PostPackageStatus.scheduled],
+  [PostPackageStatus.approved]: [
+    PostPackageStatus.scheduled,
+    PostPackageStatus.publishing,
+  ],
   [PostPackageStatus.scheduled]: [
+    PostPackageStatus.approved,
     PostPackageStatus.draft,
     PostPackageStatus.publishing,
   ],
@@ -27,6 +31,7 @@ export const ALLOWED_TRANSITIONS: Record<
   [PostPackageStatus.failed]: [
     PostPackageStatus.draft,
     PostPackageStatus.scheduled,
+    PostPackageStatus.publishing,
   ],
 };
 

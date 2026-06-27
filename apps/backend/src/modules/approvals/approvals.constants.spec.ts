@@ -23,6 +23,7 @@ describe('approvals.constants', () => {
     expect(getTabWhere(ApprovalTab.mine, workspaceId, clientWorkspaceIds)).toEqual({
       workspaceId,
       status: PostPackageStatus.ready_for_approval,
+      deletedAt: null,
     });
   });
 
@@ -32,6 +33,7 @@ describe('approvals.constants', () => {
     ).toEqual({
       workspaceId,
       status: PostPackageStatus.approved,
+      deletedAt: null,
     });
   });
 
@@ -42,6 +44,7 @@ describe('approvals.constants', () => {
       workspaceId,
       status: PostPackageStatus.draft,
       approvalFeedback: { not: null },
+      deletedAt: null,
     });
   });
 
@@ -51,6 +54,7 @@ describe('approvals.constants', () => {
     ).toEqual({
       workspaceId: { in: clientWorkspaceIds },
       status: PostPackageStatus.ready_for_approval,
+      deletedAt: null,
     });
   });
 

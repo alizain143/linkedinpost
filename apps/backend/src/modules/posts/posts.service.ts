@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -8,6 +7,7 @@ import {
   PostPackage,
   PostPackageStatus,
 } from '@prisma/client';
+import { NOT_DELETED } from '../../common/constants/soft-delete.constants';
 import { PrismaService } from '../../prisma/prisma.service';
 import { WorkspacesService } from '../workspaces/workspaces.service';
 import { CreatePostDto } from './dto/create-post.dto';
@@ -21,6 +21,8 @@ import {
   PIPELINE_LABELS,
 } from './post-status.transitions';
 import { assertCouncilStatusTransition } from './council-status.transitions';
+import { validateScheduledAt } from '../scheduling/scheduling.validation';
+import { MediaService } from '../media/media.service';
 import {
   buildVersionSnapshot,
   CONTENT_VERSION_FIELDS,
@@ -34,11 +36,12 @@ export class PostsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly workspacesService: WorkspacesService,
+    private readonly mediaService: MediaService,
   ) {}
 
   private async findPostInWorkspace(workspaceId: string, id: string) {
     const post = await this.prisma.postPackage.findFirst({
-      where: { id, workspaceId },
+      where: { id, workspaceId, ...NOT_DELETED },
       include: { _count: { select: { versions: true } } },
     });
 
@@ -70,7 +73,7 @@ export class PostsService {
     }
 
     const profile = await this.prisma.contentProfile.findFirst({
-      where: { id: contentProfileId, workspaceId },
+      where: { id: contentProfileId, workspaceId, ...NOT_DELETED },
     });
 
     if (!profile) {
@@ -147,18 +150,7 @@ export class PostsService {
     },
   ) {
     if (to === PostPackageStatus.scheduled) {
-      if (!options?.scheduledAt) {
-        throw new BadRequestException({
-          error: 'scheduledAt is required when scheduling a post',
-          code: 'SCHEDULED_AT_REQUIRED',
-        });
-      }
-      if (options.scheduledAt.getTime() <= Date.now()) {
-        throw new BadRequestException({
-          error: 'scheduledAt must be in the future',
-          code: 'VALIDATION_ERROR',
-        });
-      }
+      validateScheduledAt(options?.scheduledAt);
     }
 
     const updateData: {
@@ -176,7 +168,7 @@ export class PostsService {
       updateData.scheduledAt = options!.scheduledAt!;
     } else if (
       existing.status === PostPackageStatus.scheduled &&
-      to === PostPackageStatus.draft
+      (to === PostPackageStatus.draft || to === PostPackageStatus.approved)
     ) {
       updateData.scheduledAt = null;
     }
@@ -208,6 +200,7 @@ export class PostsService {
     const posts = await this.prisma.postPackage.findMany({
       where: {
         workspaceId,
+        ...NOT_DELETED,
         status: { in: status },
         ...(query.postType ? { postType: query.postType } : {}),
       },
@@ -223,7 +216,8 @@ export class PostsService {
   async getOne(workspaceId: string, id: string, userId: string) {
     await this.workspacesService.assertMember(userId, workspaceId);
     const post = await this.findPostInWorkspace(workspaceId, id);
-    return toPostPackageResponse(post);
+    const media = await this.mediaService.listForPost(id);
+    return toPostPackageResponse(post, undefined, media);
   }
 
   async create(workspaceId: string, userId: string, dto: CreatePostDto) {
@@ -384,10 +378,7 @@ export class PostsService {
   async approvePost(workspaceId: string, id: string, userId: string) {
     await this.workspacesService.assertMember(userId, workspaceId);
     const existing = await this.findPostInWorkspace(workspaceId, id);
-
-    assertValidTransition(existing.status, PostPackageStatus.approved);
-
-    return this.updatePostStatus(existing, PostPackageStatus.approved);
+    return this.applyApprovalAction(existing, 'approve');
   }
 
   async requestChangesPost(
@@ -398,12 +389,7 @@ export class PostsService {
   ) {
     await this.workspacesService.assertMember(userId, workspaceId);
     const existing = await this.findPostInWorkspace(workspaceId, id);
-
-    assertValidTransition(existing.status, PostPackageStatus.draft);
-
-    return this.updatePostStatus(existing, PostPackageStatus.draft, {
-      approvalFeedback: feedback,
-    });
+    return this.applyApprovalAction(existing, 'request-changes', feedback);
   }
 
   async rejectPost(
@@ -414,11 +400,24 @@ export class PostsService {
   ) {
     await this.workspacesService.assertMember(userId, workspaceId);
     const existing = await this.findPostInWorkspace(workspaceId, id);
+    return this.applyApprovalAction(existing, 'reject', feedback);
+  }
 
-    assertValidTransition(existing.status, PostPackageStatus.draft);
+  async applyApprovalAction(
+    post: PostPackage & { _count?: { versions: number } },
+    action: 'approve' | 'request-changes' | 'reject',
+    feedback?: string,
+  ) {
+    const to =
+      action === 'approve'
+        ? PostPackageStatus.approved
+        : PostPackageStatus.draft;
 
-    return this.updatePostStatus(existing, PostPackageStatus.draft, {
-      approvalFeedback: feedback ?? null,
+    assertValidTransition(post.status, to);
+
+    return this.updatePostStatus(post, to, {
+      approvalFeedback:
+        action === 'approve' ? undefined : feedback ?? null,
     });
   }
 
@@ -435,12 +434,12 @@ export class PostsService {
       PIPELINE_COLUMN_ORDER.map(async (status) => {
         const [posts, count] = await Promise.all([
           this.prisma.postPackage.findMany({
-            where: { workspaceId, status },
+            where: { workspaceId, status, ...NOT_DELETED },
             orderBy: { updatedAt: 'desc' },
             take: limitPerColumn,
           }),
           this.prisma.postPackage.count({
-            where: { workspaceId, status },
+            where: { workspaceId, status, ...NOT_DELETED },
           }),
         ]);
 

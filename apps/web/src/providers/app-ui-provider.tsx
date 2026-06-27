@@ -13,6 +13,7 @@ import {
   LINKEDIN_CONNECT_CALLBACK,
   LINKEDIN_CONNECT_COMPLETE,
   LINKEDIN_OAUTH_STRATEGY,
+  LINKEDIN_PUBLISH_SCOPE,
 } from "@/lib/auth/linkedin-clerk";
 import { usePpToast } from "@/providers/pp-toast-provider";
 import { useClerk } from "@clerk/nextjs";
@@ -33,6 +34,7 @@ export type ConfirmConfig = {
 
 type AppUiContextValue = {
   linkedinConnected: boolean;
+  linkedinPublishReady: boolean;
   linkedInProfileName: string | null;
   openConnect: () => void;
   disconnectLinkedIn: () => void;
@@ -67,7 +69,8 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
   const logoutMutation = useLogout();
   const bypass = isAuthBypassEnabled();
 
-  const { connected, profileName, externalAccount, user } = useLinkedInClerk();
+  const { connected, publishReady, profileName, externalAccount, user } =
+    useLinkedInClerk();
 
   const [mockLinkedInConnected, setMockLinkedInConnected] = useState(false);
   const [showConnect, setShowConnect] = useState(false);
@@ -77,6 +80,7 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
   const [showRequestChanges, setShowRequestChanges] = useState(false);
 
   const linkedinConnected = bypass ? mockLinkedInConnected : connected;
+  const linkedinPublishReady = bypass ? mockLinkedInConnected : publishReady;
   const linkedInProfileName = bypass
     ? mockLinkedInConnected
       ? "Maya Reyes"
@@ -104,15 +108,24 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
 
     setConnecting(true);
     try {
+      if (externalAccount && connected && !publishReady) {
+        await externalAccount.reauthorize({
+          additionalScopes: [LINKEDIN_PUBLISH_SCOPE],
+          redirectUrl: LINKEDIN_CONNECT_CALLBACK,
+        });
+        return;
+      }
+
       await user.createExternalAccount({
         strategy: LINKEDIN_OAUTH_STRATEGY,
         redirectUrl: LINKEDIN_CONNECT_CALLBACK,
+        additionalScopes: [LINKEDIN_PUBLISH_SCOPE],
       });
     } catch (err) {
       setConnecting(false);
       showToast(clerkErrorMessage(err), "link_off");
     }
-  }, [bypass, showToast, user]);
+  }, [bypass, connected, externalAccount, publishReady, showToast, user]);
 
   const disconnectLinkedIn = useCallback(() => {
     setConfirm({
@@ -158,16 +171,16 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
 
   const requireLinkedIn = useCallback(
     (fn: () => void) => () => {
-      if (linkedinConnected) fn();
+      if (linkedinPublishReady) fn();
       else openConnect();
     },
-    [linkedinConnected, openConnect],
+    [linkedinPublishReady, openConnect],
   );
 
   const openSchedule = useCallback(() => {
-    if (linkedinConnected) setShowSchedule(true);
+    if (linkedinPublishReady) setShowSchedule(true);
     else openConnect();
-  }, [linkedinConnected, openConnect]);
+  }, [linkedinPublishReady, openConnect]);
 
   const confirmSchedule = useCallback(() => {
     setShowSchedule(false);
@@ -311,7 +324,7 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
   );
 
   const confirmPublishNow = useCallback(() => {
-    if (!linkedinConnected) {
+    if (!linkedinPublishReady) {
       openConnect();
       return;
     }
@@ -323,10 +336,11 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
       confirmLabel: "Publish now",
       onConfirm: () => showToast("Published to LinkedIn", "check_circle"),
     });
-  }, [askConfirmInternal, linkedinConnected, openConnect, showToast]);
+  }, [askConfirmInternal, linkedinPublishReady, openConnect, showToast]);
 
   const value: AppUiContextValue = {
     linkedinConnected,
+    linkedinPublishReady,
     linkedInProfileName,
     openConnect,
     disconnectLinkedIn,

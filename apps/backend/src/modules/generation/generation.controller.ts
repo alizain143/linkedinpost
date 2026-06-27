@@ -14,6 +14,8 @@ import { CreditsCost } from '../credits/credits.decorator';
 import { CreditsGuard } from '../credits/credits.guard';
 import { CouncilRequestDto } from '../council/dto/council-request.dto';
 import { CouncilJobService } from '../council/council-job.service';
+import { CalendarGenerateRequestDto } from '../calendar-generation/dto/calendar-generate-request.dto';
+import { CalendarJobService } from '../calendar-generation/calendar-job.service';
 import { QuickDraftRequestDto } from './dto/quick-draft-request.dto';
 import { QuickDraftJobService } from './quick-draft-job.service';
 
@@ -25,6 +27,7 @@ export class GenerationController {
   constructor(
     private readonly quickDraftJobService: QuickDraftJobService,
     private readonly councilJobService: CouncilJobService,
+    private readonly calendarJobService: CalendarJobService,
   ) {}
 
   @Post('quick')
@@ -56,5 +59,20 @@ export class GenerationController {
     @Body() dto: CouncilRequestDto,
   ) {
     return this.councilJobService.enqueueCouncil(workspaceId, user.id, dto);
+  }
+
+  @Post('calendar')
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({
+    summary: 'Generate a bulk content calendar (async, 7 or 30 posts)',
+  })
+  @ApiParam({ name: 'workspaceId', format: 'uuid' })
+  @ApiDataResponse(GenerationJobResponseDto, { status: 202 })
+  calendar(
+    @CurrentUser() user: User,
+    @Param('workspaceId') workspaceId: string,
+    @Body() dto: CalendarGenerateRequestDto,
+  ) {
+    return this.calendarJobService.enqueueCalendar(workspaceId, user.id, dto);
   }
 }

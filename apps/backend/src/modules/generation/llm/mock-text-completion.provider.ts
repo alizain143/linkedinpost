@@ -67,9 +67,13 @@ export class MockTextCompletionProvider implements TextCompletionProvider {
       return {
         content: JSON.stringify({
           mediaType: 'quote_card',
-          placeholderUrl: null,
-          altText: 'Quote card for hook',
-          status: 'stub_pending_phase5',
+          altText: 'Quote card featuring the post hook',
+          imagePrompt:
+            'Minimal LinkedIn quote card, navy background, white bold headline text, clean sans-serif',
+          width: 1200,
+          height: 630,
+          headlineText: 'Most founders skip this step.',
+          styleNotes: 'Professional founder tone',
         }),
         model: 'mock-text',
         usage: { inputTokens: 20, outputTokens: 30 },
@@ -85,6 +89,31 @@ export class MockTextCompletionProvider implements TextCompletionProvider {
         }),
         model: 'mock-text',
         usage: { inputTokens: 20, outputTokens: 25 },
+      };
+    }
+
+    if (system.includes('calendar planner')) {
+      const user =
+        request.messages.find((m) => m.role === 'user')?.content ?? '';
+      const dates: string[] = [];
+      const dateMatches = user.matchAll(/"date":\s*"(\d{4}-\d{2}-\d{2})"/g);
+
+      for (const match of dateMatches) {
+        dates.push(match[1]);
+      }
+
+      const slots = dates.map((date, index) => ({
+        date,
+        topic: `Calendar topic ${index + 1}`,
+        pillar: 'Founder lessons',
+        postType: PostType.personal_story,
+        tone: 'Direct',
+      }));
+
+      return {
+        content: JSON.stringify({ slots }),
+        model: 'mock-text',
+        usage: { inputTokens: 30, outputTokens: 80 },
       };
     }
 

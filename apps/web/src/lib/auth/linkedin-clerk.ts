@@ -1,4 +1,5 @@
 export const LINKEDIN_OAUTH_STRATEGY = "oauth_linkedin_oidc" as const;
+export const LINKEDIN_PUBLISH_SCOPE = "w_member_social" as const;
 export const LINKEDIN_CONNECT_CALLBACK = "/app/linkedin/callback";
 export const LINKEDIN_CONNECT_COMPLETE = "/app/dashboard";
 
@@ -14,7 +15,13 @@ type LinkedInExternalAccount = {
   lastName: string | null;
   username?: string | null;
   emailAddress: string;
+  approvedScopes?: string;
   verification: { status: string | null } | null;
+  reauthorize?: (params: {
+    additionalScopes?: string[];
+    redirectUrl?: string;
+  }) => Promise<unknown>;
+  destroy?: () => Promise<unknown>;
 };
 
 type ClerkUserWithExternalAccounts = {
@@ -58,4 +65,25 @@ export function isLinkedInConnected(
   user: ClerkUserWithExternalAccounts | null | undefined,
 ) {
   return Boolean(findLinkedInExternalAccount(user));
+}
+
+export function getLinkedInApprovedScopes(
+  account?: LinkedInExternalAccount | null,
+) {
+  if (!account?.approvedScopes) return [] as string[];
+  return account.approvedScopes
+    .split(/\s+/)
+    .map((scope) => scope.trim())
+    .filter(Boolean);
+}
+
+export function isLinkedInPublishReady(
+  user: ClerkUserWithExternalAccounts | null | undefined,
+  account?: LinkedInExternalAccount | null,
+) {
+  const linkedInAccount = account ?? findLinkedInExternalAccount(user);
+  if (!linkedInAccount) return false;
+  return getLinkedInApprovedScopes(linkedInAccount).includes(
+    LINKEDIN_PUBLISH_SCOPE,
+  );
 }

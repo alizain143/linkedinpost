@@ -11,6 +11,10 @@ Council pipeline: [`COUNCIL.md`](COUNCIL.md)
 |--------|-------|------|------|
 | `POST` | `/v1/workspaces/:workspaceId/generate/quick` | 1 credit | Sync (200) |
 | `POST` | `/v1/workspaces/:workspaceId/generate/council` | 3 credits | Async (202) |
+| `POST` | `/v1/workspaces/:workspaceId/generate/calendar` | 10 / 30 credits | Async (202) |
+| `GET` | `/v1/workspaces/:workspaceId/autopilot` | — | Config + next run |
+| `PUT` | `/v1/workspaces/:workspaceId/autopilot` | — | Upsert autopilot config |
+| `GET` | `/v1/workspaces/:workspaceId/autopilot/planned` | — | Upcoming autopilot posts |
 | `GET` | `/v1/jobs/:id` | — | Poll progress |
 
 Guards: `ClerkAuthGuard` + `CreditsGuard` on generation endpoints.
@@ -20,6 +24,7 @@ Guards: `ClerkAuthGuard` + `CreditsGuard` on generation endpoints.
 ```bash
 POST /v1/workspaces/{wsId}/generate/quick
 POST /v1/workspaces/{wsId}/generate/council
+POST /v1/workspaces/{wsId}/generate/calendar
 GET  /v1/jobs/{jobId}
 GET  /v1/workspaces/{wsId}/posts/{postId}/council
 ```
@@ -39,7 +44,7 @@ GENERATION_QUEUE_CONCURRENCY=2
 
 Without `OPENAI_API_KEY`, `ConfigModelRouter` falls back to `MockTextCompletionProvider`.
 
-Without `REDIS_URL`, quick draft still works; council returns `503`.
+Without `REDIS_URL`, quick draft still works; council, calendar, and autopilot cron dispatch return `503` or skip.
 
 ## Quick Draft flow
 
@@ -66,6 +71,20 @@ POST /generate/council
     → CouncilEvent timeline + job progress updates
     → CreditsService.consume(3) on success
 ```
+
+## Autopilot (Slice 15)
+
+Autopilot reuses council jobs — no new `GenerationJobType`.
+
+```
+Hourly cron (AutopilotTickJob)
+    → AutopilotDispatchService.dispatch()
+    → CouncilJobService.enqueueCouncil({ source: autopilot, scheduledAt, creditCost: 10 })
+    → CouncilJobHandler → CouncilOrchestrator (full pipeline + media)
+    → CreditsService.consume(10, autopilot) on success
+```
+
+Config API: `GET` / `PUT` `/v1/workspaces/:workspaceId/autopilot`, planned posts at `.../autopilot/planned`.
 
 ## Job states
 
@@ -102,7 +121,9 @@ Registry keys: `quick-draft` v1, `council-writer`, `council-reviewer`, `council-
 | `ConfigModelRouter` | OpenAI when key set, else mock |
 | `OpenAiTextCompletionProvider` | GPT-5.4 via OpenAI SDK |
 | `MockTextCompletionProvider` | Dev/test without API key |
-| `ImageGenerationProvider` | Interface only (Phase 5) |
+| `MockImageGenerationProvider` | Mock PNG when `MEDIA_GENERATION_MOCK=true` or no Google creds |
+| `GoogleImageGenerationProvider` | Nano Banana 2 via `@google/genai` (Slice 17) |
+| `ModelRouter.image()` | Mock or Google based on env |
 
 ## Errors
 

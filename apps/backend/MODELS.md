@@ -17,29 +17,32 @@ Living reference for text and image model choices. Implementation details in [`G
 
 Verify the exact OpenAI API model slug in the dashboard when upgrading.
 
-## Images — Phase 5 `media` module (not yet implemented)
+## Images — Nano Banana 2 (Slice 17)
 
 | Route | Model | Use case |
 |-------|-------|----------|
-| Primary | **Nano Banana 2** (Google) | Quote cards, carousel slides — fast (~1–3s), strong text-on-image |
-| Secondary | **Imagen 4** (Google Vertex) | Photoreal hero shots — same Vertex integration |
+| Primary | **Nano Banana 2** (`gemini-3.1-flash-image`) | Quote cards — council media creator |
+| Secondary | **Imagen 4** (Google Vertex) | Photoreal hero shots — deferred |
 
-Nano Banana 2's weakness is photorealism. Add Imagen 4 as `ModelRouter.image('photoreal')` when needed.
+`ConfigModelRouter.image()` uses mock when `MEDIA_GENERATION_MOCK=true` or no Google creds; otherwise `GoogleImageGenerationProvider`.
 
-### Future env (Phase 5)
+### Env
 
 ```env
-GOOGLE_CLOUD_PROJECT=
-GOOGLE_APPLICATION_CREDENTIALS=
-GOOGLE_IMAGE_MODEL=          # Nano Banana 2 model id
-GOOGLE_IMAGE_MODEL_PHOTOREAL= # Imagen 4
+GEMINI_API_KEY=                 # dev (Google AI Studio)
+GOOGLE_CLOUD_PROJECT=           # prod (Vertex)
+GOOGLE_CLOUD_LOCATION=us-central1
+GOOGLE_IMAGE_MODEL=gemini-3.1-flash-image
+MEDIA_GENERATION_MOCK=true
+GOOGLE_APPLICATION_CREDENTIALS= # Vertex ADC (optional path)
 ```
 
 ## Capability routing
 
 ```
 ModelRouter.text()   → OpenAI GPT-5.4 (Slice 08)
-ModelRouter.image()  → Google Nano Banana 2 (Phase 5)
-                     → Google Imagen 4 (optional photoreal tier)
+ModelRouter.image()  → Nano Banana 2 when creds + mock off (Slice 17)
+                     → Mock 1×1 PNG otherwise
+                     → Imagen 4 photoreal tier (deferred)
 ModelRouter.embedding() → TBD (vector RAG, Slice 09+)
 ```

@@ -1,5 +1,6 @@
-import { WriterOutputParser } from './parsers/writer-output.parser';
+import { MediaCreatorOutputParser } from './parsers/media-creator-output.parser';
 import { ReviewerOutputParser } from './parsers/reviewer-output.parser';
+import { WriterOutputParser } from './parsers/writer-output.parser';
 import { computeCouncilProgress, councilTotalSteps } from './council-progress';
 import { assertCouncilStatusTransition } from '../posts/council-status.transitions';
 import { PostPackageStatus } from '@prisma/client';
@@ -45,6 +46,39 @@ describe('ReviewerOutputParser', () => {
   });
 });
 
+describe('MediaCreatorOutputParser', () => {
+  const parser = new MediaCreatorOutputParser();
+
+  it('parses v2 media creator JSON', () => {
+    const result = parser.parse(
+      JSON.stringify({
+        mediaType: 'quote_card',
+        altText: 'Quote card',
+        imagePrompt: 'Navy quote card with bold white text',
+        width: 1200,
+        height: 630,
+        headlineText: 'Ship weekly',
+      }),
+    );
+
+    expect(result.mediaType).toBe('quote_card');
+    expect(result.imagePrompt).toContain('Navy');
+    expect(result.width).toBe(1200);
+  });
+
+  it('rejects missing imagePrompt', () => {
+    expect(() =>
+      parser.parse(
+        JSON.stringify({
+          mediaType: 'quote_card',
+          altText: 'x',
+          headlineText: 'y',
+        }),
+      ),
+    ).toThrow();
+  });
+});
+
 describe('council progress', () => {
   it('computes percent complete', () => {
     const progress = computeCouncilProgress(3, 'editor', 'Editing', 7);
@@ -77,5 +111,16 @@ describe('JobHandlerRegistry', () => {
 
     registry.register(handler);
     expect(registry.get(GenerationJobType.council)).toBe(handler);
+  });
+
+  it('registers calendar handler type', () => {
+    const registry = new JobHandlerRegistry();
+    const handler = {
+      type: GenerationJobType.calendar,
+      handle: jest.fn(),
+    };
+
+    registry.register(handler);
+    expect(registry.get(GenerationJobType.calendar)).toBe(handler);
   });
 });

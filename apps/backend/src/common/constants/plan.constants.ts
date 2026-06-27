@@ -10,3 +10,5 @@ export const PLAN_CREDIT_LIMITS: Record<UserPlan, number> = {
 export function getCreditLimitForPlan(plan: UserPlan): number {
   return PLAN_CREDIT_LIMITS[plan];
 }
+
+export const AGENCY_MAX_CLIENT_WORKSPACES = 5;

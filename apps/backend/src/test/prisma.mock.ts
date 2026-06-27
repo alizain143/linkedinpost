@@ -9,7 +9,10 @@ export type MockPrismaService = {
   workspace: {
     findFirst: jest.Mock;
     findMany: jest.Mock;
+    findUniqueOrThrow: jest.Mock;
     create: jest.Mock;
+    update: jest.Mock;
+    count: jest.Mock;
   };
   workspaceMember: {
     findUnique: jest.Mock;
@@ -30,9 +33,11 @@ export type MockPrismaService = {
   postPackage: {
     findFirst: jest.Mock;
     findMany: jest.Mock;
+    findUnique: jest.Mock;
     findUniqueOrThrow: jest.Mock;
     create: jest.Mock;
     update: jest.Mock;
+    updateMany: jest.Mock;
     delete: jest.Mock;
     count: jest.Mock;
   };
@@ -49,6 +54,7 @@ export type MockPrismaService = {
   generationJob: {
     create: jest.Mock;
     update: jest.Mock;
+    updateMany: jest.Mock;
     findFirst: jest.Mock;
     findUnique: jest.Mock;
     findUniqueOrThrow: jest.Mock;
@@ -63,6 +69,37 @@ export type MockPrismaService = {
   councilEvent: {
     create: jest.Mock;
     update: jest.Mock;
+  };
+  autopilotConfig: {
+    findUnique: jest.Mock;
+    findFirst: jest.Mock;
+    findMany: jest.Mock;
+    create: jest.Mock;
+    update: jest.Mock;
+    updateMany: jest.Mock;
+    upsert: jest.Mock;
+  };
+  postMedia: {
+    findFirst: jest.Mock;
+    findMany: jest.Mock;
+    create: jest.Mock;
+    deleteMany: jest.Mock;
+  };
+  subscription: {
+    findUnique: jest.Mock;
+    upsert: jest.Mock;
+    update: jest.Mock;
+  };
+  stripeWebhookEvent: {
+    findUnique: jest.Mock;
+    create: jest.Mock;
+  };
+  approvalToken: {
+    findUnique: jest.Mock;
+    findFirst: jest.Mock;
+    create: jest.Mock;
+    update: jest.Mock;
+    updateMany: jest.Mock;
   };
   $transaction: jest.Mock;
 };
@@ -79,7 +116,10 @@ export function createMockPrismaService(): MockPrismaService {
     workspace: {
       findFirst: jest.fn(),
       findMany: jest.fn(),
+      findUniqueOrThrow: jest.fn(),
       create: jest.fn(),
+      update: jest.fn(),
+      count: jest.fn(),
     },
     workspaceMember: {
       findUnique: jest.fn(),
@@ -100,9 +140,11 @@ export function createMockPrismaService(): MockPrismaService {
     postPackage: {
       findFirst: jest.fn(),
       findMany: jest.fn(),
+      findUnique: jest.fn(),
       findUniqueOrThrow: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn(),
       delete: jest.fn(),
       count: jest.fn(),
     },
@@ -119,6 +161,7 @@ export function createMockPrismaService(): MockPrismaService {
     generationJob: {
       create: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn(),
       findFirst: jest.fn(),
       findUnique: jest.fn(),
       findUniqueOrThrow: jest.fn(),
@@ -133,6 +176,37 @@ export function createMockPrismaService(): MockPrismaService {
     councilEvent: {
       create: jest.fn(),
       update: jest.fn(),
+    },
+    autopilotConfig: {
+      findUnique: jest.fn(),
+      findFirst: jest.fn(),
+      findMany: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      updateMany: jest.fn(),
+      upsert: jest.fn(),
+    },
+    postMedia: {
+      findFirst: jest.fn(),
+      findMany: jest.fn(),
+      create: jest.fn(),
+      deleteMany: jest.fn(),
+    },
+    subscription: {
+      findUnique: jest.fn(),
+      upsert: jest.fn(),
+      update: jest.fn(),
+    },
+    stripeWebhookEvent: {
+      findUnique: jest.fn(),
+      create: jest.fn(),
+    },
+    approvalToken: {
+      findUnique: jest.fn(),
+      findFirst: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      updateMany: jest.fn(),
     },
     $transaction: jest.fn(),
   };

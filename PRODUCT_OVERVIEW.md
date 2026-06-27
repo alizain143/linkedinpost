@@ -18,6 +18,16 @@ Per-slice implementation specs live at the repo root:
 - [SLICE-08-quick-draft-api.md](SLICE-08-quick-draft-api.md) — Done
 - [SLICE-09-async-job-queue.md](SLICE-09-async-job-queue.md) — Done
 - [SLICE-10-ai-council.md](SLICE-10-ai-council.md) — Done
+- [SLICE-11-scheduling-api.md](SLICE-11-scheduling-api.md) — Done
+- [SLICE-12-linkedin-publish.md](SLICE-12-linkedin-publish.md) — Done
+- [SLICE-13-media-generation.md](SLICE-13-media-generation.md) — Done
+- [SLICE-14-bulk-calendar-generation.md](SLICE-14-bulk-calendar-generation.md) — Done
+- [SLICE-15-autopilot.md](SLICE-15-autopilot.md) — Done
+- [SLICE-16-linkedin-publish-media.md](SLICE-16-linkedin-publish-media.md) — Done
+- [SLICE-17-nano-banana-image-generation.md](SLICE-17-nano-banana-image-generation.md) — Done
+- [SLICE-18-stripe-billing.md](SLICE-18-stripe-billing.md) — Done
+- [SLICE-19-agency-client-workspaces.md](SLICE-19-agency-client-workspaces.md) — Done
+- [SLICE-20-approval-share-links.md](SLICE-20-approval-share-links.md) — Done
 
 ---
 
@@ -62,22 +72,27 @@ Update this section as features land. Tell the agent to mark items `[x]` when do
 
 ### Phase 4 — LinkedIn publish
 
-- [ ] LinkedIn OAuth connect / disconnect
-- [ ] Schedule post + publish job
-- [ ] Failed / retry publish states
-- [ ] Settings: timezone, default approval mode
+- [x] Schedule post API (semantic endpoints) — [SLICE-11](SLICE-11-scheduling-api.md)
+- [x] LinkedIn OAuth via Clerk + publish scope — [SLICE-12](SLICE-12-linkedin-publish.md)
+- [x] Publish now + scheduled publish job — [SLICE-12](SLICE-12-linkedin-publish.md)
+- [x] Failed / retry publish states — [SLICE-12](SLICE-12-linkedin-publish.md)
+- [x] LinkedIn profile sync — OIDC (name, email, photo); optional current role via identityMe — [SLICE-12](SLICE-12-linkedin-publish.md)
+- [x] Settings: timezone (existing `PATCH /auth/me`)
 
 ### Phase 5 — Autopilot & media
 
-- [ ] `AutopilotConfig` + cron engine
-- [ ] Media generation + attach to post
-- [ ] Bulk calendar generation job
+- [x] Media generation (Slice 13)
+- [x] Bulk calendar (Slice 14)
+- [x] `AutopilotConfig` + cron engine (Slice 15)
+- [x] Media generation + attach to post — [SLICE-13](SLICE-13-media-generation.md)
+- [x] Bulk calendar generation job — [SLICE-14](SLICE-14-bulk-calendar-generation.md)
+- [x] Real image generation (Nano Banana 2) — [SLICE-17](SLICE-17-nano-banana-image-generation.md)
 
 ### Phase 6 — Business
 
-- [ ] Stripe subscriptions + webhooks
-- [ ] Agency client workspaces
-- [ ] Approval share links for clients
+- [x] Stripe subscriptions + webhooks — [SLICE-18](SLICE-18-stripe-billing.md)
+- [x] Agency client workspaces — [SLICE-19](SLICE-19-agency-client-workspaces.md)
+- [x] Approval share links for clients — [SLICE-20](SLICE-20-approval-share-links.md)
 
 ### Frontend screens (track separately)
 
@@ -210,7 +225,7 @@ Unit that moves through the pipeline.
 | **auth** | Clerk JWT, webhooks, `/auth/me` | Done |
 | **users** | User sync, basic profile | Done |
 | **documents** | R2 presigned uploads | Done |
-| **workspaces** | Personal + client workspaces | Done |
+| **workspaces** | Personal + client workspace CRUD | Done (Slice 19) |
 | **content-profiles** | Voice profile CRUD + pillars | Done |
 | **posts** | PostPackage CRUD, versions, status | Done (draft CRUD, status transitions, pipeline) |
 | **generation** | AI jobs (quick / council / media) | Quick draft + council API |
@@ -219,11 +234,11 @@ Unit that moves through the pipeline.
 | **media** | Image/carousel generation + review | Not started |
 | **calendar** | Calendar views, bulk calendar gen | Month/week/list API done |
 | **approvals** | Approval queue, request changes | Queue + actions done |
-| **scheduling** | Schedule posts, timezone | Not started |
-| **linkedin** | OAuth connect, publish API | Not started |
+| **scheduling** | Schedule posts, timezone | Done ([SLICE-11](SLICE-11-scheduling-api.md)) |
+| **linkedin** | OAuth connect, publish API, profile sync | Done ([SLICE-12](SLICE-12-linkedin-publish.md)) |
 | **autopilot** | Config + cron generation | Not started |
 | **credits** | Ledger, deduct, monthly reset | Ledger stub + guard done |
-| **billing** | Stripe subscriptions | Not started |
+| **billing** | Stripe subscriptions | Complete (Slice 18) |
 | **notifications** | In-app + email prefs | Email prefs on `User` (store only) |
 | **dashboard** | Read-only aggregations | Done |
 | **search** | Full-text search posts/drafts | Not started |

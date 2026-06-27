@@ -14,6 +14,12 @@ import { CouncilRequestDto } from './dto/council-request.dto';
 import { toCouncilTimelineResponse } from './council.mapper';
 import { toGenerationJobResponse } from '../generation/generation-job.mapper';
 
+export interface EnqueueCouncilOptions {
+  source?: PostSource;
+  scheduledAt?: Date;
+  creditCost?: number;
+}
+
 @Injectable()
 export class CouncilJobService {
   constructor(
@@ -26,9 +32,13 @@ export class CouncilJobService {
     workspaceId: string,
     userId: string,
     dto: CouncilRequestDto,
+    options?: EnqueueCouncilOptions,
   ) {
     await this.workspacesService.assertMember(userId, workspaceId);
     this.enqueueService.assertRedisAvailable();
+
+    const source = options?.source ?? PostSource.generation;
+    const creditCost = options?.creditCost ?? 3;
 
     const input: CouncilInput = {
       workspaceId,
@@ -53,8 +63,9 @@ export class CouncilJobService {
         postType: dto.postType,
         tone: dto.tone,
         pillar: dto.pillar,
-        source: PostSource.generation,
+        source,
         status: PostPackageStatus.text_generating,
+        ...(options?.scheduledAt ? { scheduledAt: options.scheduledAt } : {}),
       },
     });
 
@@ -64,7 +75,7 @@ export class CouncilJobService {
       type: GenerationJobType.council,
       flowId: 'council',
       promptVersion: 'v1',
-      creditCost: 3,
+      creditCost,
       input: input as unknown as Prisma.InputJsonValue,
       postPackageId: post.id,
     });

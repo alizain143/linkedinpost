@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PostPackageStatus } from '@prisma/client';
+import { NOT_DELETED } from '../../common/constants/soft-delete.constants';
 import { PrismaService } from '../../prisma/prisma.service';
 import { WorkspacesService } from '../workspaces/workspaces.service';
 import {
@@ -202,6 +203,7 @@ export class CalendarService {
     return this.prisma.postPackage.findMany({
       where: {
         workspaceId,
+        ...NOT_DELETED,
         scheduledAt: {
           not: null,
           gte: rangeStart,

@@ -3,6 +3,7 @@ import {
   PostPackageStatus,
   PostSource,
 } from '@prisma/client';
+import { NOT_DELETED } from '../../common/constants/soft-delete.constants';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreditsService } from '../credits/credits.service';
 import { WorkspacesService } from '../workspaces/workspaces.service';
@@ -48,11 +49,12 @@ export class DashboardService {
       recentDrafts,
     ] = await Promise.all([
       this.prisma.postPackage.count({
-        where: { workspaceId, status: PostPackageStatus.draft },
+        where: { workspaceId, status: PostPackageStatus.draft, ...NOT_DELETED },
       }),
       this.prisma.postPackage.count({
         where: {
           workspaceId,
+          ...NOT_DELETED,
           status: {
             in: [PostPackageStatus.scheduled, PostPackageStatus.publishing],
           },
@@ -61,6 +63,7 @@ export class DashboardService {
       this.prisma.postPackage.count({
         where: {
           workspaceId,
+          ...NOT_DELETED,
           status: PostPackageStatus.published,
           publishedAt: { gte: monthStart, lt: monthEnd },
         },
@@ -68,6 +71,7 @@ export class DashboardService {
       this.prisma.postPackage.count({
         where: {
           workspaceId,
+          ...NOT_DELETED,
           source: {
             in: [
               PostSource.generation,
@@ -81,6 +85,7 @@ export class DashboardService {
       this.prisma.postPackage.findFirst({
         where: {
           workspaceId,
+          ...NOT_DELETED,
           status: PostPackageStatus.scheduled,
           scheduledAt: { gt: now },
         },
@@ -88,7 +93,7 @@ export class DashboardService {
         select: { id: true, hook: true, scheduledAt: true },
       }),
       this.prisma.postPackage.findMany({
-        where: { workspaceId, status: PostPackageStatus.draft },
+        where: { workspaceId, status: PostPackageStatus.draft, ...NOT_DELETED },
         orderBy: { updatedAt: 'desc' },
         take: 5,
         select: {

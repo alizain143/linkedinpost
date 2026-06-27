@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { NOT_DELETED } from '../../common/constants/soft-delete.constants';
 import { PrismaService } from '../../prisma/prisma.service';
 import { toGenerationJobResponse } from './generation-job.mapper';
 
@@ -8,7 +9,7 @@ export class GenerationJobsQueryService {
 
   async getJobForUser(jobId: string, userId: string) {
     const job = await this.prisma.generationJob.findFirst({
-      where: { id: jobId, userId },
+      where: { id: jobId, userId, ...NOT_DELETED },
       include: {
         councilRun: {
           include: {

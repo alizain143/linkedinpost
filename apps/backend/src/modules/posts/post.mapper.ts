@@ -5,6 +5,7 @@ import {
   PostType,
   PostVersion,
 } from '@prisma/client';
+import { PostMediaResponse } from '../media/media.types';
 
 export interface PostPackageResponse {
   id: string;
@@ -23,11 +24,17 @@ export interface PostPackageResponse {
   score: number | null;
   scheduledAt: Date | null;
   publishedAt: Date | null;
+  linkedInPostId: string | null;
+  linkedInPostUrl: string | null;
+  publishErrorCode: string | null;
+  publishErrorMessage: string | null;
+  publishAttemptedAt: Date | null;
   submittedForApprovalAt: Date | null;
   approvalFeedback: string | null;
   versionNumber: number;
   createdAt: Date;
   updatedAt: Date;
+  media: PostMediaResponse[];
 }
 
 export interface PostVersionResponse {
@@ -74,6 +81,7 @@ export function toPostVersionResponse(version: PostVersion): PostVersionResponse
 export function toPostPackageResponse(
   post: PostPackageWithVersionCount,
   versionNumber?: number,
+  media: PostMediaResponse[] = [],
 ): PostPackageResponse {
   const resolvedVersionNumber =
     versionNumber ??
@@ -99,11 +107,17 @@ export function toPostPackageResponse(
     score: post.score,
     scheduledAt: post.scheduledAt,
     publishedAt: post.publishedAt,
+    linkedInPostId: post.linkedInPostId,
+    linkedInPostUrl: post.linkedInPostUrl,
+    publishErrorCode: post.publishErrorCode,
+    publishErrorMessage: post.publishErrorMessage,
+    publishAttemptedAt: post.publishAttemptedAt,
     submittedForApprovalAt: post.submittedForApprovalAt,
     approvalFeedback: post.approvalFeedback,
     versionNumber: resolvedVersionNumber,
     createdAt: post.createdAt,
     updatedAt: post.updatedAt,
+    media,
   };
 }
 

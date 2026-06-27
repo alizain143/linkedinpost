@@ -73,7 +73,16 @@ enum CreditTransactionType {
   generation
   council
   media
+  calendar
+  autopilot
   adjustment
+}
+
+enum AutopilotFrequency {
+  three_per_week
+  daily
+  weekdays
+  weekly
 }
 
 enum GenerationJobStatus {
@@ -85,6 +94,15 @@ enum GenerationJobStatus {
 
 enum GenerationJobType {
   quick_draft
+  council
+  calendar
+}
+
+enum PostMediaType {
+  quote_card
+}
+
+enum PostMediaSource {
   council
 }
 
@@ -110,6 +128,15 @@ enum CouncilRunStatus {
   failed
 }
 
+enum SubscriptionStatus {
+  active
+  trialing
+  past_due
+  canceled
+  incomplete
+  unpaid
+}
+
 model User {
   id                      String    @id @default(uuid()) @db.Uuid
   clerkId                 String    @unique
@@ -123,6 +150,9 @@ model User {
   emailGenerationComplete Boolean   @default(true)
   emailProductUpdates     Boolean   @default(false)
   plan                    UserPlan  @default(free)
+  linkedInMemberId        String?
+  linkedInProfileSyncedAt DateTime? @db.Timestamptz(6)
+  linkedInProfile         Json?
   createdAt               DateTime  @default(now()) @db.Timestamptz(6)
   updatedAt               DateTime  @updatedAt @db.Timestamptz(6)
   deletedAt               DateTime? @db.Timestamptz(6)
@@ -133,8 +163,37 @@ model User {
   workspaceMemberships WorkspaceMember[]
   creditTransactions   CreditTransaction[]
   generationJobs       GenerationJob[]
+  subscription         Subscription?
+  createdApprovalTokens ApprovalToken[] @relation("ApprovalTokenCreator")
 
   @@map("users")
+}
+
+model Subscription {
+  id                   String             @id @default(uuid()) @db.Uuid
+  userId               String             @unique @db.Uuid
+  stripeCustomerId     String             @unique
+  stripeSubscriptionId String?            @unique
+  stripePriceId        String?
+  status               SubscriptionStatus @default(incomplete)
+  cancelAtPeriodEnd    Boolean            @default(false)
+  currentPeriodStart   DateTime?          @db.Timestamptz(6)
+  currentPeriodEnd     DateTime?          @db.Timestamptz(6)
+  createdAt            DateTime           @default(now()) @db.Timestamptz(6)
+  updatedAt            DateTime           @updatedAt @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([stripeCustomerId])
+  @@map("subscriptions")
+}
+
+model StripeWebhookEvent {
+  id          String   @id
+  type        String
+  processedAt DateTime @default(now()) @db.Timestamptz(6)
+
+  @@map("stripe_webhook_events")
 }
 
 model Document {
@@ -169,15 +228,40 @@ model Workspace {
   ownerId   String        @db.Uuid
   createdAt DateTime      @default(now()) @db.Timestamptz(6)
   updatedAt DateTime      @updatedAt @db.Timestamptz(6)
+  deletedAt DateTime?     @db.Timestamptz(6)
 
   owner           User              @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   members         WorkspaceMember[]
   contentProfiles ContentProfile[]
   postPackages    PostPackage[]
   generationJobs  GenerationJob[]
+  autopilotConfig AutopilotConfig?
 
   @@index([ownerId])
+  @@index([ownerId, type, deletedAt])
   @@map("workspaces")
+}
+
+model AutopilotConfig {
+  id               String             @id @default(uuid()) @db.Uuid
+  workspaceId      String             @unique @db.Uuid
+  contentProfileId String?            @db.Uuid
+  enabled          Boolean            @default(false)
+  frequency        AutopilotFrequency @default(three_per_week)
+  postingDays      Int[]              @default([1, 3, 4, 5, 7])
+  postingTime      String             @default("09:00")
+  lastPillarIndex  Int                @default(0)
+  lastRunDateKey   String?
+  createdAt        DateTime           @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime           @updatedAt @db.Timestamptz(6)
+  deletedAt        DateTime?          @db.Timestamptz(6)
+
+  workspace      Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  contentProfile ContentProfile? @relation(fields: [contentProfileId], references: [id], onDelete: SetNull)
+
+  @@index([enabled])
+  @@index([workspaceId, deletedAt])
+  @@map("autopilot_configs")
 }
 
 model WorkspaceMember {
@@ -207,12 +291,15 @@ model ContentProfile {
   isDefault        Boolean     @default(false)
   createdAt        DateTime    @default(now()) @db.Timestamptz(6)
   updatedAt        DateTime    @updatedAt @db.Timestamptz(6)
+  deletedAt        DateTime?   @db.Timestamptz(6)
 
   workspace Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   pillars   ContentPillar[]
   posts     PostPackage[]
+  autopilotConfigs AutopilotConfig[]
 
   @@index([workspaceId])
+  @@index([workspaceId, deletedAt])
   @@map("content_profiles")
 }
 
@@ -246,21 +333,30 @@ model PostPackage {
   score            Int?
   scheduledAt      DateTime?         @db.Timestamptz(6)
   publishedAt      DateTime?         @db.Timestamptz(6)
+  linkedInPostId   String?
+  linkedInPostUrl  String?
+  publishErrorCode String?
+  publishErrorMessage String?        @db.Text
+  publishAttemptedAt DateTime?      @db.Timestamptz(6)
   submittedForApprovalAt DateTime?   @db.Timestamptz(6)
   approvalFeedback String?           @db.Text
   createdAt        DateTime          @default(now()) @db.Timestamptz(6)
   updatedAt        DateTime          @updatedAt @db.Timestamptz(6)
+  deletedAt        DateTime?         @db.Timestamptz(6)
 
   workspace      Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   contentProfile ContentProfile? @relation(fields: [contentProfileId], references: [id], onDelete: SetNull)
   versions       PostVersion[]
   councilRuns    CouncilRun[]
   generationJobs GenerationJob[]
+  media          PostMedia[]
+  approvalTokens ApprovalToken[]
 
   @@index([workspaceId])
   @@index([workspaceId, status])
   @@index([workspaceId, updatedAt])
   @@index([workspaceId, scheduledAt])
+  @@index([workspaceId, deletedAt])
   @@map("post_packages")
 }
 
@@ -279,6 +375,29 @@ model PostVersion {
   @@unique([postPackageId, versionNumber])
   @@index([postPackageId])
   @@map("post_versions")
+}
+
+model PostMedia {
+  id            String          @id @default(uuid()) @db.Uuid
+  postPackageId String          @db.Uuid
+  councilRunId  String?         @db.Uuid
+  mediaType     PostMediaType
+  source        PostMediaSource @default(council)
+  storageKey    String
+  storageBucket String
+  mimeType      String
+  sizeBytes     Int
+  altText       String
+  sortOrder     Int             @default(0)
+  createdAt     DateTime        @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime        @updatedAt @db.Timestamptz(6)
+
+  postPackage PostPackage @relation(fields: [postPackageId], references: [id], onDelete: Cascade)
+  councilRun  CouncilRun? @relation(fields: [councilRunId], references: [id], onDelete: SetNull)
+
+  @@index([postPackageId])
+  @@index([councilRunId])
+  @@map("post_media")
 }
 
 model CreditTransaction {
@@ -318,6 +437,7 @@ model GenerationJob {
   createdAt     DateTime            @default(now()) @db.Timestamptz(6)
   updatedAt     DateTime            @updatedAt @db.Timestamptz(6)
   completedAt   DateTime?           @db.Timestamptz(6)
+  deletedAt     DateTime?           @db.Timestamptz(6)
 
   workspace   Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -326,6 +446,7 @@ model GenerationJob {
 
   @@index([userId, createdAt])
   @@index([workspaceId, createdAt])
+  @@index([workspaceId, deletedAt])
   @@index([postPackageId])
   @@map("generation_jobs")
 }
@@ -345,6 +466,7 @@ model CouncilRun {
   generationJob GenerationJob @relation(fields: [generationJobId], references: [id], onDelete: Cascade)
   postPackage   PostPackage   @relation(fields: [postPackageId], references: [id], onDelete: Cascade)
   events        CouncilEvent[]
+  media         PostMedia[]
 
   @@index([postPackageId])
   @@map("council_runs")
@@ -373,4 +495,22 @@ model CouncilEvent {
 
   @@index([councilRunId, stepOrder])
   @@map("council_events")
+}
+
+model ApprovalToken {
+  id            String    @id @default(uuid()) @db.Uuid
+  postPackageId String    @db.Uuid
+  tokenHash     String    @unique
+  expiresAt     DateTime  @db.Timestamptz(6)
+  revokedAt     DateTime? @db.Timestamptz(6)
+  usedAt        DateTime? @db.Timestamptz(6)
+  createdById   String    @db.Uuid
+  createdAt     DateTime  @default(now()) @db.Timestamptz(6)
+
+  postPackage PostPackage @relation(fields: [postPackageId], references: [id], onDelete: Cascade)
+  createdBy   User        @relation("ApprovalTokenCreator", fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([postPackageId])
+  @@index([postPackageId, revokedAt, usedAt])
+  @@map("approval_tokens")
 }

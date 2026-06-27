@@ -40,9 +40,11 @@ Minimal per-user credit ledger, `GET /v1/credits`, reusable `CreditsGuard` + `@C
 - [x] Dashboard refactor
 - [x] PRODUCT_OVERVIEW checkboxes
 
-## Out of scope
+## Out of scope (at Slice 06)
 
-Stripe, monthly reset cron, `POST /generate/*`, public consume API
+Monthly reset cron, `POST /generate/*`, public consume API
+
+**Plan source:** Stripe webhooks sync `User.plan` — see [SLICE-18](SLICE-18-stripe-billing.md).
 
 ## Test plan
 

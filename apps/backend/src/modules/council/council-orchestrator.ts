@@ -1,19 +1,31 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   CouncilAgentRole,
   CouncilRunStatus,
   GenerationJobStatus,
+  PostMediaType,
   PostPackageStatus,
   Prisma,
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CouncilInput, CouncilPriorStep } from '../generation/generation.types';
+import { MODEL_ROUTER } from '../generation/llm/model-capability.types';
+import type { ModelRouter } from '../generation/llm/model-capability.types';
+import { MediaService } from '../media/media.service';
 import { CouncilAgentService } from './council-agent.service';
 import { CouncilEventService } from './council-event.service';
 import { councilTotalSteps } from './council-progress';
+import { MediaCreatorOutput } from './parsers/media-creator-output.parser';
 import { PostsService } from '../posts/posts.service';
 import { ReviewerOutput } from './parsers/reviewer-output.parser';
+
+interface CouncilMediaDraft {
+  spec: MediaCreatorOutput;
+  imageBuffer: Buffer;
+  mimeType: string;
+  imageModel: string;
+}
 
 @Injectable()
 export class CouncilOrchestrator {
@@ -25,6 +37,8 @@ export class CouncilOrchestrator {
     private readonly councilAgentService: CouncilAgentService,
     private readonly councilEventService: CouncilEventService,
     private readonly postsService: PostsService,
+    private readonly mediaService: MediaService,
+    @Inject(MODEL_ROUTER) private readonly modelRouter: ModelRouter,
   ) {}
 
   async run(councilRunId: string): Promise<void> {
@@ -206,6 +220,7 @@ export class CouncilOrchestrator {
         totalSteps,
       );
       completedSteps++;
+      let lastMediaCreatorEventId = media.eventId;
 
       let mediaReview = await this.executeMediaReviewer(
         councilRunId,
@@ -233,6 +248,7 @@ export class CouncilOrchestrator {
           totalSteps,
         );
         completedSteps++;
+        lastMediaCreatorEventId = media.eventId;
 
         mediaReview = await this.executeMediaReviewer(
           councilRunId,
@@ -249,6 +265,28 @@ export class CouncilOrchestrator {
       if (!mediaReview.passed) {
         throw new Error('Media review failed after max regenerations');
       }
+
+      const attachedMedia = await this.mediaService.attachCouncilMedia({
+        workspaceId: run.workspaceId,
+        postPackageId,
+        councilRunId,
+        mediaType: PostMediaType.quote_card,
+        altText: media.spec.altText,
+        imageBuffer: media.imageBuffer,
+        mimeType: media.mimeType,
+      });
+
+      await this.prisma.councilEvent.update({
+        where: { id: lastMediaCreatorEventId },
+        data: {
+          output: {
+            ...media.spec,
+            postMediaId: attachedMedia.id,
+            url: attachedMedia.url,
+            imageModel: media.imageModel,
+          } as unknown as Prisma.InputJsonValue,
+        },
+      });
 
       await this.postsService.applyCouncilPipelineStatus(
         postPackageId,
@@ -466,14 +504,14 @@ export class CouncilOrchestrator {
     stepOrder: number,
     completedSteps: number,
     totalSteps: number,
-  ) {
+  ): Promise<CouncilMediaDraft & { eventId: string }> {
     const started = await this.councilEventService.startEvent({
       councilRunId,
       generationJobId,
       agentRole: CouncilAgentRole.media_creator,
       stepOrder,
       revisionAttempt: attempt,
-      label: 'Media Creator generating asset (stub)',
+      label: 'Media Creator generating quote card',
       completedSteps,
       totalSteps,
     });
@@ -483,11 +521,23 @@ export class CouncilOrchestrator {
       priorSteps,
     );
 
+    const imageResult = await this.modelRouter.image().generate({
+      prompt: result.output.imagePrompt,
+      width: result.output.width,
+      height: result.output.height,
+    });
+
+    const eventOutput = {
+      ...result.output,
+      generated: true,
+      imageModel: imageResult.model,
+    };
+
     if (attempt === 1) {
       priorSteps.push({
         agentRole: CouncilAgentRole.media_creator,
         revisionAttempt: attempt,
-        output: result.output as unknown as Record<string, unknown>,
+        output: eventOutput as unknown as Record<string, unknown>,
       });
     } else {
       const idx = priorSteps.findIndex(
@@ -497,7 +547,7 @@ export class CouncilOrchestrator {
         priorSteps[idx] = {
           agentRole: CouncilAgentRole.media_creator,
           revisionAttempt: attempt,
-          output: result.output as unknown as Record<string, unknown>,
+          output: eventOutput as unknown as Record<string, unknown>,
         };
       }
     }
@@ -505,17 +555,23 @@ export class CouncilOrchestrator {
     await this.councilEventService.completeEvent(started.id, {
       generationJobId,
       agentRole: CouncilAgentRole.media_creator,
-      label: 'Media Creator generated quote card (stub)',
+      label: 'Media Creator generated quote card',
       completedSteps: completedSteps + 1,
       totalSteps,
-      output: result.output as unknown as Record<string, unknown>,
+      output: eventOutput as unknown as Record<string, unknown>,
       model: result.model,
       inputTokens: result.inputTokens,
       outputTokens: result.outputTokens,
       startedAt: started.startedAt,
     });
 
-    return result.output;
+    return {
+      spec: result.output,
+      imageBuffer: imageResult.imageBuffer,
+      mimeType: imageResult.mimeType,
+      imageModel: imageResult.model,
+      eventId: started.id,
+    };
   }
 
   private async executeMediaReviewer(
@@ -533,7 +589,7 @@ export class CouncilOrchestrator {
       agentRole: CouncilAgentRole.media_reviewer,
       stepOrder,
       revisionAttempt: 1,
-      label: 'Media Reviewer QA (stub)',
+      label: 'Media Reviewer QA',
       completedSteps,
       totalSteps,
     });

@@ -5,7 +5,9 @@ export interface ImageGenerationRequest {
 }
 
 export interface ImageGenerationResponse {
-  imageUrl: string;
+  imageBuffer: Buffer;
+  mimeType: string;
+  model: string;
 }
 
 export interface ImageGenerationProvider {

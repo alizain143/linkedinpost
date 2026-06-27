@@ -103,4 +103,40 @@ export class R2StorageService {
       }),
     );
   }
+
+  async putObject(
+    bucketName: string,
+    storageKey: string,
+    body: Buffer,
+    mimeType: string,
+  ): Promise<void> {
+    await this.getClient().send(
+      new PutObjectCommand({
+        Bucket: bucketName,
+        Key: storageKey,
+        Body: body,
+        ContentType: mimeType,
+        ContentLength: body.length,
+      }),
+    );
+  }
+
+  async getObjectBuffer(
+    bucketName: string,
+    storageKey: string,
+  ): Promise<Buffer> {
+    const response = await this.getClient().send(
+      new GetObjectCommand({
+        Bucket: bucketName,
+        Key: storageKey,
+      }),
+    );
+
+    if (!response.Body) {
+      throw new Error('R2 object body is empty');
+    }
+
+    const bytes = await response.Body.transformToByteArray();
+    return Buffer.from(bytes);
+  }
 }

@@ -1,5 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { CreditTransactionType, GenerationJobType } from '@prisma/client';
+import {
+  CreditTransactionType,
+  GenerationJobType,
+  PostSource,
+} from '@prisma/client';
 import { CreditsService } from '../credits/credits.service';
 import { JobHandler } from '../job-queue/job-handler.interface';
 import { CouncilOrchestrator } from './council-orchestrator';
@@ -27,10 +31,21 @@ export class CouncilJobHandler implements JobHandler {
 
     await this.councilOrchestrator.run(job.councilRun.id);
 
+    const post = job.postPackageId
+      ? await this.prisma.postPackage.findUnique({
+          where: { id: job.postPackageId },
+        })
+      : null;
+
+    const creditType =
+      post?.source === PostSource.autopilot
+        ? CreditTransactionType.autopilot
+        : CreditTransactionType.council;
+
     await this.creditsService.consume(
       job.userId,
       job.creditCost,
-      CreditTransactionType.council,
+      creditType,
       generationJobId,
     );
 

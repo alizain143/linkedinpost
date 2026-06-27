@@ -6,10 +6,12 @@ export default registerAs('r2', () => ({
   accessKeyId: process.env.R2_ACCESS_KEY_ID,
   secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
   publicProfileUrl: process.env.R2_PUBLIC_PROFILE_URL ?? '',
+  publicPostMediaUrl: process.env.R2_PUBLIC_POST_MEDIA_URL ?? '',
   buckets: {
     [DocumentPurpose.PROFILE]:
       process.env.R2_BUCKET_PROFILE_IMAGES ?? 'profile-images',
     [DocumentPurpose.USER_DOCUMENT]:
       process.env.R2_BUCKET_USER_DOCUMENTS ?? 'user-documents',
   },
+  postMediaBucket: process.env.R2_BUCKET_POST_MEDIA ?? 'post-media',
 }));

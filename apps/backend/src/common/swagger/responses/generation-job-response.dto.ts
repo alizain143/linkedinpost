@@ -43,6 +43,34 @@ export class CouncilJobResultDto {
   mediaRegenCount!: number;
 }
 
+export class CalendarJobResultSlotDto {
+  @ApiProperty({ format: 'uuid' })
+  postPackageId!: string;
+
+  @ApiProperty({ type: String, format: 'date-time' })
+  scheduledAt!: string;
+
+  @ApiProperty()
+  topic!: string;
+
+  @ApiProperty({ nullable: true })
+  pillar!: string | null;
+}
+
+export class CalendarJobResultDto {
+  @ApiProperty({ enum: [7, 30] })
+  durationDays!: 7 | 30;
+
+  @ApiProperty({ example: 7 })
+  slotCount!: number;
+
+  @ApiProperty({ type: [String], format: 'uuid' })
+  postPackageIds!: string[];
+
+  @ApiProperty({ type: [CalendarJobResultSlotDto] })
+  slots!: CalendarJobResultSlotDto[];
+}
+
 export class GenerationJobProgressDto {
   @ApiProperty({ example: 'reviewer' })
   currentStep!: string;
@@ -145,7 +173,7 @@ export class GenerationJobResponseDto {
   events!: CouncilEventDto[] | null;
 
   @ApiPropertyOptional()
-  result!: QuickDraftJobResultDto | CouncilJobResultDto | null;
+  result!: QuickDraftJobResultDto | CouncilJobResultDto | CalendarJobResultDto | null;
 
   @ApiProperty({ type: String, format: 'date-time' })
   createdAt!: Date;

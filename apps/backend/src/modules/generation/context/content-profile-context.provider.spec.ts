@@ -37,7 +37,7 @@ describe('ContentProfileContextProvider', () => {
     );
 
     expect(prisma.contentProfile.findFirst).toHaveBeenCalledWith({
-      where: { id: contentProfileId, workspaceId },
+      where: { id: contentProfileId, workspaceId, deletedAt: null },
       include: { pillars: true },
     });
     expect(slice.contentProfileId).toBe(contentProfileId);
@@ -54,7 +54,7 @@ describe('ContentProfileContextProvider', () => {
     );
 
     expect(prisma.contentProfile.findFirst).toHaveBeenCalledWith({
-      where: { workspaceId, isDefault: true },
+      where: { workspaceId, isDefault: true, deletedAt: null },
       include: { pillars: true },
     });
     expect(slice.contentProfileId).toBe(contentProfileId);
@@ -72,7 +72,7 @@ describe('ContentProfileContextProvider', () => {
     );
 
     expect(prisma.contentProfile.findFirst).toHaveBeenNthCalledWith(2, {
-      where: { workspaceId },
+      where: { workspaceId, deletedAt: null },
       include: { pillars: true },
       orderBy: { createdAt: 'asc' },
     });

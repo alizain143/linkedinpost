@@ -15,6 +15,18 @@ export interface CouncilInput extends QuickDraftInput {
   brief?: string;
 }
 
+export interface CalendarInput {
+  workspaceId: string;
+  userId: string;
+  durationDays: 7 | 30;
+  contentProfileId?: string;
+  startDate?: string;
+  postingTime: string;
+  postingDays: number[];
+  additionalContext?: string;
+  slotDates: string[];
+}
+
 export interface CouncilPriorStep {
   agentRole: CouncilAgentRole;
   revisionAttempt: number;
@@ -52,6 +64,9 @@ export interface GenerationInputContext {
   pillar?: string;
   additionalContext?: string;
   brief?: string;
+  calendarSlotDates?: string[];
+  calendarSlotCount?: number;
+  calendarDurationDays?: number;
 }
 
 export interface GenerationDocumentContext {
@@ -84,6 +99,20 @@ export interface CouncilJobResult {
   finalScore: number | null;
   revisionCount: number;
   mediaRegenCount: number;
+}
+
+export interface CalendarJobResultSlot {
+  postPackageId: string;
+  scheduledAt: string;
+  topic: string;
+  pillar: string | null;
+}
+
+export interface CalendarJobResult {
+  durationDays: 7 | 30;
+  slotCount: number;
+  postPackageIds: string[];
+  slots: CalendarJobResultSlot[];
 }
 
 export type GenerationContextSlice = Partial<GenerationContext>;

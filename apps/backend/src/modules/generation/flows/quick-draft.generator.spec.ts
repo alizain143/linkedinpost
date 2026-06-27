@@ -8,6 +8,7 @@ import {
 } from '../../../test/fixtures';
 import { ContextAssembler } from '../context/context-assembler';
 import { MODEL_ROUTER } from '../llm/model-capability.types';
+import { MockImageGenerationProvider } from '../llm/mock-image-generation.provider';
 import { MockModelRouter } from '../llm/mock-model-router';
 import { MockTextCompletionProvider } from '../llm/mock-text-completion.provider';
 import { PromptRenderer } from '../prompt-renderer';
@@ -27,6 +28,7 @@ describe('QuickDraftGenerator', () => {
         PromptRenderer,
         QuickDraftOutputParser,
         MockTextCompletionProvider,
+        MockImageGenerationProvider,
         MockModelRouter,
         {
           provide: MODEL_ROUTER,

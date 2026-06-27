@@ -6,6 +6,7 @@ import { CreditsGuard } from '../credits/credits.guard';
 import { QuickDraftJobService } from './quick-draft-job.service';
 import { GenerationController } from './generation.controller';
 import { CouncilJobService } from '../council/council-job.service';
+import { CalendarJobService } from '../calendar-generation/calendar-job.service';
 
 class AllowGuard implements CanActivate {
   canActivate() {
@@ -17,6 +18,7 @@ describe('GenerationController', () => {
   let controller: GenerationController;
   const quickDraftJobService = { runQuickDraft: jest.fn() };
   const councilJobService = { enqueueCouncil: jest.fn() };
+  const calendarJobService = { enqueueCalendar: jest.fn() };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -26,6 +28,7 @@ describe('GenerationController', () => {
       providers: [
         { provide: QuickDraftJobService, useValue: quickDraftJobService },
         { provide: CouncilJobService, useValue: councilJobService },
+        { provide: CalendarJobService, useValue: calendarJobService },
       ],
     })
       .overrideGuard(ClerkAuthGuard)
@@ -72,5 +75,25 @@ describe('GenerationController', () => {
       { topic: 'Council topic' },
     );
     expect(result).toEqual({ id: 'job-council', type: 'council' });
+  });
+
+  it('delegates calendar to service', async () => {
+    calendarJobService.enqueueCalendar.mockResolvedValue({
+      id: 'job-calendar',
+      type: 'calendar',
+    });
+
+    const result = await controller.calendar(
+      { id: userId } as never,
+      workspaceId,
+      { durationDays: 7 },
+    );
+
+    expect(calendarJobService.enqueueCalendar).toHaveBeenCalledWith(
+      workspaceId,
+      userId,
+      { durationDays: 7 },
+    );
+    expect(result).toEqual({ id: 'job-calendar', type: 'calendar' });
   });
 });

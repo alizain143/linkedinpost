@@ -6,6 +6,7 @@ import {
   getLinkedInProfileName,
   isLinkedInConnected,
   isLinkedInProvider,
+  isLinkedInPublishReady,
 } from "@/lib/auth/linkedin-clerk";
 
 export function useLinkedInClerk() {
@@ -22,6 +23,8 @@ export function useLinkedInClerk() {
   );
 
   const connected = isLoaded && isLinkedInConnected(user);
+  const publishReady =
+    isLoaded && isLinkedInPublishReady(user, externalAccount ?? undefined);
   const profileName = useMemo(
     () => getLinkedInProfileName(user, externalAccount ?? undefined),
     [externalAccount, user],
@@ -30,6 +33,7 @@ export function useLinkedInClerk() {
   return {
     isLoaded,
     connected,
+    publishReady,
     profileName,
     externalAccount,
     user,

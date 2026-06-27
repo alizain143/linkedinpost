@@ -45,7 +45,7 @@ Timezone: user's `User.timezone` (fallback `America/New_York`).
 
 ## Out of scope
 
-Reschedule API (use `PATCH .../posts/:id/status`), `CalendarEntry` model, bulk generation, approvals, frontend
+Reschedule API (use scheduling endpoints), `CalendarEntry` model, bulk generation (see [SLICE-14](SLICE-14-bulk-calendar-generation.md)), approvals, frontend
 
 ## Test plan
 

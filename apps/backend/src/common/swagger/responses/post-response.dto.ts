@@ -3,6 +3,8 @@ import {
   PostPackageStatus,
   PostSource,
   PostType,
+  PostMediaSource,
+  PostMediaType,
 } from '@prisma/client';
 
 export class PostVersionResponseDto {
@@ -26,6 +28,38 @@ export class PostVersionResponseDto {
 
   @ApiProperty({ type: [String] })
   tags!: string[];
+
+  @ApiProperty({ type: String, format: 'date-time' })
+  createdAt!: Date;
+}
+
+export class PostMediaResponseDto {
+  @ApiProperty({ format: 'uuid' })
+  id!: string;
+
+  @ApiProperty({ format: 'uuid' })
+  postPackageId!: string;
+
+  @ApiProperty({ enum: PostMediaType })
+  mediaType!: PostMediaType;
+
+  @ApiProperty({ enum: PostMediaSource })
+  source!: PostMediaSource;
+
+  @ApiProperty({ example: 'https://cdn.example.com/workspaces/.../media/uuid.png' })
+  url!: string;
+
+  @ApiProperty()
+  altText!: string;
+
+  @ApiProperty({ example: 0 })
+  sortOrder!: number;
+
+  @ApiProperty({ example: 'image/png' })
+  mimeType!: string;
+
+  @ApiProperty({ example: 1234 })
+  sizeBytes!: number;
 
   @ApiProperty({ type: String, format: 'date-time' })
   createdAt!: Date;
@@ -80,6 +114,21 @@ export class PostPackageResponseDto {
   @ApiProperty({ type: String, format: 'date-time', nullable: true })
   publishedAt!: Date | null;
 
+  @ApiProperty({ nullable: true })
+  linkedInPostId!: string | null;
+
+  @ApiProperty({ nullable: true })
+  linkedInPostUrl!: string | null;
+
+  @ApiProperty({ nullable: true })
+  publishErrorCode!: string | null;
+
+  @ApiProperty({ nullable: true })
+  publishErrorMessage!: string | null;
+
+  @ApiProperty({ type: String, format: 'date-time', nullable: true })
+  publishAttemptedAt!: Date | null;
+
   @ApiProperty({ type: String, format: 'date-time', nullable: true })
   submittedForApprovalAt!: Date | null;
 
@@ -94,6 +143,9 @@ export class PostPackageResponseDto {
 
   @ApiProperty({ type: String, format: 'date-time' })
   updatedAt!: Date;
+
+  @ApiProperty({ type: [PostMediaResponseDto] })
+  media!: PostMediaResponseDto[];
 }
 
 export class DeletePostResponseDto {

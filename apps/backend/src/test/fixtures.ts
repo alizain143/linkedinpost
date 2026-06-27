@@ -30,6 +30,7 @@ export function buildWorkspace(
     ownerId: userId,
     createdAt: now,
     updatedAt: now,
+    deletedAt: null,
     ...overrides,
   };
 }
@@ -48,6 +49,9 @@ export function buildUser(overrides: Partial<User> = {}): User {
     emailGenerationComplete: true,
     emailProductUpdates: false,
     plan: UserPlan.pro,
+    linkedInMemberId: null,
+    linkedInProfileSyncedAt: null,
+    linkedInProfile: null,
     createdAt: now,
     updatedAt: now,
     deletedAt: null,
@@ -75,10 +79,16 @@ export function buildPost(
     score: null,
     scheduledAt: null,
     publishedAt: null,
+    linkedInPostId: null,
+    linkedInPostUrl: null,
+    publishErrorCode: null,
+    publishErrorMessage: null,
+    publishAttemptedAt: null,
     submittedForApprovalAt: null,
     approvalFeedback: null,
     createdAt: now,
     updatedAt: now,
+    deletedAt: null,
     ...overrides,
   } as PostPackage;
 }
@@ -117,6 +127,7 @@ export function buildContentProfile(
     isDefault: true,
     createdAt: now,
     updatedAt: now,
+    deletedAt: null,
     pillars: [
       {
         id: '66666666-6666-6666-6666-666666666666',

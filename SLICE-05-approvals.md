@@ -47,7 +47,7 @@ Response includes `counts` for all tabs on every request.
 
 ## Out of scope
 
-Approval share links, credits middleware, frontend, new `rejected` status
+Approval share links (see [SLICE-20](SLICE-20-approval-share-links.md)), credits middleware, frontend, new `rejected` status
 
 ## Test plan
 

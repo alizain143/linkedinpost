@@ -63,6 +63,33 @@ describe('post-status.transitions', () => {
       ).not.toThrow();
     });
 
+    it('allows scheduled to approved', () => {
+      expect(() =>
+        assertValidTransition(
+          PostPackageStatus.scheduled,
+          PostPackageStatus.approved,
+        ),
+      ).not.toThrow();
+    });
+
+    it('allows approved to publishing', () => {
+      expect(() =>
+        assertValidTransition(
+          PostPackageStatus.approved,
+          PostPackageStatus.publishing,
+        ),
+      ).not.toThrow();
+    });
+
+    it('allows failed publish retry to publishing', () => {
+      expect(() =>
+        assertValidTransition(
+          PostPackageStatus.failed,
+          PostPackageStatus.publishing,
+        ),
+      ).not.toThrow();
+    });
+
     it('rejects draft to published', () => {
       expect(() =>
         assertValidTransition(

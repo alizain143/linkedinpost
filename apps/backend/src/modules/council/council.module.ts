@@ -4,6 +4,7 @@ import councilConfig from '../../config/council.config';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { CreditsModule } from '../credits/credits.module';
 import { GenerationModule } from '../generation/generation.module';
+import { MediaModule } from '../media/media.module';
 import { PostsModule } from '../posts/posts.module';
 import { WorkspacesModule } from '../workspaces/workspaces.module';
 import { CouncilAgentService } from './council-agent.service';
@@ -27,6 +28,7 @@ import { WriterOutputParser } from './parsers/writer-output.parser';
     CreditsModule,
     PostsModule,
     GenerationModule,
+    MediaModule,
   ],
   controllers: [CouncilController],
   providers: [

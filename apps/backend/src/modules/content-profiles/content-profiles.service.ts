@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { NOT_DELETED } from '../../common/constants/soft-delete.constants';
 import { PrismaService } from '../../prisma/prisma.service';
 import { WorkspacesService } from '../workspaces/workspaces.service';
 import { toContentProfileResponse } from './content-profile.mapper';
@@ -15,7 +16,7 @@ export class ContentProfilesService {
 
   private async findProfileInWorkspace(workspaceId: string, id: string) {
     const profile = await this.prisma.contentProfile.findFirst({
-      where: { id, workspaceId },
+      where: { id, workspaceId, ...NOT_DELETED },
       include: { pillars: true },
     });
 
@@ -46,6 +47,7 @@ export class ContentProfilesService {
       where: {
         workspaceId,
         isDefault: true,
+        ...NOT_DELETED,
         ...(excludeId ? { id: { not: excludeId } } : {}),
       },
       data: { isDefault: false },
@@ -56,7 +58,7 @@ export class ContentProfilesService {
     await this.workspacesService.assertMember(userId, workspaceId);
 
     const profiles = await this.prisma.contentProfile.findMany({
-      where: { workspaceId },
+      where: { workspaceId, ...NOT_DELETED },
       include: { pillars: true },
       orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }],
     });
@@ -149,7 +151,7 @@ export class ContentProfilesService {
 
       if (profile.isDefault) {
         const oldest = await tx.contentProfile.findFirst({
-          where: { workspaceId },
+          where: { workspaceId, ...NOT_DELETED },
           orderBy: { createdAt: 'asc' },
         });
 

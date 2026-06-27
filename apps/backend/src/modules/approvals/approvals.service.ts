@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { WorkspaceType } from '@prisma/client';
+import { NOT_DELETED } from '../../common/constants/soft-delete.constants';
 import { PrismaService } from '../../prisma/prisma.service';
 import { WorkspacesService } from '../workspaces/workspaces.service';
 import {
@@ -63,6 +64,7 @@ export class ApprovalsService {
       where: {
         ownerId: userId,
         type: WorkspaceType.client,
+        ...NOT_DELETED,
       },
       select: { id: true },
     });

@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { NOT_DELETED } from '../../../common/constants/soft-delete.constants';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { generationContextError } from '../generation.errors';
 import { ContextProvider } from './context-provider.interface';
@@ -23,6 +24,7 @@ export class ContentProfileContextProvider implements ContextProvider {
           where: {
             id: input.contentProfileId,
             workspaceId: input.workspaceId,
+            ...NOT_DELETED,
           },
           include: { pillars: true },
         })
@@ -58,7 +60,7 @@ export class ContentProfileContextProvider implements ContextProvider {
 
   private async resolveDefaultProfile(workspaceId: string) {
     const defaultProfile = await this.prisma.contentProfile.findFirst({
-      where: { workspaceId, isDefault: true },
+      where: { workspaceId, isDefault: true, ...NOT_DELETED },
       include: { pillars: true },
     });
 
@@ -67,7 +69,7 @@ export class ContentProfileContextProvider implements ContextProvider {
     }
 
     return this.prisma.contentProfile.findFirst({
-      where: { workspaceId },
+      where: { workspaceId, ...NOT_DELETED },
       include: { pillars: true },
       orderBy: { createdAt: 'asc' },
     });

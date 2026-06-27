@@ -1,4 +1,5 @@
 import { PostPackageStatus, Prisma } from '@prisma/client';
+import { NOT_DELETED } from '../../common/constants/soft-delete.constants';
 
 export enum ApprovalTab {
   mine = 'mine',
@@ -24,22 +25,26 @@ export function getTabWhere(
       return {
         workspaceId,
         status: PostPackageStatus.ready_for_approval,
+        ...NOT_DELETED,
       };
     case ApprovalTab.approved:
       return {
         workspaceId,
         status: PostPackageStatus.approved,
+        ...NOT_DELETED,
       };
     case ApprovalTab.changes:
       return {
         workspaceId,
         status: PostPackageStatus.draft,
         approvalFeedback: { not: null },
+        ...NOT_DELETED,
       };
     case ApprovalTab.client:
       return {
         workspaceId: { in: clientWorkspaceIds },
         status: PostPackageStatus.ready_for_approval,
+        ...NOT_DELETED,
       };
     default: {
       const _exhaustive: never = tab;
