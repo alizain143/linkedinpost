@@ -1,6 +1,8 @@
 ---
 description: Frontend standards — React Query, reusable components, feature folders
-globs: apps/web/**/*.{ts,tsx}
+globs:
+  - apps/web/**/*.ts
+  - apps/web/**/*.tsx
 alwaysApply: false
 ---
 
