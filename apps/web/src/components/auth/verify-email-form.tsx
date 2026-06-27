@@ -1,18 +1,25 @@
 "use client";
 
 import Link from "next/link";
+import { useAuth } from "@clerk/nextjs";
 import { useSignUp } from "@clerk/nextjs/legacy";
+import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { AuthError } from "@/components/auth/auth-ui";
 import { Button } from "@/components/ui/button";
 import { MsIcon } from "@/components/ui/ms-icon";
+import { clerkErrorMessage } from "@/lib/auth/clerk";
+import { syncCurrentUser } from "@/lib/auth/finish-session";
+import { DASHBOARD_ROUTE } from "@/lib/auth/routes";
 
 const OTP_LENGTH = 6;
 
 export function VerifyEmailForm() {
+  const { getToken } = useAuth();
   const { isLoaded, signUp, setActive } = useSignUp();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [digits, setDigits] = useState<string[]>(Array(OTP_LENGTH).fill(""));
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -54,13 +61,22 @@ export function VerifyEmailForm() {
       if (result.status === "complete") {
         await setActive({ session: result.createdSessionId });
         sessionStorage.removeItem("pp_verify_email");
-        router.push("/app/dashboard");
+
+        try {
+          await syncCurrentUser(getToken, queryClient);
+        } catch {
+          setError(
+            "Account verified, but could not load your profile. Please sign in again.",
+          );
+          return;
+        }
+
+        router.replace(DASHBOARD_ROUTE);
         return;
       }
       setError("Verification incomplete. Please try again.");
-    } catch (err: unknown) {
-      const clerkError = err as { errors?: { message: string }[] };
-      setError(clerkError.errors?.[0]?.message ?? "Invalid verification code.");
+    } catch (err) {
+      setError(clerkErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -73,8 +89,8 @@ export function VerifyEmailForm() {
       await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
       setDigits(Array(OTP_LENGTH).fill(""));
       inputsRef.current[0]?.focus();
-    } catch {
-      setError("Could not resend code. Please try again.");
+    } catch (err) {
+      setError(clerkErrorMessage(err));
     }
   };
 

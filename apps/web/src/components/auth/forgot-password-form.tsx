@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useSignIn } from "@clerk/nextjs/legacy";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import {
   AuthError,
@@ -10,11 +11,13 @@ import {
 } from "@/components/auth/auth-ui";
 import { Button } from "@/components/ui/button";
 import { MsIcon } from "@/components/ui/ms-icon";
-import { usePpToast } from "@/providers/pp-toast-provider";
+import { clerkErrorMessage } from "@/lib/auth/clerk";
+
+const RESET_EMAIL_KEY = "pp_reset_email";
 
 export function ForgotPasswordForm() {
   const { isLoaded, signIn } = useSignIn();
-  const { showToast } = usePpToast();
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -29,7 +32,7 @@ export function ForgotPasswordForm() {
     try {
       await signIn.create({
         strategy: "reset_password_email_code",
-        identifier: email,
+        identifier: email.trim(),
       });
 
       const factor = signIn.supportedFirstFactors?.find(
@@ -43,10 +46,10 @@ export function ForgotPasswordForm() {
         });
       }
 
-      showToast("Reset link sent — check your inbox", "mark_email_read");
-    } catch (err: unknown) {
-      const clerkError = err as { errors?: { message: string }[] };
-      setError(clerkError.errors?.[0]?.message ?? "Could not send reset email.");
+      sessionStorage.setItem(RESET_EMAIL_KEY, email.trim());
+      router.push("/sign-in/reset-password");
+    } catch (err) {
+      setError(clerkErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -64,7 +67,7 @@ export function ForgotPasswordForm() {
 
       <AuthHeading
         title="Reset your password"
-        subtitle="Enter your email and we'll send you a secure link to set a new password."
+        subtitle="Enter your email and we'll send you a code to set a new password."
       />
 
       <AuthError message={error} />
@@ -82,9 +85,11 @@ export function ForgotPasswordForm() {
         />
 
         <Button type="submit" variant="primary" size="auth" fullWidth disabled={loading || !isLoaded}>
-          {loading ? "Sending…" : "Send reset link"}
+          {loading ? "Sending…" : "Send reset code"}
         </Button>
       </form>
     </div>
   );
 }
+
+export { RESET_EMAIL_KEY };

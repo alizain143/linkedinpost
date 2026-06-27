@@ -7,6 +7,12 @@ import { Button } from "@/components/ui/button";
 import { MsIcon } from "@/components/ui/ms-icon";
 import { APP_NAV } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+import {
+  useCurrentUser,
+  getUserDisplayName,
+  getUserInitials,
+} from "@/hooks/api/use-auth-api";
+import { isAuthBypassEnabled } from "@/lib/auth-bypass";
 import { useAppUi } from "@/providers/app-ui-provider";
 
 type AppSidebarProps = {
@@ -53,6 +59,18 @@ function NavLinks({
 export function AppSidebar({ mobileOpen, onCloseMobile }: AppSidebarProps) {
   const pathname = usePathname();
   const { confirmLogout } = useAppUi();
+  const { data: user } = useCurrentUser();
+  const bypass = isAuthBypassEnabled();
+
+  const displayName = bypass ? "Maya Reyes" : getUserDisplayName(user);
+  const initials = bypass ? "MR" : getUserInitials(user);
+  const email = bypass ? "maya@northbeam.co" : (user?.email ?? "");
+  const planLabel = bypass ? "PRO" : (user?.plan?.toUpperCase() ?? "FREE");
+  const workspaceName = bypass
+    ? "Maya's Workspace"
+    : user?.firstName
+      ? `${user.firstName}'s Workspace`
+      : "My Workspace";
 
   return (
     <>
@@ -93,11 +111,11 @@ export function AppSidebar({ mobileOpen, onCloseMobile }: AppSidebarProps) {
           >
             <div className="flex min-w-0 items-center gap-[9px]">
               <div className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-[7px] bg-gradient-to-br from-[#4f46e5] to-[#0891b2] font-display text-[11px] font-bold text-white">
-                M
+                {initials[0] ?? "W"}
               </div>
               <div className="min-w-0">
                 <div className="truncate text-[12.5px] font-bold leading-tight">
-                  Maya&apos;s Workspace
+                  {workspaceName}
                 </div>
                 <div className="text-[10.5px] text-[#94a3b8]">Personal</div>
               </div>
@@ -134,18 +152,18 @@ export function AppSidebar({ mobileOpen, onCloseMobile }: AppSidebarProps) {
 
           <div className="flex items-center gap-2.5 px-0.5 py-1">
             <div className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#fb7185] to-[#f43f5e] font-display text-[13px] font-bold text-white">
-              MR
+              {initials}
             </div>
             <div className="min-w-0 flex-1">
               <div className="truncate text-[13px] font-semibold text-[#1e293b]">
-                Maya Reyes
+                {displayName}
               </div>
               <div className="truncate text-[11px] text-[#94a3b8]">
-                maya@northbeam.co
+                {email}
               </div>
             </div>
             <span className="shrink-0 rounded-full bg-[#eef2ff] px-2 py-0.5 text-[10.5px] font-bold tracking-wide text-[#4f46e5]">
-              PRO
+              {planLabel}
             </span>
             <Button
               type="button"

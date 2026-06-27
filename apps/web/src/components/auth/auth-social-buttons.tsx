@@ -6,11 +6,24 @@ import {
   AppleIcon,
   GoogleIcon,
   LinkedInIcon,
-  useIsMac,
 } from "@/components/auth/auth-icons";
-import { authSocialBtnClass, authSocialBtnInnerClass, authSocialIconSlotClass } from "@/components/auth/auth-ui";
+import {
+  authSocialBtnClass,
+  authSocialBtnInnerClass,
+  authSocialIconSlotClass,
+} from "@/components/auth/auth-ui";
+import { useAppleSignInAvailable } from "@/hooks/use-apple-sign-in-available";
 import { isAuthBypassEnabled } from "@/lib/auth-bypass";
+import { clerkErrorMessage } from "@/lib/auth/clerk";
+import {
+  SIGN_IN_OAUTH_COMPLETE_URL,
+  SIGN_IN_OAUTH_REDIRECT_URL,
+  SIGN_UP_OAUTH_COMPLETE_URL,
+  SIGN_UP_OAUTH_REDIRECT_URL,
+  DASHBOARD_ROUTE,
+} from "@/lib/auth/routes";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 type OAuthStrategy =
   | "oauth_google"
@@ -29,47 +42,65 @@ export function AuthSocialButtons({
   onError,
 }: AuthSocialButtonsProps) {
   const router = useRouter();
-  const isMac = useIsMac();
+  const appleAvailable = useAppleSignInAvailable();
   const signIn = useSignIn();
   const signUp = useSignUp();
   const isSignIn = mode === "sign-in";
 
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [appleLoading, setAppleLoading] = useState(false);
+  const [linkedInLoading, setLinkedInLoading] = useState(false);
+
   const googleLabel = isSignIn ? "Continue with Google" : "Sign up with Google";
   const appleLabel = isSignIn ? "Continue with Apple" : "Sign up with Apple";
-  const linkedInLabel = "Continue with LinkedIn";
+  const linkedInLabel = isSignIn
+    ? "Continue with LinkedIn"
+    : "Sign up with LinkedIn";
 
-  const handleOAuth = async (strategy: OAuthStrategy) => {
+  const oauthLoading = googleLoading || appleLoading || linkedInLoading;
+
+  const handleOAuth = async (
+    strategy: OAuthStrategy,
+    setLoading: (value: boolean) => void,
+  ) => {
     if (isAuthBypassEnabled()) {
-      router.push("/app/dashboard");
+      router.push(DASHBOARD_ROUTE);
       return;
     }
 
     const loaded = isSignIn ? signIn.isLoaded : signUp.isLoaded;
     const resource = isSignIn ? signIn.signIn : signUp.signUp;
-    if (!loaded || !resource) return;
+    if (!loaded || !resource || disabled || oauthLoading) return;
 
-    onError("");
+    onError(null);
+    setLoading(true);
     try {
       await resource.authenticateWithRedirect({
         strategy,
-        redirectUrl: isSignIn ? "/sign-in/sso-callback" : "/sign-up/sso-callback",
-        redirectUrlComplete: "/app/dashboard",
+        redirectUrl: isSignIn
+          ? SIGN_IN_OAUTH_REDIRECT_URL
+          : SIGN_UP_OAUTH_REDIRECT_URL,
+        redirectUrlComplete: isSignIn
+          ? SIGN_IN_OAUTH_COMPLETE_URL
+          : SIGN_UP_OAUTH_COMPLETE_URL,
       });
-    } catch {
-      onError("Could not start social sign in. Try email instead.");
+    } catch (err) {
+      onError(clerkErrorMessage(err));
+      setLoading(false);
     }
   };
 
   const bypass = isAuthBypassEnabled();
   const isDisabled =
     disabled ||
+    oauthLoading ||
     (!bypass && (isSignIn ? !signIn.isLoaded : !signUp.isLoaded));
 
   return (
     <div className="mb-5 flex flex-col gap-2.5">
       <button
         type="button"
-        onClick={() => handleOAuth("oauth_google")}
+        onClick={() => void handleOAuth("oauth_google", setGoogleLoading)}
         className={authSocialBtnClass}
         disabled={isDisabled}
       >
@@ -77,14 +108,14 @@ export function AuthSocialButtons({
           <span className={authSocialIconSlotClass}>
             <GoogleIcon />
           </span>
-          {googleLabel}
+          {googleLoading ? "Connecting…" : googleLabel}
         </span>
       </button>
 
-      {isMac ? (
+      {appleAvailable ? (
         <button
           type="button"
-          onClick={() => handleOAuth("oauth_apple")}
+          onClick={() => void handleOAuth("oauth_apple", setAppleLoading)}
           className={authSocialBtnClass}
           disabled={isDisabled}
         >
@@ -92,26 +123,24 @@ export function AuthSocialButtons({
             <span className={authSocialIconSlotClass}>
               <AppleIcon />
             </span>
-            {appleLabel}
+            {appleLoading ? "Connecting…" : appleLabel}
           </span>
         </button>
       ) : null}
 
-      {isSignIn ? (
-        <button
-          type="button"
-          onClick={() => handleOAuth("oauth_linkedin_oidc")}
-          className={authSocialBtnClass}
-          disabled={isDisabled}
-        >
-          <span className={authSocialBtnInnerClass}>
-            <span className={authSocialIconSlotClass}>
-              <LinkedInIcon />
-            </span>
-            {linkedInLabel}
+      <button
+        type="button"
+        onClick={() => void handleOAuth("oauth_linkedin_oidc", setLinkedInLoading)}
+        className={authSocialBtnClass}
+        disabled={isDisabled}
+      >
+        <span className={authSocialBtnInnerClass}>
+          <span className={authSocialIconSlotClass}>
+            <LinkedInIcon />
           </span>
-        </button>
-      ) : null}
+          {linkedInLoading ? "Connecting…" : linkedInLabel}
+        </span>
+      </button>
     </div>
   );
 }

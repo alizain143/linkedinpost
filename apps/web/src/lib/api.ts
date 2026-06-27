@@ -1,8 +1,7 @@
 'use client';
 
 import { useAuth } from '@clerk/nextjs';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/v1';
+import { apiBaseUrl, authHeaders, parseApiResponse } from '@/lib/api/client';
 
 export function useApiClient() {
   const { getToken } = useAuth();
@@ -18,26 +17,20 @@ export function useApiClient() {
       headers.set('Authorization', `Bearer ${token}`);
     }
 
+    if (!headers.has('Accept')) {
+      headers.set('Accept', 'application/json');
+    }
+
     if (init.body && !headers.has('Content-Type')) {
       headers.set('Content-Type', 'application/json');
     }
 
-    const response = await fetch(`${API_URL}${path}`, {
+    const response = await fetch(`${apiBaseUrl()}${path}`, {
       ...init,
       headers,
     });
 
-    const payload = await response.json();
-
-    if (!response.ok) {
-      throw new Error(
-        typeof payload.error === 'string'
-          ? payload.error
-          : 'API request failed',
-      );
-    }
-
-    return payload.data as T;
+    return parseApiResponse<T>(response);
   }
 
   return { request };

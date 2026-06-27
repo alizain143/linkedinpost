@@ -4,7 +4,10 @@ import { DocumentsModule } from '../documents/documents.module';
 import { WorkspacesModule } from '../workspaces/workspaces.module';
 
 @Module({
-  imports: [forwardRef(() => DocumentsModule), WorkspacesModule],
+  imports: [
+    forwardRef(() => DocumentsModule),
+    forwardRef(() => WorkspacesModule),
+  ],
   providers: [UsersService],
   exports: [UsersService],
 })

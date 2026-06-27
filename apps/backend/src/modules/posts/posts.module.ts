@@ -1,11 +1,12 @@
 import { Module } from '@nestjs/common';
+import { AuthModule } from '../auth/auth.module';
 import { WorkspacesModule } from '../workspaces/workspaces.module';
 import { PipelineController } from './pipeline.controller';
 import { PostsController } from './posts.controller';
 import { PostsService } from './posts.service';
 
 @Module({
-  imports: [WorkspacesModule],
+  imports: [AuthModule, WorkspacesModule],
   controllers: [PostsController, PipelineController],
   providers: [PostsService],
   exports: [PostsService],

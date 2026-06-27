@@ -8,6 +8,11 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { SoftwareApplicationJsonLd } from "@/components/seo/json-ld";
 import { AppProviders } from "@/providers/app-providers";
 import { rootMetadata } from "@/lib/seo/metadata";
+import {
+  DASHBOARD_ROUTE,
+  SIGN_IN_ROUTE,
+  SIGN_UP_ROUTE,
+} from "@/lib/auth/routes";
 import "./globals.css";
 
 const inter = Inter({
@@ -39,7 +44,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider>
+    <ClerkProvider
+      signInUrl={SIGN_IN_ROUTE}
+      signUpUrl={SIGN_UP_ROUTE}
+      signInFallbackRedirectUrl={DASHBOARD_ROUTE}
+      signUpFallbackRedirectUrl={DASHBOARD_ROUTE}
+      afterSignOutUrl={SIGN_IN_ROUTE}
+    >
       <html
         lang="en"
         className={`${inter.variable} ${jakarta.variable} ${newsreader.variable} h-full antialiased`}

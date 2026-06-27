@@ -1,18 +1,24 @@
 "use client";
 
-import { useClerk } from "@clerk/nextjs";
-import { useRouter } from "next/navigation";
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useState,
-} from "react";
+import { Suspense, useCallback, useState } from "react";
 import { ConfirmDialog } from "@/components/modals/confirm-dialog";
 import { ConnectLinkedInModal } from "@/components/modals/connect-linkedin-modal";
 import { RequestChangesModal } from "@/components/modals/request-changes-modal";
 import { ScheduleModal } from "@/components/modals/schedule-modal";
+import { useLogout } from "@/hooks/api/use-auth-api";
+import { useLinkedInClerk } from "@/hooks/use-linkedin-clerk";
+import { isAuthBypassEnabled } from "@/lib/auth-bypass";
+import { clerkErrorMessage } from "@/lib/auth/clerk";
+import {
+  LINKEDIN_CONNECT_CALLBACK,
+  LINKEDIN_CONNECT_COMPLETE,
+  LINKEDIN_OAUTH_STRATEGY,
+} from "@/lib/auth/linkedin-clerk";
 import { usePpToast } from "@/providers/pp-toast-provider";
+import { useClerk } from "@clerk/nextjs";
+import { useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
+import { createContext, useContext } from "react";
 
 export type ConfirmTone = "danger" | "neutral";
 
@@ -27,6 +33,7 @@ export type ConfirmConfig = {
 
 type AppUiContextValue = {
   linkedinConnected: boolean;
+  linkedInProfileName: string | null;
   openConnect: () => void;
   disconnectLinkedIn: () => void;
   requireLinkedIn: (fn: () => void) => () => void;
@@ -56,13 +63,25 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
   const { showToast } = usePpToast();
   const { signOut } = useClerk();
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const logoutMutation = useLogout();
+  const bypass = isAuthBypassEnabled();
 
-  const [linkedinConnected, setLinkedinConnected] = useState(false);
+  const { connected, profileName, externalAccount, user } = useLinkedInClerk();
+
+  const [mockLinkedInConnected, setMockLinkedInConnected] = useState(false);
   const [showConnect, setShowConnect] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [confirm, setConfirm] = useState<ConfirmConfig | null>(null);
   const [showSchedule, setShowSchedule] = useState(false);
   const [showRequestChanges, setShowRequestChanges] = useState(false);
+
+  const linkedinConnected = bypass ? mockLinkedInConnected : connected;
+  const linkedInProfileName = bypass
+    ? mockLinkedInConnected
+      ? "Maya Reyes"
+      : null
+    : profileName;
 
   const openConnect = useCallback(() => setShowConnect(true), []);
   const closeConnect = useCallback(() => {
@@ -70,15 +89,30 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
     setConnecting(false);
   }, []);
 
-  const doConnectLinkedIn = useCallback(() => {
-    setConnecting(true);
-    setTimeout(() => {
-      setConnecting(false);
+  const doConnectLinkedIn = useCallback(async () => {
+    if (bypass) {
       setShowConnect(false);
-      setLinkedinConnected(true);
+      setMockLinkedInConnected(true);
       showToast("LinkedIn connected", "link");
-    }, 1400);
-  }, [showToast]);
+      return;
+    }
+
+    if (!user) {
+      showToast("Sign in to connect LinkedIn", "link_off");
+      return;
+    }
+
+    setConnecting(true);
+    try {
+      await user.createExternalAccount({
+        strategy: LINKEDIN_OAUTH_STRATEGY,
+        redirectUrl: LINKEDIN_CONNECT_CALLBACK,
+      });
+    } catch (err) {
+      setConnecting(false);
+      showToast(clerkErrorMessage(err), "link_off");
+    }
+  }, [bypass, showToast, user]);
 
   const disconnectLinkedIn = useCallback(() => {
     setConfirm({
@@ -88,11 +122,27 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
       body: "Scheduled posts won't publish until you reconnect. Your drafts and calendar stay saved.",
       confirmLabel: "Disconnect",
       onConfirm: () => {
-        setLinkedinConnected(false);
-        showToast("LinkedIn disconnected", "link_off");
+        if (bypass) {
+          setMockLinkedInConnected(false);
+          showToast("LinkedIn disconnected", "link_off");
+          return;
+        }
+
+        if (!externalAccount) {
+          showToast("LinkedIn is not connected", "link_off");
+          return;
+        }
+
+        void externalAccount
+          .destroy()
+          .then(async () => {
+            await user?.reload();
+            showToast("LinkedIn disconnected", "link_off");
+          })
+          .catch((err) => showToast(clerkErrorMessage(err), "link_off"));
       },
     });
-  }, [showToast]);
+  }, [bypass, externalAccount, showToast, user]);
 
   const askConfirmInternal = useCallback((cfg: ConfirmConfig) => {
     setConfirm(cfg);
@@ -162,11 +212,22 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
       body: "You'll need to sign in again to access your workspace.",
       confirmLabel: "Log out",
       onConfirm: async () => {
-        showToast("Logged out", "logout");
-        await signOut({ redirectUrl: "/sign-in" });
+        try {
+          await logoutMutation.mutateAsync();
+        } catch {
+          showToast("Signed out locally — server session may still be active", "logout");
+        }
+
+        queryClient.clear();
+
+        try {
+          await signOut({ redirectUrl: "/sign-in" });
+        } catch {
+          router.replace("/sign-in");
+        }
       },
     });
-  }, [askConfirmInternal, showToast, signOut]);
+  }, [askConfirmInternal, logoutMutation, queryClient, router, showToast, signOut]);
 
   const confirmDeleteAccount = useCallback(() => {
     askConfirmInternal({
@@ -266,6 +327,7 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
 
   const value: AppUiContextValue = {
     linkedinConnected,
+    linkedInProfileName,
     openConnect,
     disconnectLinkedIn,
     requireLinkedIn,
@@ -296,7 +358,7 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
         <ConnectLinkedInModal
           connecting={connecting}
           onClose={closeConnect}
-          onConnect={doConnectLinkedIn}
+          onConnect={() => void doConnectLinkedIn()}
         />
       ) : null}
       {confirm ? (

@@ -14,6 +14,7 @@ import {
 } from "@/components/auth/auth-ui";
 import { Button } from "@/components/ui/button";
 import { isAuthBypassEnabled } from "@/lib/auth-bypass";
+import { clerkErrorMessage } from "@/lib/auth/clerk";
 
 export function SignUpForm() {
   const { isLoaded, signUp } = useSignUp();
@@ -57,9 +58,8 @@ export function SignUpForm() {
       await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
       sessionStorage.setItem("pp_verify_email", email);
       router.push("/sign-up/verify-email");
-    } catch (err: unknown) {
-      const clerkError = err as { errors?: { message: string }[] };
-      setError(clerkError.errors?.[0]?.message ?? "Could not create account.");
+    } catch (err) {
+      setError(clerkErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -131,6 +131,8 @@ export function SignUpForm() {
             .
           </span>
         </label>
+
+        {!bypass ? <div id="clerk-captcha" className="mb-4" /> : null}
 
         <Button
           type="submit"

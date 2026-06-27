@@ -1,5 +1,5 @@
-import { AuthenticateWithRedirectCallback } from "@clerk/nextjs";
+import { SsoCallback } from "@/components/auth/sso-callback";
 
 export default function SignUpSsoCallbackPage() {
-  return <AuthenticateWithRedirectCallback />;
+  return <SsoCallback />;
 }
