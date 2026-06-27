@@ -80,6 +80,12 @@ export class PostPackageResponseDto {
   @ApiProperty({ type: String, format: 'date-time', nullable: true })
   publishedAt!: Date | null;
 
+  @ApiProperty({ type: String, format: 'date-time', nullable: true })
+  submittedForApprovalAt!: Date | null;
+
+  @ApiProperty({ nullable: true })
+  approvalFeedback!: string | null;
+
   @ApiProperty({ example: 1 })
   versionNumber!: number;
 

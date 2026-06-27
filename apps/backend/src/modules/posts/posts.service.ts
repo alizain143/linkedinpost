@@ -99,6 +99,100 @@ export class PostsService {
     });
   }
 
+  private applyApprovalFieldUpdates(
+    existing: PostPackage,
+    to: PostPackageStatus,
+    feedback?: string | null,
+  ): {
+    submittedForApprovalAt?: Date | null;
+    approvalFeedback?: string | null;
+  } {
+    if (
+      existing.status === PostPackageStatus.draft &&
+      to === PostPackageStatus.ready_for_approval
+    ) {
+      return {
+        submittedForApprovalAt: new Date(),
+        approvalFeedback: null,
+      };
+    }
+
+    if (
+      existing.status === PostPackageStatus.ready_for_approval &&
+      to === PostPackageStatus.approved
+    ) {
+      return { approvalFeedback: null };
+    }
+
+    if (
+      existing.status === PostPackageStatus.ready_for_approval &&
+      to === PostPackageStatus.draft
+    ) {
+      return {
+        approvalFeedback: feedback ?? null,
+        submittedForApprovalAt: null,
+      };
+    }
+
+    return {};
+  }
+
+  private async updatePostStatus(
+    existing: PostPackage,
+    to: PostPackageStatus,
+    options?: {
+      scheduledAt?: Date;
+      approvalFeedback?: string | null;
+    },
+  ) {
+    if (to === PostPackageStatus.scheduled) {
+      if (!options?.scheduledAt) {
+        throw new BadRequestException({
+          error: 'scheduledAt is required when scheduling a post',
+          code: 'SCHEDULED_AT_REQUIRED',
+        });
+      }
+      if (options.scheduledAt.getTime() <= Date.now()) {
+        throw new BadRequestException({
+          error: 'scheduledAt must be in the future',
+          code: 'VALIDATION_ERROR',
+        });
+      }
+    }
+
+    const updateData: {
+      status: PostPackageStatus;
+      scheduledAt?: Date | null;
+      publishedAt?: Date | null;
+      submittedForApprovalAt?: Date | null;
+      approvalFeedback?: string | null;
+    } = {
+      status: to,
+      ...this.applyApprovalFieldUpdates(existing, to, options?.approvalFeedback),
+    };
+
+    if (to === PostPackageStatus.scheduled) {
+      updateData.scheduledAt = options!.scheduledAt!;
+    } else if (
+      existing.status === PostPackageStatus.scheduled &&
+      to === PostPackageStatus.draft
+    ) {
+      updateData.scheduledAt = null;
+    }
+
+    if (to === PostPackageStatus.published) {
+      updateData.publishedAt = new Date();
+    }
+
+    const post = await this.prisma.postPackage.update({
+      where: { id: existing.id },
+      data: updateData,
+      include: { _count: { select: { versions: true } } },
+    });
+
+    return toPostPackageResponse(post);
+  }
+
   async list(
     workspaceId: string,
     userId: string,
@@ -265,47 +359,50 @@ export class PostsService {
 
     assertValidTransition(existing.status, dto.status);
 
-    if (dto.status === PostPackageStatus.scheduled) {
-      if (!dto.scheduledAt) {
-        throw new BadRequestException({
-          error: 'scheduledAt is required when scheduling a post',
-          code: 'SCHEDULED_AT_REQUIRED',
-        });
-      }
-      if (dto.scheduledAt.getTime() <= Date.now()) {
-        throw new BadRequestException({
-          error: 'scheduledAt must be in the future',
-          code: 'VALIDATION_ERROR',
-        });
-      }
-    }
-
-    const updateData: {
-      status: PostPackageStatus;
-      scheduledAt?: Date | null;
-      publishedAt?: Date | null;
-    } = { status: dto.status };
-
-    if (dto.status === PostPackageStatus.scheduled) {
-      updateData.scheduledAt = dto.scheduledAt!;
-    } else if (
-      existing.status === PostPackageStatus.scheduled &&
-      dto.status === PostPackageStatus.draft
-    ) {
-      updateData.scheduledAt = null;
-    }
-
-    if (dto.status === PostPackageStatus.published) {
-      updateData.publishedAt = new Date();
-    }
-
-    const post = await this.prisma.postPackage.update({
-      where: { id },
-      data: updateData,
-      include: { _count: { select: { versions: true } } },
+    return this.updatePostStatus(existing, dto.status, {
+      scheduledAt: dto.scheduledAt,
     });
+  }
 
-    return toPostPackageResponse(post);
+  async approvePost(workspaceId: string, id: string, userId: string) {
+    await this.workspacesService.assertMember(userId, workspaceId);
+    const existing = await this.findPostInWorkspace(workspaceId, id);
+
+    assertValidTransition(existing.status, PostPackageStatus.approved);
+
+    return this.updatePostStatus(existing, PostPackageStatus.approved);
+  }
+
+  async requestChangesPost(
+    workspaceId: string,
+    id: string,
+    userId: string,
+    feedback: string,
+  ) {
+    await this.workspacesService.assertMember(userId, workspaceId);
+    const existing = await this.findPostInWorkspace(workspaceId, id);
+
+    assertValidTransition(existing.status, PostPackageStatus.draft);
+
+    return this.updatePostStatus(existing, PostPackageStatus.draft, {
+      approvalFeedback: feedback,
+    });
+  }
+
+  async rejectPost(
+    workspaceId: string,
+    id: string,
+    userId: string,
+    feedback?: string,
+  ) {
+    await this.workspacesService.assertMember(userId, workspaceId);
+    const existing = await this.findPostInWorkspace(workspaceId, id);
+
+    assertValidTransition(existing.status, PostPackageStatus.draft);
+
+    return this.updatePostStatus(existing, PostPackageStatus.draft, {
+      approvalFeedback: feedback ?? null,
+    });
   }
 
   async getPipeline(

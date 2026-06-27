@@ -80,6 +80,8 @@ describe('PostsService', () => {
       const updated = {
         ...draft,
         status: PostPackageStatus.ready_for_approval,
+        submittedForApprovalAt: new Date('2026-06-27T12:00:00.000Z'),
+        approvalFeedback: null,
         _count: { versions: 1 },
       };
       prisma.postPackage.findFirst.mockResolvedValue(draft);
@@ -93,6 +95,14 @@ describe('PostsService', () => {
       );
 
       expect(result.status).toBe(PostPackageStatus.ready_for_approval);
+      expect(prisma.postPackage.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            submittedForApprovalAt: expect.any(Date),
+            approvalFeedback: null,
+          }),
+        }),
+      );
     });
 
     it('requires scheduledAt when scheduling', async () => {
@@ -176,6 +186,66 @@ describe('PostsService', () => {
         service.transitionStatus(workspaceId, postId, userId, {
           status: PostPackageStatus.published,
         }),
+      ).rejects.toThrow(ConflictException);
+    });
+  });
+
+  describe('approvePost', () => {
+    it('approves a post awaiting review', async () => {
+      const pending = buildPost({
+        status: PostPackageStatus.ready_for_approval,
+        submittedForApprovalAt: new Date('2026-06-27T10:00:00.000Z'),
+      });
+      prisma.postPackage.findFirst.mockResolvedValue(pending);
+      prisma.postPackage.update.mockResolvedValue({
+        ...pending,
+        status: PostPackageStatus.approved,
+        approvalFeedback: null,
+        _count: { versions: 1 },
+      });
+
+      const result = await service.approvePost(workspaceId, postId, userId);
+
+      expect(result.status).toBe(PostPackageStatus.approved);
+      expect(prisma.postPackage.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ approvalFeedback: null }),
+        }),
+      );
+    });
+  });
+
+  describe('requestChangesPost', () => {
+    it('returns post to draft with feedback', async () => {
+      const pending = buildPost({
+        status: PostPackageStatus.ready_for_approval,
+        submittedForApprovalAt: new Date('2026-06-27T10:00:00.000Z'),
+      });
+      prisma.postPackage.findFirst.mockResolvedValue(pending);
+      prisma.postPackage.update.mockResolvedValue({
+        ...pending,
+        status: PostPackageStatus.draft,
+        approvalFeedback: 'Too casual',
+        submittedForApprovalAt: null,
+        _count: { versions: 1 },
+      });
+
+      const result = await service.requestChangesPost(
+        workspaceId,
+        postId,
+        userId,
+        'Too casual',
+      );
+
+      expect(result.status).toBe(PostPackageStatus.draft);
+      expect(result.approvalFeedback).toBe('Too casual');
+    });
+
+    it('rejects invalid transition', async () => {
+      prisma.postPackage.findFirst.mockResolvedValue(buildPost());
+
+      await expect(
+        service.requestChangesPost(workspaceId, postId, userId, 'Nope'),
       ).rejects.toThrow(ConflictException);
     });
   });

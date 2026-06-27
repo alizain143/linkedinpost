@@ -24,6 +24,10 @@ import {
 } from '../../common/swagger/responses/post-response.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ClerkAuthGuard } from '../../common/guards/clerk-auth.guard';
+import {
+  RejectPostDto,
+  RequestChangesDto,
+} from '../approvals/dto/request-changes.dto';
 import { CreatePostDto } from './dto/create-post.dto';
 import { ListPostsQueryDto } from './dto/list-posts-query.dto';
 import { TransitionPostStatusDto } from './dto/transition-post-status.dto';
@@ -86,6 +90,57 @@ export class PostsController {
     @Body() dto: TransitionPostStatusDto,
   ) {
     return this.postsService.transitionStatus(workspaceId, id, user.id, dto);
+  }
+
+  @Post(':id/approve')
+  @ApiOperation({ summary: 'Approve a post awaiting review' })
+  @ApiParam({ name: 'workspaceId', format: 'uuid' })
+  @ApiParam({ name: 'id', format: 'uuid' })
+  @ApiDataResponse(PostPackageResponseDto)
+  approve(
+    @CurrentUser() user: User,
+    @Param('workspaceId') workspaceId: string,
+    @Param('id') id: string,
+  ) {
+    return this.postsService.approvePost(workspaceId, id, user.id);
+  }
+
+  @Post(':id/request-changes')
+  @ApiOperation({ summary: 'Send a post back for changes with feedback' })
+  @ApiParam({ name: 'workspaceId', format: 'uuid' })
+  @ApiParam({ name: 'id', format: 'uuid' })
+  @ApiDataResponse(PostPackageResponseDto)
+  requestChanges(
+    @CurrentUser() user: User,
+    @Param('workspaceId') workspaceId: string,
+    @Param('id') id: string,
+    @Body() dto: RequestChangesDto,
+  ) {
+    return this.postsService.requestChangesPost(
+      workspaceId,
+      id,
+      user.id,
+      dto.feedback,
+    );
+  }
+
+  @Post(':id/reject')
+  @ApiOperation({ summary: 'Reject a post and return it to draft' })
+  @ApiParam({ name: 'workspaceId', format: 'uuid' })
+  @ApiParam({ name: 'id', format: 'uuid' })
+  @ApiDataResponse(PostPackageResponseDto)
+  reject(
+    @CurrentUser() user: User,
+    @Param('workspaceId') workspaceId: string,
+    @Param('id') id: string,
+    @Body() dto: RejectPostDto,
+  ) {
+    return this.postsService.rejectPost(
+      workspaceId,
+      id,
+      user.id,
+      dto.feedback,
+    );
   }
 
   @Patch(':id')

@@ -3,21 +3,11 @@ import {
   PostPackageStatus,
   PostSource,
 } from '@prisma/client';
-import { getCreditLimitForPlan } from '../../common/constants/plan.constants';
 import { PrismaService } from '../../prisma/prisma.service';
+import { CreditsService } from '../credits/credits.service';
 import { WorkspacesService } from '../workspaces/workspaces.service';
 
 const PREVIEW_LENGTH = 120;
-
-function startOfUtcMonth(date: Date): Date {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
-}
-
-function endOfUtcMonth(date: Date): Date {
-  return new Date(
-    Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1),
-  );
-}
 
 function buildPreview(body: string | null): string | null {
   if (!body) {
@@ -35,6 +25,7 @@ export class DashboardService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly workspacesService: WorkspacesService,
+    private readonly creditsService: CreditsService,
   ) {}
 
   async getStats(workspaceId: string, userId: string) {
@@ -45,8 +36,8 @@ export class DashboardService {
     });
 
     const now = new Date();
-    const monthStart = startOfUtcMonth(now);
-    const monthEnd = endOfUtcMonth(now);
+    const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    const monthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
 
     const [
       drafts,
@@ -112,16 +103,14 @@ export class DashboardService {
       }),
     ]);
 
-    const creditLimit = getCreditLimitForPlan(user.plan);
-    const creditsUsed = 0;
+    const creditBalance = await this.creditsService.getBalance(userId, now);
 
     return {
       plan: user.plan,
       credits: {
-        used: creditsUsed,
-        limit: creditLimit,
-        percentUsed:
-          creditLimit > 0 ? Math.round((creditsUsed / creditLimit) * 100) : 0,
+        used: creditBalance.used,
+        limit: creditBalance.limit,
+        percentUsed: creditBalance.percentUsed,
       },
       counts: {
         drafts,

@@ -23,6 +23,8 @@ export interface PostPackageResponse {
   score: number | null;
   scheduledAt: Date | null;
   publishedAt: Date | null;
+  submittedForApprovalAt: Date | null;
+  approvalFeedback: string | null;
   versionNumber: number;
   createdAt: Date;
   updatedAt: Date;
@@ -97,6 +99,8 @@ export function toPostPackageResponse(
     score: post.score,
     scheduledAt: post.scheduledAt,
     publishedAt: post.publishedAt,
+    submittedForApprovalAt: post.submittedForApprovalAt,
+    approvalFeedback: post.approvalFeedback,
     versionNumber: resolvedVersionNumber,
     createdAt: post.createdAt,
     updatedAt: post.updatedAt,

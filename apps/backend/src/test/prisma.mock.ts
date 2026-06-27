@@ -8,6 +8,7 @@ export type MockPrismaService = {
   };
   workspace: {
     findFirst: jest.Mock;
+    findMany: jest.Mock;
     create: jest.Mock;
   };
   workspaceMember: {
@@ -41,6 +42,10 @@ export type MockPrismaService = {
     create: jest.Mock;
     deleteMany: jest.Mock;
   };
+  creditTransaction: {
+    aggregate: jest.Mock;
+    create: jest.Mock;
+  };
   $transaction: jest.Mock;
 };
 
@@ -55,6 +60,7 @@ export function createMockPrismaService(): MockPrismaService {
     },
     workspace: {
       findFirst: jest.fn(),
+      findMany: jest.fn(),
       create: jest.fn(),
     },
     workspaceMember: {
@@ -87,6 +93,10 @@ export function createMockPrismaService(): MockPrismaService {
       findMany: jest.fn(),
       create: jest.fn(),
       deleteMany: jest.fn(),
+    },
+    creditTransaction: {
+      aggregate: jest.fn(),
+      create: jest.fn(),
     },
     $transaction: jest.fn(),
   };

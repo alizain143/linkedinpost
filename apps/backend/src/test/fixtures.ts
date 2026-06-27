@@ -1,4 +1,7 @@
 import {
+  ContentGoal,
+  ContentProfile,
+  ContentPillar,
   PostPackage,
   PostPackageStatus,
   PostSource,
@@ -15,6 +18,7 @@ const now = new Date('2026-06-27T12:00:00.000Z');
 export const workspaceId = '11111111-1111-1111-1111-111111111111';
 export const userId = '22222222-2222-2222-2222-222222222222';
 export const postId = '33333333-3333-3333-3333-333333333333';
+export const contentProfileId = '55555555-5555-5555-5555-555555555555';
 
 export function buildWorkspace(
   overrides: Partial<Workspace> = {},
@@ -71,10 +75,12 @@ export function buildPost(
     score: null,
     scheduledAt: null,
     publishedAt: null,
+    submittedForApprovalAt: null,
+    approvalFeedback: null,
     createdAt: now,
     updatedAt: now,
     ...overrides,
-  };
+  } as PostPackage;
 }
 
 export function buildPostVersion(
@@ -89,6 +95,36 @@ export function buildPostVersion(
     cta: null,
     tags: [],
     createdAt: now,
+    ...overrides,
+  };
+}
+
+export function buildContentProfile(
+  overrides: Partial<ContentProfile> = {},
+): ContentProfile & { pillars: ContentPillar[] } {
+  return {
+    id: contentProfileId,
+    workspaceId,
+    name: 'Maya',
+    roleTitle: 'Founder',
+    industry: 'SaaS',
+    targetAudience: 'Founders',
+    contentGoal: ContentGoal.build_authority,
+    preferredTone: 'Bold',
+    offerDescription: 'Coaching for founders',
+    writingSample: 'I ship weekly.',
+    avoidWords: 'synergy',
+    isDefault: true,
+    createdAt: now,
+    updatedAt: now,
+    pillars: [
+      {
+        id: '66666666-6666-6666-6666-666666666666',
+        contentProfileId,
+        name: 'Founder lessons',
+        sortOrder: 0,
+      },
+    ],
     ...overrides,
   };
 }

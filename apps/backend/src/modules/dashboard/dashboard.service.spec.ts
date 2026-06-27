@@ -9,22 +9,32 @@ import {
 } from '../../test/fixtures';
 import { createMockPrismaService } from '../../test/prisma.mock';
 import { WorkspacesService } from '../workspaces/workspaces.service';
+import { CreditsService } from '../credits/credits.service';
 import { DashboardService } from './dashboard.service';
 
 describe('DashboardService', () => {
   let service: DashboardService;
   const prisma = createMockPrismaService();
   const workspacesService = { assertMember: jest.fn() };
+  const creditsService = {
+    getBalance: jest.fn(),
+  };
 
   beforeEach(async () => {
     jest.clearAllMocks();
     workspacesService.assertMember.mockResolvedValue(undefined);
+    creditsService.getBalance.mockResolvedValue({
+      used: 0,
+      limit: 200,
+      percentUsed: 0,
+    });
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         DashboardService,
         { provide: PrismaService, useValue: prisma },
         { provide: WorkspacesService, useValue: workspacesService },
+        { provide: CreditsService, useValue: creditsService },
       ],
     }).compile();
 
@@ -32,7 +42,7 @@ describe('DashboardService', () => {
   });
 
   describe('getStats', () => {
-    it('returns aggregated stats with credit stub', async () => {
+    it('returns aggregated stats with credits from CreditsService', async () => {
       prisma.user.findUniqueOrThrow.mockResolvedValue(
         buildUser({ plan: UserPlan.pro }),
       );
@@ -66,6 +76,7 @@ describe('DashboardService', () => {
       );
       expect(result.plan).toBe(UserPlan.pro);
       expect(result.credits).toEqual({ used: 0, limit: 200, percentUsed: 0 });
+      expect(creditsService.getBalance).toHaveBeenCalledWith(userId, expect.any(Date));
       expect(result.counts).toEqual({
         drafts: 5,
         scheduled: 2,

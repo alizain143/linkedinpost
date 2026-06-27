@@ -12,6 +12,9 @@ Per-slice implementation specs live at the repo root:
 - [SLICE-02-posts-dashboard.md](SLICE-02-posts-dashboard.md) — Done
 - [SLICE-03-pipeline-status.md](SLICE-03-pipeline-status.md) — Done
 - [SLICE-04-calendar.md](SLICE-04-calendar.md) — Done
+- [SLICE-05-approvals.md](SLICE-05-approvals.md) — Done
+- [SLICE-06-credits.md](SLICE-06-credits.md) — Done
+- [SLICE-07-generation-foundation.md](SLICE-07-generation-foundation.md) — Done
 
 ---
 
@@ -42,12 +45,13 @@ Update this section as features land. Tell the agent to mark items `[x]` when do
 
 - [x] API: calendar (month / week / list)
 - [x] API: pipeline kanban by status
-- [ ] API: approvals queue (manual status changes)
-- [ ] Credits check middleware
+- [x] API: approvals queue (manual status changes)
+- [x] Credits check middleware
 
 ### Phase 3 — Generation
 
 - [ ] `POST /generate/quick` (LLM → 3 variants)
+- [x] Generation module foundation (context, prompts, mock LLM, parser)
 - [ ] Job queue + `GET /jobs/:id`
 - [ ] AI Council pipeline v1 + timeline events
 - [ ] Credit deduct on generation
@@ -205,15 +209,15 @@ Unit that moves through the pipeline.
 | **workspaces** | Personal + client workspaces | Done |
 | **content-profiles** | Voice profile CRUD + pillars | Done |
 | **posts** | PostPackage CRUD, versions, status | Done (draft CRUD, status transitions, pipeline) |
-| **generation** | AI jobs (quick / council / media) | Not started |
+| **generation** | AI jobs (quick / council / media) | Foundation done (no HTTP yet) |
 | **council** | Multi-agent orchestration, scores, timeline | Not started |
 | **media** | Image/carousel generation + review | Not started |
 | **calendar** | Calendar views, bulk calendar gen | Month/week/list API done |
-| **approvals** | Approval queue, request changes | Not started |
+| **approvals** | Approval queue, request changes | Queue + actions done |
 | **scheduling** | Schedule posts, timezone | Not started |
 | **linkedin** | OAuth connect, publish API | Not started |
 | **autopilot** | Config + cron generation | Not started |
-| **credits** | Ledger, deduct, monthly reset | Not started |
+| **credits** | Ledger, deduct, monthly reset | Ledger stub + guard done |
 | **billing** | Stripe subscriptions | Not started |
 | **notifications** | In-app + email prefs | Email prefs on `User` (store only) |
 | **dashboard** | Read-only aggregations | Done |
@@ -434,6 +438,9 @@ Beyond current `User` / `Document`:
 - CRUD `/v1/workspaces/:workspaceId/posts`, `GET .../posts/:id/versions`, `PATCH .../posts/:id/status`
 - `GET /v1/workspaces/:workspaceId/pipeline`
 - `GET /v1/workspaces/:workspaceId/calendar`
+- `GET /v1/workspaces/:workspaceId/approvals`
+- `POST /v1/workspaces/:workspaceId/posts/:id/approve`, `.../request-changes`, `.../reject`
+- `GET /v1/credits`
 - `GET /v1/workspaces/:workspaceId/dashboard/stats`
 
 **To add (grouped)**

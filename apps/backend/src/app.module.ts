@@ -8,7 +8,10 @@ import { AuthModule } from './modules/auth/auth.module';
 import { ContentProfilesModule } from './modules/content-profiles/content-profiles.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { CalendarModule } from './modules/calendar/calendar.module';
+import { ApprovalsModule } from './modules/approvals/approvals.module';
+import { CreditsModule } from './modules/credits/credits.module';
 import { DocumentsModule } from './modules/documents/documents.module';
+import { GenerationModule } from './modules/generation/generation.module';
 import { PostsModule } from './modules/posts/posts.module';
 import { WorkspacesModule } from './modules/workspaces/workspaces.module';
 import { HealthController } from './health.controller';
@@ -28,6 +31,9 @@ import { HealthController } from './health.controller';
     PostsModule,
     DashboardModule,
     CalendarModule,
+    ApprovalsModule,
+    CreditsModule,
+    GenerationModule,
   ],
   controllers: [HealthController],
 })

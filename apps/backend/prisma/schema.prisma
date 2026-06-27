@@ -69,6 +69,13 @@ enum PostType {
   case_study
 }
 
+enum CreditTransactionType {
+  generation
+  council
+  media
+  adjustment
+}
+
 model User {
   id                      String    @id @default(uuid()) @db.Uuid
   clerkId                 String    @unique
@@ -90,6 +97,7 @@ model User {
   documents            Document[]        @relation("UserDocuments")
   ownedWorkspaces      Workspace[]       @relation("WorkspaceOwner")
   workspaceMemberships WorkspaceMember[]
+  creditTransactions   CreditTransaction[]
 
   @@map("users")
 }
@@ -202,6 +210,8 @@ model PostPackage {
   score            Int?
   scheduledAt      DateTime?         @db.Timestamptz(6)
   publishedAt      DateTime?         @db.Timestamptz(6)
+  submittedForApprovalAt DateTime?   @db.Timestamptz(6)
+  approvalFeedback String?           @db.Text
   createdAt        DateTime          @default(now()) @db.Timestamptz(6)
   updatedAt        DateTime          @updatedAt @db.Timestamptz(6)
 
@@ -231,4 +241,18 @@ model PostVersion {
   @@unique([postPackageId, versionNumber])
   @@index([postPackageId])
   @@map("post_versions")
+}
+
+model CreditTransaction {
+  id        String                @id @default(uuid()) @db.Uuid
+  userId    String                @db.Uuid
+  amount    Int
+  type      CreditTransactionType
+  reason    String?
+  createdAt DateTime              @default(now()) @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("credit_transactions")
 }

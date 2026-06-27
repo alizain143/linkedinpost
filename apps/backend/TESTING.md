@@ -41,14 +41,18 @@ npm run test:e2e
 - `user.mapper` — notification prefs, plan
 - `plan.constants` — credit limits per tier
 - `calendar-date.util` — month grid, week range, timezone date keys
+- `approvals.constants` — tab → Prisma filter mapping
+- `credits-period.util` — UTC month period boundaries
 
 ### Services (mocked Prisma + WorkspacesService)
 
 - `WorkspacesService` — `ensurePersonalWorkspace`, `assertMember`, `getCurrentWorkspace`
-- `PostsService` — draft edit guards, status transitions, pipeline columns
-- `DashboardService` — stats aggregation, preview truncation, credits stub
+- `PostsService` — draft edit guards, status transitions, pipeline columns, approval actions
+- `DashboardService` — stats aggregation, preview truncation, credits via CreditsService
 - `ContentProfilesService` — default profile rules, delete promotion
 - `CalendarService` — month/week/list grouping, status filter, workspace guard
+- `ApprovalsService` — tab queue, counts, client workspace aggregation
+- `CreditsService` — balance, assertHasCredits, consume ledger rows
 
 ## Conventions
 
