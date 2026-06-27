@@ -1,5 +1,6 @@
 import { Type, applyDecorators } from '@nestjs/common';
 import {
+  ApiAcceptedResponse,
   ApiCreatedResponse,
   ApiExtraModels,
   ApiOkResponse,
@@ -8,7 +9,11 @@ import {
 
 export const ApiDataResponse = <TModel extends Type<unknown>>(
   model: TModel,
-  options?: { isArray?: boolean; description?: string; status?: 200 | 201 },
+  options?: {
+    isArray?: boolean;
+    description?: string;
+    status?: 200 | 201 | 202;
+  },
 ) => {
   const schema = {
     type: 'object' as const,
@@ -24,7 +29,11 @@ export const ApiDataResponse = <TModel extends Type<unknown>>(
   };
 
   const ResponseDecorator =
-    options?.status === 201 ? ApiCreatedResponse : ApiOkResponse;
+    options?.status === 201
+      ? ApiCreatedResponse
+      : options?.status === 202
+        ? ApiAcceptedResponse
+        : ApiOkResponse;
 
   return applyDecorators(
     ApiExtraModels(model),

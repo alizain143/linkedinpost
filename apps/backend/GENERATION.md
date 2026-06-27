@@ -1,17 +1,82 @@
 # Generation module
 
-Internal AI generation pipeline for linkedinpost. Slice 07 delivers the foundation only — no HTTP routes yet.
+AI generation pipeline for linkedinpost. Slice 07 = foundation; Slice 08 = HTTP + OpenAI + jobs; Slices 09–10 = async queue + AI Council.
+
+Model choices: [`MODELS.md`](MODELS.md)  
+Council pipeline: [`COUNCIL.md`](COUNCIL.md)
+
+## HTTP API
+
+| Method | Route | Cost | Mode |
+|--------|-------|------|------|
+| `POST` | `/v1/workspaces/:workspaceId/generate/quick` | 1 credit | Sync (200) |
+| `POST` | `/v1/workspaces/:workspaceId/generate/council` | 3 credits | Async (202) |
+| `GET` | `/v1/jobs/:id` | — | Poll progress |
+
+Guards: `ClerkAuthGuard` + `CreditsGuard` on generation endpoints.
+
+### Example
+
+```bash
+POST /v1/workspaces/{wsId}/generate/quick
+POST /v1/workspaces/{wsId}/generate/council
+GET  /v1/jobs/{jobId}
+GET  /v1/workspaces/{wsId}/posts/{postId}/council
+```
+
+Quick draft variants return in `job.result.variants` (3 items). Not auto-saved to `PostPackage`.
+
+Council creates a `PostPackage` and returns `postPackageId` immediately; poll `GET /jobs/:id` for timeline `events[]`.
+
+## Env
+
+```env
+OPENAI_API_KEY=sk-...
+OPENAI_TEXT_MODEL=gpt-5.4
+REDIS_URL=redis://localhost:6379
+GENERATION_QUEUE_CONCURRENCY=2
+```
+
+Without `OPENAI_API_KEY`, `ConfigModelRouter` falls back to `MockTextCompletionProvider`.
+
+Without `REDIS_URL`, quick draft still works; council returns `503`.
 
 ## Quick Draft flow
 
 ```
-QuickDraftInput
-    → ContextAssembler (providers merge GenerationContext)
-    → PromptRenderer (quick-draft v1 templates)
-    → ModelRouter.text().complete()
-    → QuickDraftOutputParser (3 variants)
-    → QuickDraftResult
+QuickDraftRequestDto
+    → QuickDraftJobService (create GenerationJob)
+    → ContextAssembler
+    → PromptRenderer (quick-draft v1)
+    → ConfigModelRouter.text().complete()
+    → QuickDraftOutputParser
+    → CreditsService.consume() on success
+    → GenerationJob completed + result JSON
 ```
+
+## Async job queue (Slice 09)
+
+```
+POST /generate/council
+    → CouncilJobService.enqueueCouncil()
+    → GenerationJob (pending) + PostPackage + CouncilRun
+    → BullMQ generation-jobs queue
+    → GenerationJobProcessor
+    → CouncilJobHandler → CouncilOrchestrator
+    → CouncilEvent timeline + job progress updates
+    → CreditsService.consume(3) on success
+```
+
+## Job states
+
+| Status | Meaning |
+|--------|---------|
+| `pending` | Created / queued |
+| `running` | Worker processing |
+| `completed` | Result ready; credit charged |
+| `failed` | `errorCode` set; no credit charge |
+
+Council jobs include `progress`, `postPackageId`, `councilRunId`, and `events[]`.
 
 ## Context providers
 
@@ -24,59 +89,46 @@ Providers run in `order` ascending:
 | 30 | `GenerationInputContextProvider` | `input` |
 | 40 | `DocumentContextProvider` | `documents` |
 
-`ContentProfileContextProvider` resolution:
-
-1. Explicit `contentProfileId` in workspace
-2. Else profile with `isDefault: true`
-3. Else oldest profile (`createdAt asc`)
-4. Else `GENERATION_CONTEXT_ERROR`
+Council agents also receive `priorSteps` in rendered prompts.
 
 ## Prompts
 
-Registry key: `quick-draft` v1. Templates use `{{placeholder}}` syntax (e.g. `{{contentProfile.name}}`, `{{input.topic}}`).
+Registry keys: `quick-draft` v1, `council-writer`, `council-reviewer`, `council-editor`, `council-media-creator`, `council-media-reviewer` v1.
 
 ## LLM layer
 
-| Symbol / class | Role |
-|----------------|------|
-| `MODEL_ROUTER` | DI token for `ModelRouter` |
-| `MockModelRouter` | Default in `GenerationModule` |
-| `MockTextCompletionProvider` | Returns valid 3-variant JSON |
-| `ImageGenerationProvider` | Interface only (Slice 09+) |
-
-Swap `MODEL_ROUTER` to a real provider implementation in a later slice.
+| Class | Role |
+|-------|------|
+| `ConfigModelRouter` | OpenAI when key set, else mock |
+| `OpenAiTextCompletionProvider` | GPT-5.4 via OpenAI SDK |
+| `MockTextCompletionProvider` | Dev/test without API key |
+| `ImageGenerationProvider` | Interface only (Phase 5) |
 
 ## Errors
 
-```typescript
-generationContextError('...')  // 400, code: GENERATION_CONTEXT_ERROR
-generationParseError('...')    // 422, code: GENERATION_PARSE_ERROR
-```
-
-## Usage (internal)
-
-```typescript
-constructor(private readonly quickDraftGenerator: QuickDraftGenerator) {}
-
-const result = await this.quickDraftGenerator.generate({
-  workspaceId,
-  userId,
-  topic: 'Shipping weekly',
-});
-// result.variants.length === 3
-```
+| Code | HTTP |
+|------|------|
+| `GENERATION_CONTEXT_ERROR` | 400 |
+| `GENERATION_PARSE_ERROR` | 422 |
+| `LLM_PROVIDER_ERROR` | 502 |
+| `CREDITS_EXHAUSTED` | 402 |
+| `REDIS_UNAVAILABLE` | 503 |
+| `RESOURCE_NOT_FOUND` | 404 |
 
 ## Exports
 
 `GenerationModule` exports:
 
 - `QuickDraftGenerator`
+- `QuickDraftJobService`
 - `ContextAssembler`
+- `PromptRenderer`
+- `GenerationJobsQueryService`
 
 ## Tests
 
-Co-located `*.spec.ts` under `src/modules/generation/`. Run:
-
 ```bash
 npm test -- --testPathPattern=generation
+npm test -- --testPathPattern=council
+npm test -- --testPathPattern=job-queue
 ```

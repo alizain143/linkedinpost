@@ -26,7 +26,15 @@ export class QuickDraftGenerator
     const messages = this.promptRenderer.renderQuickDraftV1(context);
     const completion = await this.modelRouter
       .text()
-      .complete({ messages });
-    return this.outputParser.parse(completion.content);
+      .complete({ messages, responseFormat: 'json' });
+    const parsed = this.outputParser.parse(completion.content);
+
+    return {
+      ...parsed,
+      promptId: 'quick-draft',
+      promptVersion: 'v1',
+      model: completion.model,
+      usage: completion.usage,
+    };
   }
 }

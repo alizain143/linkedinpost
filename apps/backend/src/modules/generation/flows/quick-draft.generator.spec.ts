@@ -83,6 +83,8 @@ describe('QuickDraftGenerator', () => {
       topic: 'Shipping weekly',
     });
     expect(result.variants).toHaveLength(3);
+    expect(result.model).toBe('mock-text');
+    expect(result.promptId).toBe('quick-draft');
     expect(result.variants[0]).toMatchObject({
       hook: expect.any(String),
       body: expect.any(String),

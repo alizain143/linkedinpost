@@ -9,8 +9,85 @@ import {
 @Injectable()
 export class MockTextCompletionProvider implements TextCompletionProvider {
   async complete(
-    _request: TextCompletionRequest,
+    request: TextCompletionRequest,
   ): Promise<TextCompletionResponse> {
+    const system = request.messages.find((m) => m.role === 'system')?.content ?? '';
+
+    if (system.includes('Writer agent')) {
+      return {
+        content: JSON.stringify({
+          hook: 'Most founders skip this step.',
+          body: 'I spent years posting without a system. Then I built one.',
+          cta: 'What is your content system?',
+          tags: ['founders', 'linkedin'],
+          rationale: 'Personal story angle',
+        }),
+        model: 'mock-text',
+        usage: { inputTokens: 50, outputTokens: 80 },
+      };
+    }
+
+    if (system.includes('Reviewer agent')) {
+      const user =
+        request.messages.find((m) => m.role === 'user')?.content ?? '';
+      const isRevisionReview = user.includes('"agentRole": "reviewer"');
+      const passed = isRevisionReview;
+      return {
+        content: JSON.stringify({
+          overall: passed ? 81 : 68,
+          hook: 80,
+          voice: passed ? 78 : 65,
+          clarity: 70,
+          passed,
+          feedback: passed
+            ? 'Strong hook and voice alignment.'
+            : 'Tone drifts in paragraph 2.',
+          revisionHints: passed ? [] : ['Shorten hook', 'Match writing sample'],
+        }),
+        model: 'mock-text',
+        usage: { inputTokens: 40, outputTokens: 60 },
+      };
+    }
+
+    if (system.includes('Editor agent')) {
+      return {
+        content: JSON.stringify({
+          hook: 'Most founders skip this step.',
+          body: 'I spent years posting without a system. Then I built one. Here is the framework.',
+          cta: 'What is your content system?',
+          tags: ['founders', 'linkedin'],
+          changelog: 'Tightened body and CTA',
+        }),
+        model: 'mock-text',
+        usage: { inputTokens: 45, outputTokens: 70 },
+      };
+    }
+
+    if (system.includes('Media Creator agent')) {
+      return {
+        content: JSON.stringify({
+          mediaType: 'quote_card',
+          placeholderUrl: null,
+          altText: 'Quote card for hook',
+          status: 'stub_pending_phase5',
+        }),
+        model: 'mock-text',
+        usage: { inputTokens: 20, outputTokens: 30 },
+      };
+    }
+
+    if (system.includes('Media Reviewer agent')) {
+      return {
+        content: JSON.stringify({
+          passed: true,
+          issues: [],
+          score: 85,
+        }),
+        model: 'mock-text',
+        usage: { inputTokens: 20, outputTokens: 25 },
+      };
+    }
+
     const variants = [
       {
         hook: 'Most founders skip this step.',
@@ -43,6 +120,7 @@ export class MockTextCompletionProvider implements TextCompletionProvider {
 
     return {
       content: JSON.stringify({ variants }),
+      model: 'mock-text',
     };
   }
 }

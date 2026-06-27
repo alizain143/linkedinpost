@@ -76,6 +76,40 @@ enum CreditTransactionType {
   adjustment
 }
 
+enum GenerationJobStatus {
+  pending
+  running
+  completed
+  failed
+}
+
+enum GenerationJobType {
+  quick_draft
+  council
+}
+
+enum CouncilAgentRole {
+  writer
+  reviewer
+  editor
+  media_creator
+  media_reviewer
+}
+
+enum CouncilEventStatus {
+  running
+  completed
+  failed
+  skipped
+}
+
+enum CouncilRunStatus {
+  pending
+  running
+  completed
+  failed
+}
+
 model User {
   id                      String    @id @default(uuid()) @db.Uuid
   clerkId                 String    @unique
@@ -98,6 +132,7 @@ model User {
   ownedWorkspaces      Workspace[]       @relation("WorkspaceOwner")
   workspaceMemberships WorkspaceMember[]
   creditTransactions   CreditTransaction[]
+  generationJobs       GenerationJob[]
 
   @@map("users")
 }
@@ -139,6 +174,7 @@ model Workspace {
   members         WorkspaceMember[]
   contentProfiles ContentProfile[]
   postPackages    PostPackage[]
+  generationJobs  GenerationJob[]
 
   @@index([ownerId])
   @@map("workspaces")
@@ -218,6 +254,8 @@ model PostPackage {
   workspace      Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   contentProfile ContentProfile? @relation(fields: [contentProfileId], references: [id], onDelete: SetNull)
   versions       PostVersion[]
+  councilRuns    CouncilRun[]
+  generationJobs GenerationJob[]
 
   @@index([workspaceId])
   @@index([workspaceId, status])
@@ -255,4 +293,84 @@ model CreditTransaction {
 
   @@index([userId, createdAt])
   @@map("credit_transactions")
+}
+
+model GenerationJob {
+  id            String              @id @default(uuid()) @db.Uuid
+  workspaceId   String              @db.Uuid
+  userId        String              @db.Uuid
+  type          GenerationJobType
+  status        GenerationJobStatus @default(pending)
+  flowId        String
+  promptVersion String              @default("v1")
+  model         String?
+  input         Json
+  result        Json?
+  errorCode     String?
+  errorMessage  String?
+  inputTokens   Int?
+  outputTokens  Int?
+  creditCost    Int                 @default(1)
+  creditCharged Boolean             @default(false)
+  postPackageId String?             @db.Uuid
+  currentStep   String?
+  progress      Json?
+  createdAt     DateTime            @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime            @updatedAt @db.Timestamptz(6)
+  completedAt   DateTime?           @db.Timestamptz(6)
+
+  workspace   Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postPackage PostPackage? @relation(fields: [postPackageId], references: [id], onDelete: SetNull)
+  councilRun  CouncilRun?
+
+  @@index([userId, createdAt])
+  @@index([workspaceId, createdAt])
+  @@index([postPackageId])
+  @@map("generation_jobs")
+}
+
+model CouncilRun {
+  id              String           @id @default(uuid()) @db.Uuid
+  workspaceId     String           @db.Uuid
+  generationJobId String           @unique @db.Uuid
+  postPackageId   String           @db.Uuid
+  status          CouncilRunStatus @default(pending)
+  revisionCount   Int              @default(0)
+  mediaRegenCount Int              @default(0)
+  finalScore      Int?
+  createdAt       DateTime         @default(now()) @db.Timestamptz(6)
+  completedAt     DateTime?        @db.Timestamptz(6)
+
+  generationJob GenerationJob @relation(fields: [generationJobId], references: [id], onDelete: Cascade)
+  postPackage   PostPackage   @relation(fields: [postPackageId], references: [id], onDelete: Cascade)
+  events        CouncilEvent[]
+
+  @@index([postPackageId])
+  @@map("council_runs")
+}
+
+model CouncilEvent {
+  id              String             @id @default(uuid()) @db.Uuid
+  councilRunId    String             @db.Uuid
+  agentRole       CouncilAgentRole
+  stepOrder       Int
+  revisionAttempt Int                @default(1)
+  status          CouncilEventStatus
+  label           String
+  output          Json?
+  scores          Json?
+  model           String?
+  inputTokens     Int?
+  outputTokens    Int?
+  errorCode       String?
+  errorMessage    String?
+  startedAt       DateTime           @default(now()) @db.Timestamptz(6)
+  completedAt     DateTime?          @db.Timestamptz(6)
+  durationMs      Int?
+
+  councilRun CouncilRun @relation(fields: [councilRunId], references: [id], onDelete: Cascade)
+
+  @@index([councilRunId, stepOrder])
+  @@map("council_events")
 }

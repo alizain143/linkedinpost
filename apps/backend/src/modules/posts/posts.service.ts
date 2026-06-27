@@ -20,6 +20,7 @@ import {
   PIPELINE_COLUMN_ORDER,
   PIPELINE_LABELS,
 } from './post-status.transitions';
+import { assertCouncilStatusTransition } from './council-status.transitions';
 import {
   buildVersionSnapshot,
   CONTENT_VERSION_FIELDS,
@@ -346,6 +347,22 @@ export class PostsService {
     });
 
     return versions.map(toPostVersionResponse);
+  }
+
+  async applyCouncilPipelineStatus(
+    postPackageId: string,
+    to: PostPackageStatus,
+  ) {
+    const post = await this.prisma.postPackage.findUniqueOrThrow({
+      where: { id: postPackageId },
+    });
+
+    assertCouncilStatusTransition(post.status, to);
+
+    await this.prisma.postPackage.update({
+      where: { id: postPackageId },
+      data: { status: to },
+    });
   }
 
   async transitionStatus(

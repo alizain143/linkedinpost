@@ -1,0 +1,571 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import {
+  CouncilAgentRole,
+  CouncilRunStatus,
+  GenerationJobStatus,
+  PostPackageStatus,
+  Prisma,
+} from '@prisma/client';
+import { PrismaService } from '../../prisma/prisma.service';
+import { CouncilInput, CouncilPriorStep } from '../generation/generation.types';
+import { CouncilAgentService } from './council-agent.service';
+import { CouncilEventService } from './council-event.service';
+import { councilTotalSteps } from './council-progress';
+import { PostsService } from '../posts/posts.service';
+import { ReviewerOutput } from './parsers/reviewer-output.parser';
+
+@Injectable()
+export class CouncilOrchestrator {
+  private readonly logger = new Logger(CouncilOrchestrator.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly configService: ConfigService,
+    private readonly councilAgentService: CouncilAgentService,
+    private readonly councilEventService: CouncilEventService,
+    private readonly postsService: PostsService,
+  ) {}
+
+  async run(councilRunId: string): Promise<void> {
+    const run = await this.prisma.councilRun.findUniqueOrThrow({
+      where: { id: councilRunId },
+      include: {
+        generationJob: true,
+        postPackage: true,
+      },
+    });
+
+    const input = run.generationJob.input as unknown as CouncilInput;
+    const passScore = this.configService.get<number>('council.passScore', 75);
+    const maxTextRevisions = this.configService.get<number>(
+      'council.maxTextRevisions',
+      1,
+    );
+    const maxMediaRegens = this.configService.get<number>(
+      'council.maxMediaRegens',
+      1,
+    );
+    const totalSteps = councilTotalSteps(maxTextRevisions, maxMediaRegens);
+
+    await this.prisma.councilRun.update({
+      where: { id: councilRunId },
+      data: { status: CouncilRunStatus.running },
+    });
+
+    const priorSteps: CouncilPriorStep[] = [];
+    let stepOrder = 0;
+    let completedSteps = 0;
+    let revisionCount = 0;
+    let mediaRegenCount = 0;
+
+    const generationJobId = run.generationJobId;
+    const postPackageId = run.postPackageId;
+
+    try {
+      let writerAttempt = 1;
+      let draft = await this.executeWriter(
+        councilRunId,
+        generationJobId,
+        input,
+        priorSteps,
+        writerAttempt,
+        ++stepOrder,
+        completedSteps,
+        totalSteps,
+      );
+      completedSteps++;
+
+      await this.prisma.postPackage.update({
+        where: { id: postPackageId },
+        data: {
+          hook: draft.hook,
+          body: draft.body,
+          cta: draft.cta,
+          tags: draft.tags,
+        },
+      });
+
+      await this.postsService.applyCouncilPipelineStatus(
+        postPackageId,
+        PostPackageStatus.text_reviewing,
+      );
+
+      let reviewerAttempt = 1;
+      let review = await this.executeReviewer(
+        councilRunId,
+        generationJobId,
+        input,
+        priorSteps,
+        reviewerAttempt,
+        ++stepOrder,
+        completedSteps,
+        totalSteps,
+      );
+      completedSteps++;
+
+      while (!review.passed && review.overall < passScore && revisionCount < maxTextRevisions) {
+        revisionCount++;
+        writerAttempt++;
+        reviewerAttempt++;
+
+        await this.postsService.applyCouncilPipelineStatus(
+          postPackageId,
+          PostPackageStatus.text_generating,
+        );
+
+        draft = await this.executeWriter(
+          councilRunId,
+          generationJobId,
+          input,
+          priorSteps,
+          writerAttempt,
+          ++stepOrder,
+          completedSteps,
+          totalSteps,
+        );
+        completedSteps++;
+
+        await this.prisma.postPackage.update({
+          where: { id: postPackageId },
+          data: {
+            hook: draft.hook,
+            body: draft.body,
+            cta: draft.cta,
+            tags: draft.tags,
+          },
+        });
+
+        await this.postsService.applyCouncilPipelineStatus(
+          postPackageId,
+          PostPackageStatus.text_reviewing,
+        );
+
+        review = await this.executeReviewer(
+          councilRunId,
+          generationJobId,
+          input,
+          priorSteps,
+          reviewerAttempt,
+          ++stepOrder,
+          completedSteps,
+          totalSteps,
+        );
+        completedSteps++;
+      }
+
+      const finalCopy = await this.executeEditor(
+        councilRunId,
+        generationJobId,
+        input,
+        priorSteps,
+        ++stepOrder,
+        completedSteps,
+        totalSteps,
+      );
+      completedSteps++;
+
+      await this.prisma.$transaction(async (tx) => {
+        await tx.postPackage.update({
+          where: { id: postPackageId },
+          data: {
+            hook: finalCopy.hook,
+            body: finalCopy.body,
+            cta: finalCopy.cta,
+            tags: finalCopy.tags,
+            score: review.overall,
+          },
+        });
+
+        await tx.postVersion.create({
+          data: {
+            postPackageId,
+            versionNumber: 1,
+            hook: finalCopy.hook,
+            body: finalCopy.body,
+            cta: finalCopy.cta,
+            tags: finalCopy.tags,
+          },
+        });
+      });
+
+      await this.postsService.applyCouncilPipelineStatus(
+        postPackageId,
+        PostPackageStatus.media_generating,
+      );
+
+      let mediaAttempt = 1;
+      let media = await this.executeMediaCreator(
+        councilRunId,
+        generationJobId,
+        input,
+        priorSteps,
+        mediaAttempt,
+        ++stepOrder,
+        completedSteps,
+        totalSteps,
+      );
+      completedSteps++;
+
+      let mediaReview = await this.executeMediaReviewer(
+        councilRunId,
+        generationJobId,
+        input,
+        priorSteps,
+        ++stepOrder,
+        completedSteps,
+        totalSteps,
+      );
+      completedSteps++;
+
+      while (!mediaReview.passed && mediaRegenCount < maxMediaRegens) {
+        mediaRegenCount++;
+        mediaAttempt++;
+
+        media = await this.executeMediaCreator(
+          councilRunId,
+          generationJobId,
+          input,
+          priorSteps,
+          mediaAttempt,
+          ++stepOrder,
+          completedSteps,
+          totalSteps,
+        );
+        completedSteps++;
+
+        mediaReview = await this.executeMediaReviewer(
+          councilRunId,
+          generationJobId,
+          input,
+          priorSteps,
+          ++stepOrder,
+          completedSteps,
+          totalSteps,
+        );
+        completedSteps++;
+      }
+
+      if (!mediaReview.passed) {
+        throw new Error('Media review failed after max regenerations');
+      }
+
+      await this.postsService.applyCouncilPipelineStatus(
+        postPackageId,
+        PostPackageStatus.ready_for_approval,
+      );
+
+      await this.prisma.councilRun.update({
+        where: { id: councilRunId },
+        data: {
+          status: CouncilRunStatus.completed,
+          revisionCount,
+          mediaRegenCount,
+          finalScore: review.overall,
+          completedAt: new Date(),
+        },
+      });
+
+      await this.prisma.generationJob.update({
+        where: { id: generationJobId },
+        data: {
+          status: GenerationJobStatus.completed,
+          result: {
+            postPackageId,
+            finalScore: review.overall,
+            revisionCount,
+            mediaRegenCount,
+          } as unknown as Prisma.InputJsonValue,
+          completedAt: new Date(),
+          model: run.generationJob.model,
+        },
+      });
+    } catch (err) {
+      this.logger.error(`Council run ${councilRunId} failed`, err);
+
+      await this.postsService.applyCouncilPipelineStatus(
+        postPackageId,
+        PostPackageStatus.failed,
+      );
+
+      await this.prisma.councilRun.update({
+        where: { id: councilRunId },
+        data: {
+          status: CouncilRunStatus.failed,
+          revisionCount,
+          mediaRegenCount,
+          completedAt: new Date(),
+        },
+      });
+
+      throw err;
+    }
+  }
+
+  private async executeWriter(
+    councilRunId: string,
+    generationJobId: string,
+    input: CouncilInput,
+    priorSteps: CouncilPriorStep[],
+    revisionAttempt: number,
+    stepOrder: number,
+    completedSteps: number,
+    totalSteps: number,
+  ) {
+    const label =
+      revisionAttempt === 1
+        ? 'Writer creating draft v1'
+        : `Writer applying revision ${revisionAttempt}`;
+
+    const started = await this.councilEventService.startEvent({
+      councilRunId,
+      generationJobId,
+      agentRole: CouncilAgentRole.writer,
+      stepOrder,
+      revisionAttempt,
+      label,
+      completedSteps,
+      totalSteps,
+    });
+
+    const result = await this.councilAgentService.runWriter(input, priorSteps);
+
+    priorSteps.push({
+      agentRole: CouncilAgentRole.writer,
+      revisionAttempt,
+      output: result.output as unknown as Record<string, unknown>,
+    });
+
+    await this.councilEventService.completeEvent(started.id, {
+      generationJobId,
+      agentRole: CouncilAgentRole.writer,
+      label:
+        revisionAttempt === 1
+          ? 'Writer created draft v1'
+          : `Writer applied revision ${revisionAttempt}`,
+      completedSteps: completedSteps + 1,
+      totalSteps,
+      output: result.output as unknown as Record<string, unknown>,
+      model: result.model,
+      inputTokens: result.inputTokens,
+      outputTokens: result.outputTokens,
+      startedAt: started.startedAt,
+    });
+
+    return result.output;
+  }
+
+  private async executeReviewer(
+    councilRunId: string,
+    generationJobId: string,
+    input: CouncilInput,
+    priorSteps: CouncilPriorStep[],
+    revisionAttempt: number,
+    stepOrder: number,
+    completedSteps: number,
+    totalSteps: number,
+  ): Promise<ReviewerOutput> {
+    const started = await this.councilEventService.startEvent({
+      councilRunId,
+      generationJobId,
+      agentRole: CouncilAgentRole.reviewer,
+      stepOrder,
+      revisionAttempt,
+      label: `Reviewer scoring draft v${revisionAttempt}`,
+      completedSteps,
+      totalSteps,
+    });
+
+    const result = await this.councilAgentService.runReviewer(input, priorSteps);
+
+    const scores = {
+      overall: result.output.overall,
+      hook: result.output.hook,
+      voice: result.output.voice,
+      clarity: result.output.clarity,
+    };
+
+    priorSteps.push({
+      agentRole: CouncilAgentRole.reviewer,
+      revisionAttempt,
+      output: result.output as unknown as Record<string, unknown>,
+      scores,
+    });
+
+    const label = result.output.passed
+      ? `Reviewer scored ${result.output.overall} — approved`
+      : `Reviewer scored ${result.output.overall} — needs revision`;
+
+    await this.councilEventService.completeEvent(started.id, {
+      generationJobId,
+      agentRole: CouncilAgentRole.reviewer,
+      label,
+      completedSteps: completedSteps + 1,
+      totalSteps,
+      output: result.output as unknown as Record<string, unknown>,
+      scores,
+      model: result.model,
+      inputTokens: result.inputTokens,
+      outputTokens: result.outputTokens,
+      startedAt: started.startedAt,
+    });
+
+    return result.output;
+  }
+
+  private async executeEditor(
+    councilRunId: string,
+    generationJobId: string,
+    input: CouncilInput,
+    priorSteps: CouncilPriorStep[],
+    stepOrder: number,
+    completedSteps: number,
+    totalSteps: number,
+  ) {
+    const started = await this.councilEventService.startEvent({
+      councilRunId,
+      generationJobId,
+      agentRole: CouncilAgentRole.editor,
+      stepOrder,
+      revisionAttempt: 1,
+      label: 'Editor polishing copy',
+      completedSteps,
+      totalSteps,
+    });
+
+    const result = await this.councilAgentService.runEditor(input, priorSteps);
+
+    priorSteps.push({
+      agentRole: CouncilAgentRole.editor,
+      revisionAttempt: 1,
+      output: result.output as unknown as Record<string, unknown>,
+    });
+
+    await this.councilEventService.completeEvent(started.id, {
+      generationJobId,
+      agentRole: CouncilAgentRole.editor,
+      label: 'Editor finalized copy',
+      completedSteps: completedSteps + 1,
+      totalSteps,
+      output: result.output as unknown as Record<string, unknown>,
+      model: result.model,
+      inputTokens: result.inputTokens,
+      outputTokens: result.outputTokens,
+      startedAt: started.startedAt,
+    });
+
+    return result.output;
+  }
+
+  private async executeMediaCreator(
+    councilRunId: string,
+    generationJobId: string,
+    input: CouncilInput,
+    priorSteps: CouncilPriorStep[],
+    attempt: number,
+    stepOrder: number,
+    completedSteps: number,
+    totalSteps: number,
+  ) {
+    const started = await this.councilEventService.startEvent({
+      councilRunId,
+      generationJobId,
+      agentRole: CouncilAgentRole.media_creator,
+      stepOrder,
+      revisionAttempt: attempt,
+      label: 'Media Creator generating asset (stub)',
+      completedSteps,
+      totalSteps,
+    });
+
+    const result = await this.councilAgentService.runMediaCreator(
+      input,
+      priorSteps,
+    );
+
+    if (attempt === 1) {
+      priorSteps.push({
+        agentRole: CouncilAgentRole.media_creator,
+        revisionAttempt: attempt,
+        output: result.output as unknown as Record<string, unknown>,
+      });
+    } else {
+      const idx = priorSteps.findIndex(
+        (s) => s.agentRole === CouncilAgentRole.media_creator,
+      );
+      if (idx >= 0) {
+        priorSteps[idx] = {
+          agentRole: CouncilAgentRole.media_creator,
+          revisionAttempt: attempt,
+          output: result.output as unknown as Record<string, unknown>,
+        };
+      }
+    }
+
+    await this.councilEventService.completeEvent(started.id, {
+      generationJobId,
+      agentRole: CouncilAgentRole.media_creator,
+      label: 'Media Creator generated quote card (stub)',
+      completedSteps: completedSteps + 1,
+      totalSteps,
+      output: result.output as unknown as Record<string, unknown>,
+      model: result.model,
+      inputTokens: result.inputTokens,
+      outputTokens: result.outputTokens,
+      startedAt: started.startedAt,
+    });
+
+    return result.output;
+  }
+
+  private async executeMediaReviewer(
+    councilRunId: string,
+    generationJobId: string,
+    input: CouncilInput,
+    priorSteps: CouncilPriorStep[],
+    stepOrder: number,
+    completedSteps: number,
+    totalSteps: number,
+  ) {
+    const started = await this.councilEventService.startEvent({
+      councilRunId,
+      generationJobId,
+      agentRole: CouncilAgentRole.media_reviewer,
+      stepOrder,
+      revisionAttempt: 1,
+      label: 'Media Reviewer QA (stub)',
+      completedSteps,
+      totalSteps,
+    });
+
+    const result = await this.councilAgentService.runMediaReviewer(
+      input,
+      priorSteps,
+    );
+
+    priorSteps.push({
+      agentRole: CouncilAgentRole.media_reviewer,
+      revisionAttempt: 1,
+      output: result.output as unknown as Record<string, unknown>,
+      scores: { score: result.output.score },
+    });
+
+    await this.councilEventService.completeEvent(started.id, {
+      generationJobId,
+      agentRole: CouncilAgentRole.media_reviewer,
+      label: result.output.passed
+        ? 'Media Reviewer QA passed'
+        : 'Media Reviewer QA failed',
+      completedSteps: completedSteps + 1,
+      totalSteps,
+      output: result.output as unknown as Record<string, unknown>,
+      scores: { score: result.output.score },
+      model: result.model,
+      inputTokens: result.inputTokens,
+      outputTokens: result.outputTokens,
+      startedAt: started.startedAt,
+    });
+
+    return result.output;
+  }
+}

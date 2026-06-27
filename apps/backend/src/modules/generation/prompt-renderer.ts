@@ -8,7 +8,15 @@ import {
 @Injectable()
 export class PromptRenderer {
   renderQuickDraftV1(context: GenerationContext): LlmMessage[] {
-    const template = getPromptTemplate('quick-draft', 1);
+    return this.renderFlow('quick-draft', 1, context);
+  }
+
+  renderFlow(
+    flowId: string,
+    version: number,
+    context: GenerationContext,
+  ): LlmMessage[] {
+    const template = getPromptTemplate(flowId, version);
     const values = this.buildPlaceholderValues(context);
 
     return [
@@ -55,10 +63,12 @@ export class PromptRenderer {
       'input.tone': input?.tone ?? '',
       'input.pillar': input?.pillar ?? '',
       'input.additionalContext': input?.additionalContext ?? '',
+      'input.brief': input?.brief ?? '',
       'documents.summary':
         documents.length > 0
           ? documents.map((doc) => doc.filename).join(', ')
           : 'None',
+      'priorSteps.json': JSON.stringify(context.priorSteps ?? [], null, 2),
     };
   }
 

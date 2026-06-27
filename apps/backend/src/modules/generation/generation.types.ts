@@ -1,4 +1,4 @@
-import { ContentGoal, PostType, UserPlan } from '@prisma/client';
+import { ContentGoal, CouncilAgentRole, PostType, UserPlan } from '@prisma/client';
 
 export interface QuickDraftInput {
   workspaceId: string;
@@ -9,6 +9,17 @@ export interface QuickDraftInput {
   pillar?: string;
   contentProfileId?: string;
   additionalContext?: string;
+}
+
+export interface CouncilInput extends QuickDraftInput {
+  brief?: string;
+}
+
+export interface CouncilPriorStep {
+  agentRole: CouncilAgentRole;
+  revisionAttempt: number;
+  output: Record<string, unknown>;
+  scores?: Record<string, number>;
 }
 
 export interface GenerationUserContext {
@@ -40,6 +51,7 @@ export interface GenerationInputContext {
   tone?: string;
   pillar?: string;
   additionalContext?: string;
+  brief?: string;
 }
 
 export interface GenerationDocumentContext {
@@ -56,6 +68,22 @@ export interface GenerationContext {
   contentProfile?: GenerationContentProfileContext;
   input?: GenerationInputContext;
   documents?: GenerationDocumentContext[];
+  priorSteps?: CouncilPriorStep[];
+}
+
+export interface GenerationJobProgress {
+  currentStep: string;
+  currentLabel: string;
+  completedSteps: number;
+  totalSteps: number;
+  percentComplete: number;
+}
+
+export interface CouncilJobResult {
+  postPackageId: string;
+  finalScore: number | null;
+  revisionCount: number;
+  mediaRegenCount: number;
 }
 
 export type GenerationContextSlice = Partial<GenerationContext>;
@@ -72,6 +100,13 @@ export interface QuickDraftVariant {
 
 export interface QuickDraftResult {
   variants: QuickDraftVariant[];
+  promptId: string;
+  promptVersion: string;
+  model: string;
+  usage?: {
+    inputTokens: number;
+    outputTokens: number;
+  };
 }
 
 export interface LlmMessage {
@@ -83,8 +118,14 @@ export interface TextCompletionRequest {
   messages: LlmMessage[];
   temperature?: number;
   maxTokens?: number;
+  responseFormat?: 'json';
 }
 
 export interface TextCompletionResponse {
   content: string;
+  model: string;
+  usage?: {
+    inputTokens: number;
+    outputTokens: number;
+  };
 }

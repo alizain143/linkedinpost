@@ -33,6 +33,9 @@ export class GenerationInputContextProvider implements ContextProvider {
     if (input.additionalContext !== undefined) {
       slice.input!.additionalContext = input.additionalContext;
     }
+    if ('brief' in input && input.brief !== undefined) {
+      slice.input!.brief = input.brief as string;
+    }
 
     if (Object.keys(slice.input!).length === 0) {
       return {};

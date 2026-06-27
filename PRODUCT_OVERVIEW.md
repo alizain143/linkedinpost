@@ -15,6 +15,9 @@ Per-slice implementation specs live at the repo root:
 - [SLICE-05-approvals.md](SLICE-05-approvals.md) — Done
 - [SLICE-06-credits.md](SLICE-06-credits.md) — Done
 - [SLICE-07-generation-foundation.md](SLICE-07-generation-foundation.md) — Done
+- [SLICE-08-quick-draft-api.md](SLICE-08-quick-draft-api.md) — Done
+- [SLICE-09-async-job-queue.md](SLICE-09-async-job-queue.md) — Done
+- [SLICE-10-ai-council.md](SLICE-10-ai-council.md) — Done
 
 ---
 
@@ -50,11 +53,12 @@ Update this section as features land. Tell the agent to mark items `[x]` when do
 
 ### Phase 3 — Generation
 
-- [ ] `POST /generate/quick` (LLM → 3 variants)
+- [x] `POST /generate/quick` (LLM → 3 variants)
 - [x] Generation module foundation (context, prompts, mock LLM, parser)
-- [ ] Job queue + `GET /jobs/:id`
-- [ ] AI Council pipeline v1 + timeline events
-- [ ] Credit deduct on generation
+- [x] Job queue + `GET /jobs/:id` (sync quick draft + async council via BullMQ)
+- [x] Async job queue — BullMQ + Redis ([SLICE-09](SLICE-09-async-job-queue.md))
+- [x] AI Council pipeline v1 + timeline events ([SLICE-10](SLICE-10-ai-council.md))
+- [x] Credit deduct on generation
 
 ### Phase 4 — LinkedIn publish
 
@@ -209,8 +213,9 @@ Unit that moves through the pipeline.
 | **workspaces** | Personal + client workspaces | Done |
 | **content-profiles** | Voice profile CRUD + pillars | Done |
 | **posts** | PostPackage CRUD, versions, status | Done (draft CRUD, status transitions, pipeline) |
-| **generation** | AI jobs (quick / council / media) | Foundation done (no HTTP yet) |
-| **council** | Multi-agent orchestration, scores, timeline | Not started |
+| **generation** | AI jobs (quick / council / media) | Quick draft + council API |
+| **job-queue** | BullMQ + Redis worker ([SLICE-09](SLICE-09-async-job-queue.md)) | Done |
+| **council** | Multi-agent orchestration, scores, timeline ([SLICE-10](SLICE-10-ai-council.md)) | Done |
 | **media** | Image/carousel generation + review | Not started |
 | **calendar** | Calendar views, bulk calendar gen | Month/week/list API done |
 | **approvals** | Approval queue, request changes | Queue + actions done |

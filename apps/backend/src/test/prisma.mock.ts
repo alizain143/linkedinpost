@@ -46,6 +46,24 @@ export type MockPrismaService = {
     aggregate: jest.Mock;
     create: jest.Mock;
   };
+  generationJob: {
+    create: jest.Mock;
+    update: jest.Mock;
+    findFirst: jest.Mock;
+    findUnique: jest.Mock;
+    findUniqueOrThrow: jest.Mock;
+  };
+  councilRun: {
+    create: jest.Mock;
+    update: jest.Mock;
+    findMany: jest.Mock;
+    findUnique: jest.Mock;
+    findUniqueOrThrow: jest.Mock;
+  };
+  councilEvent: {
+    create: jest.Mock;
+    update: jest.Mock;
+  };
   $transaction: jest.Mock;
 };
 
@@ -97,6 +115,24 @@ export function createMockPrismaService(): MockPrismaService {
     creditTransaction: {
       aggregate: jest.fn(),
       create: jest.fn(),
+    },
+    generationJob: {
+      create: jest.fn(),
+      update: jest.fn(),
+      findFirst: jest.fn(),
+      findUnique: jest.fn(),
+      findUniqueOrThrow: jest.fn(),
+    },
+    councilRun: {
+      create: jest.fn(),
+      update: jest.fn(),
+      findMany: jest.fn(),
+      findUnique: jest.fn(),
+      findUniqueOrThrow: jest.fn(),
+    },
+    councilEvent: {
+      create: jest.fn(),
+      update: jest.fn(),
     },
     $transaction: jest.fn(),
   };

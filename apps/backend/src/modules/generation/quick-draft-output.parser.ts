@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { PostType } from '@prisma/client';
 import { generationParseError } from './generation.errors';
 import {
-  QuickDraftResult,
   QuickDraftVariant,
 } from './generation.types';
 
@@ -10,7 +9,7 @@ const POST_TYPES = new Set<string>(Object.values(PostType));
 
 @Injectable()
 export class QuickDraftOutputParser {
-  parse(raw: string): QuickDraftResult {
+  parse(raw: string): { variants: QuickDraftVariant[] } {
     let parsed: unknown;
 
     try {
