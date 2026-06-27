@@ -7,6 +7,7 @@ import {
 import { User } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { DocumentsService } from '../documents/documents.service';
+import { WorkspacesService } from '../workspaces/workspaces.service';
 import { resolveClerkProfileImageUrl } from './clerk-profile-image.util';
 import { CreateFromClerkDto } from './dto/create-from-clerk.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -19,6 +20,7 @@ export class UsersService {
     private readonly prisma: PrismaService,
     @Inject(forwardRef(() => DocumentsService))
     private readonly documentsService: DocumentsService,
+    private readonly workspacesService: WorkspacesService,
   ) {}
 
   async findByClerkId(clerkId: string): Promise<User> {
@@ -51,6 +53,22 @@ export class UsersService {
     return user;
   }
 
+  private async finalizeUser(user: User): Promise<User> {
+    await this.workspacesService.ensurePersonalWorkspace(
+      user.id,
+      user.firstName,
+    );
+    return user;
+  }
+
+  async ensureUserSetup(user: User): Promise<User> {
+    await this.workspacesService.ensurePersonalWorkspace(
+      user.id,
+      user.firstName,
+    );
+    return user;
+  }
+
   async createFromClerk(dto: CreateFromClerkDto): Promise<User> {
     const profileImageUrl = resolveClerkProfileImageUrl(
       dto.profileImageUrl,
@@ -63,7 +81,7 @@ export class UsersService {
 
     if (existing) {
       if (existing.deletedAt) {
-        return this.prisma.user.update({
+        const user = await this.prisma.user.update({
           where: { id: existing.id },
           data: {
             deletedAt: null,
@@ -76,6 +94,7 @@ export class UsersService {
                 : existing.profileImageUrl,
           },
         });
+        return this.finalizeUser(user);
       }
 
       if (
@@ -83,13 +102,14 @@ export class UsersService {
         !existing.profileDocumentId &&
         !existing.profileImageUrl
       ) {
-        return this.prisma.user.update({
+        const user = await this.prisma.user.update({
           where: { id: existing.id },
           data: { profileImageUrl },
         });
+        return this.finalizeUser(user);
       }
 
-      return existing;
+      return this.finalizeUser(existing);
     }
 
     const existingByEmail = await this.prisma.user.findUnique({
@@ -97,7 +117,7 @@ export class UsersService {
     });
 
     if (existingByEmail) {
-      return this.prisma.user.update({
+      const user = await this.prisma.user.update({
         where: { id: existingByEmail.id },
         data: {
           deletedAt: null,
@@ -112,10 +132,11 @@ export class UsersService {
               : existingByEmail.profileImageUrl,
         },
       });
+      return this.finalizeUser(user);
     }
 
     try {
-      return await this.prisma.user.create({
+      const user = await this.prisma.user.create({
         data: {
           clerkId: dto.clerkId,
           email: dto.email,
@@ -124,6 +145,7 @@ export class UsersService {
           profileImageUrl,
         },
       });
+      return this.finalizeUser(user);
     } catch (error) {
       const raced = await this.prisma.user.findFirst({
         where: {
@@ -132,7 +154,7 @@ export class UsersService {
       });
 
       if (raced) {
-        return raced;
+        return this.finalizeUser(raced);
       }
 
       throw error;
@@ -158,7 +180,8 @@ export class UsersService {
 
   async updateProfile(userId: string, dto: UpdateUserDto): Promise<User> {
     const user = await this.findById(userId);
-    const { profileDocumentId, ...profileFields } = dto;
+    const { profileDocumentId, notifications, timezone, ...profileFields } =
+      dto;
 
     if (profileDocumentId !== undefined) {
       const previousDocumentId = user.profileDocumentId;
@@ -175,10 +198,26 @@ export class UsersService {
       }
     }
 
+    const notificationData = notifications
+      ? {
+          ...(notifications.weeklyReminders !== undefined
+            ? { emailWeeklyReminders: notifications.weeklyReminders }
+            : {}),
+          ...(notifications.generationComplete !== undefined
+            ? { emailGenerationComplete: notifications.generationComplete }
+            : {}),
+          ...(notifications.productUpdates !== undefined
+            ? { emailProductUpdates: notifications.productUpdates }
+            : {}),
+        }
+      : {};
+
     return this.prisma.user.update({
       where: { id: userId },
       data: {
         ...profileFields,
+        ...(timezone !== undefined ? { timezone } : {}),
+        ...notificationData,
         ...(profileDocumentId !== undefined
           ? { profileDocumentId }
           : undefined),
@@ -187,11 +226,18 @@ export class UsersService {
   }
 
   async toUserResponse(user: User): Promise<UserResponse> {
-    const profileImageUrl = user.profileDocumentId
-      ? await this.documentsService.getProfileImageUrl(user.profileDocumentId)
-      : user.profileImageUrl;
+    const [profileImageUrl, personalWorkspace] = await Promise.all([
+      user.profileDocumentId
+        ? this.documentsService.getProfileImageUrl(user.profileDocumentId)
+        : Promise.resolve(user.profileImageUrl),
+      this.workspacesService.findPersonalWorkspace(user.id),
+    ]);
 
-    return toUserResponse(user, profileImageUrl);
+    return toUserResponse(
+      user,
+      profileImageUrl,
+      personalWorkspace?.id ?? null,
+    );
   }
 
   async softDelete(clerkId: string): Promise<void> {

@@ -5,7 +5,12 @@ import clerkConfig from './config/clerk.config';
 import r2Config from './config/r2.config';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { ContentProfilesModule } from './modules/content-profiles/content-profiles.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { CalendarModule } from './modules/calendar/calendar.module';
 import { DocumentsModule } from './modules/documents/documents.module';
+import { PostsModule } from './modules/posts/posts.module';
+import { WorkspacesModule } from './modules/workspaces/workspaces.module';
 import { HealthController } from './health.controller';
 
 @Module({
@@ -18,6 +23,11 @@ import { HealthController } from './health.controller';
     PrismaModule,
     AuthModule,
     DocumentsModule,
+    WorkspacesModule,
+    ContentProfilesModule,
+    PostsModule,
+    DashboardModule,
+    CalendarModule,
   ],
   controllers: [HealthController],
 })

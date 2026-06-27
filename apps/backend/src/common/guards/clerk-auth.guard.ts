@@ -29,14 +29,15 @@ export class ClerkAuthGuard implements CanActivate {
 
       if (!user.profileDocumentId && !user.profileImageUrl) {
         const clerkUser = await this.getClerkClient().users.getUser(clerkId);
-        return this.usersService.syncClerkProfileImageIfMissing(
+        const synced = await this.usersService.syncClerkProfileImageIfMissing(
           user,
           clerkUser.imageUrl,
           clerkUser.hasImage,
         );
+        return this.usersService.ensureUserSetup(synced);
       }
 
-      return user;
+      return this.usersService.ensureUserSetup(user);
     } catch (error) {
       if (!(error instanceof NotFoundException)) {
         throw error;

@@ -11,7 +11,8 @@
     "dev:web": "npm run dev -w web",
     "build": "npm run build --workspaces --if-present",
     "build:backend": "npm run build -w backend",
-    "build:web": "npm run build -w web"
+    "build:web": "npm run build -w web",
+    "postinstall": "npm run prisma:generate -w backend"
   },
   "engines": {
     "node": ">=20"

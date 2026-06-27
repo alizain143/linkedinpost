@@ -21,20 +21,75 @@ enum DocumentAttachedToType {
   user
 }
 
-model User {
-  id                String    @id @default(uuid()) @db.Uuid
-  clerkId           String    @unique
-  email             String    @unique
-  firstName         String?
-  lastName          String?
-  profileDocumentId String?   @unique @db.Uuid
-  profileImageUrl   String?
-  createdAt         DateTime  @default(now()) @db.Timestamptz(6)
-  updatedAt         DateTime  @updatedAt @db.Timestamptz(6)
-  deletedAt         DateTime? @db.Timestamptz(6)
+enum UserPlan {
+  free
+  starter
+  pro
+  agency
+}
 
-  profileDocument Document?  @relation("UserProfileDocument", fields: [profileDocumentId], references: [id], onDelete: SetNull)
-  documents       Document[] @relation("UserDocuments")
+enum WorkspaceType {
+  personal
+  client
+}
+
+enum ContentGoal {
+  build_authority
+  generate_leads
+  grow_audience
+}
+
+enum PostPackageStatus {
+  draft
+  brief_created
+  text_generating
+  text_reviewing
+  media_generating
+  ready_for_approval
+  approved
+  scheduled
+  publishing
+  published
+  failed
+}
+
+enum PostSource {
+  manual
+  calendar
+  autopilot
+  generation
+}
+
+enum PostType {
+  personal_story
+  list_post
+  how_to
+  contrarian_take
+  hot_take
+  case_study
+}
+
+model User {
+  id                      String    @id @default(uuid()) @db.Uuid
+  clerkId                 String    @unique
+  email                   String    @unique
+  firstName               String?
+  lastName                String?
+  profileDocumentId       String?   @unique @db.Uuid
+  profileImageUrl         String?
+  timezone                String    @default("America/New_York")
+  emailWeeklyReminders    Boolean   @default(true)
+  emailGenerationComplete Boolean   @default(true)
+  emailProductUpdates     Boolean   @default(false)
+  plan                    UserPlan  @default(free)
+  createdAt               DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt               DateTime  @updatedAt @db.Timestamptz(6)
+  deletedAt               DateTime? @db.Timestamptz(6)
+
+  profileDocument      Document?         @relation("UserProfileDocument", fields: [profileDocumentId], references: [id], onDelete: SetNull)
+  documents            Document[]        @relation("UserDocuments")
+  ownedWorkspaces      Workspace[]       @relation("WorkspaceOwner")
+  workspaceMemberships WorkspaceMember[]
 
   @@map("users")
 }
@@ -56,10 +111,124 @@ model Document {
   createdAt       DateTime                @default(now()) @db.Timestamptz(6)
   updatedAt       DateTime                @updatedAt @db.Timestamptz(6)
 
-  user            User  @relation("UserDocuments", fields: [userId], references: [id], onDelete: Cascade)
-  profileForUser  User? @relation("UserProfileDocument")
+  user           User  @relation("UserDocuments", fields: [userId], references: [id], onDelete: Cascade)
+  profileForUser User? @relation("UserProfileDocument")
 
   @@index([userId])
   @@index([status, createdAt])
   @@map("documents")
+}
+
+model Workspace {
+  id        String        @id @default(uuid()) @db.Uuid
+  name      String
+  type      WorkspaceType @default(personal)
+  ownerId   String        @db.Uuid
+  createdAt DateTime      @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime      @updatedAt @db.Timestamptz(6)
+
+  owner           User              @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members         WorkspaceMember[]
+  contentProfiles ContentProfile[]
+  postPackages    PostPackage[]
+
+  @@index([ownerId])
+  @@map("workspaces")
+}
+
+model WorkspaceMember {
+  workspaceId String @db.Uuid
+  userId      String @db.Uuid
+  role        String @default("owner")
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([workspaceId, userId])
+  @@map("workspace_members")
+}
+
+model ContentProfile {
+  id               String      @id @default(uuid()) @db.Uuid
+  workspaceId      String      @db.Uuid
+  name             String
+  roleTitle        String?
+  industry         String?
+  targetAudience   String?
+  contentGoal      ContentGoal @default(build_authority)
+  preferredTone    String?
+  offerDescription String?
+  writingSample    String?     @db.Text
+  avoidWords       String?
+  isDefault        Boolean     @default(false)
+  createdAt        DateTime    @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime    @updatedAt @db.Timestamptz(6)
+
+  workspace Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  pillars   ContentPillar[]
+  posts     PostPackage[]
+
+  @@index([workspaceId])
+  @@map("content_profiles")
+}
+
+model ContentPillar {
+  id               String @id @default(uuid()) @db.Uuid
+  contentProfileId String @db.Uuid
+  name             String
+  sortOrder        Int    @default(0)
+
+  contentProfile ContentProfile @relation(fields: [contentProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([contentProfileId, name])
+  @@index([contentProfileId])
+  @@map("content_pillars")
+}
+
+model PostPackage {
+  id               String            @id @default(uuid()) @db.Uuid
+  workspaceId      String            @db.Uuid
+  contentProfileId String?           @db.Uuid
+  hook             String
+  body             String?           @db.Text
+  cta              String?
+  tags             String[]          @default([])
+  topic            String?
+  postType         PostType?
+  tone             String?
+  pillar           String?
+  source           PostSource        @default(manual)
+  status           PostPackageStatus @default(draft)
+  score            Int?
+  scheduledAt      DateTime?         @db.Timestamptz(6)
+  publishedAt      DateTime?         @db.Timestamptz(6)
+  createdAt        DateTime          @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime          @updatedAt @db.Timestamptz(6)
+
+  workspace      Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  contentProfile ContentProfile? @relation(fields: [contentProfileId], references: [id], onDelete: SetNull)
+  versions       PostVersion[]
+
+  @@index([workspaceId])
+  @@index([workspaceId, status])
+  @@index([workspaceId, updatedAt])
+  @@index([workspaceId, scheduledAt])
+  @@map("post_packages")
+}
+
+model PostVersion {
+  id            String   @id @default(uuid()) @db.Uuid
+  postPackageId String   @db.Uuid
+  versionNumber Int
+  hook          String?
+  body          String?  @db.Text
+  cta           String?
+  tags          String[] @default([])
+  createdAt     DateTime @default(now()) @db.Timestamptz(6)
+
+  postPackage PostPackage @relation(fields: [postPackageId], references: [id], onDelete: Cascade)
+
+  @@unique([postPackageId, versionNumber])
+  @@index([postPackageId])
+  @@map("post_versions")
 }

@@ -32,6 +32,7 @@ cp apps/backend/.env.example apps/backend/.env
 cd apps/backend
 npx prisma migrate dev
 npm run start:dev   # http://localhost:3000/v1
+npm test            # unit tests (see apps/backend/TESTING.md)
 ```
 
 ### Frontend

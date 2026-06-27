@@ -10,8 +10,20 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiHeader,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { User } from '@prisma/client';
 import type { Request } from 'express';
+import { ApiDataResponse } from '../../common/swagger/api-data-response.decorator';
+import {
+  LogoutResponseDto,
+  WebhookReceivedResponseDto,
+} from '../../common/swagger/responses/auth-response.dto';
+import { UserResponseDto } from '../../common/swagger/responses/user-response.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ClerkAuthGuard } from '../../common/guards/clerk-auth.guard';
 import { UpdateUserDto } from '../users/dto/update-user.dto';
@@ -20,6 +32,7 @@ import { AuthService } from './auth.service';
 
 type RawBodyRequest = Request & { rawBody?: Buffer };
 
+@ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -29,12 +42,22 @@ export class AuthController {
 
   @Get('me')
   @UseGuards(ClerkAuthGuard)
+  @ApiBearerAuth('bearer')
+  @ApiOperation({ summary: 'Get current user profile and settings' })
+  @ApiDataResponse(UserResponseDto, {
+    description: 'Current authenticated user',
+  })
   getMe(@CurrentUser() user: User) {
     return this.usersService.toUserResponse(user);
   }
 
   @Patch('me')
   @UseGuards(ClerkAuthGuard)
+  @ApiBearerAuth('bearer')
+  @ApiOperation({
+    summary: 'Update account settings, timezone, and notification preferences',
+  })
+  @ApiDataResponse(UserResponseDto, { description: 'Updated user profile' })
   async updateMe(@CurrentUser() user: User, @Body() dto: UpdateUserDto) {
     const updated = await this.usersService.updateProfile(user.id, dto);
     return this.usersService.toUserResponse(updated);
@@ -43,6 +66,9 @@ export class AuthController {
   @Post('logout')
   @HttpCode(200)
   @UseGuards(ClerkAuthGuard)
+  @ApiBearerAuth('bearer')
+  @ApiOperation({ summary: 'Revoke the current Clerk session' })
+  @ApiDataResponse(LogoutResponseDto)
   logout(@Req() req: Request) {
     const sessionId = req.auth?.sessionId;
 
@@ -58,6 +84,11 @@ export class AuthController {
 
   @Post('webhooks/clerk')
   @HttpCode(200)
+  @ApiOperation({ summary: 'Clerk webhook receiver (Svix-signed)' })
+  @ApiHeader({ name: 'svix-id', required: true })
+  @ApiHeader({ name: 'svix-timestamp', required: true })
+  @ApiHeader({ name: 'svix-signature', required: true })
+  @ApiDataResponse(WebhookReceivedResponseDto)
   async clerkWebhook(
     @Req() req: RawBodyRequest,
     @Headers('svix-id') svixId: string,
