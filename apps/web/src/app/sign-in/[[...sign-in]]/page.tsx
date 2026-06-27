@@ -1,19 +1,13 @@
-import { SignIn } from '@clerk/nextjs';
+import { AuthGate } from "@/components/auth/auth-gate";
+import { SignInForm } from "@/components/auth/sign-in-form";
+import { AuthLayout } from "@/components/layout/auth-layout";
 
 export default function SignInPage() {
   return (
-    <main className="flex min-h-full items-center justify-center p-6">
-      <SignIn
-        routing="path"
-        path="/sign-in"
-        signUpUrl="/sign-up"
-        appearance={{
-          elements: {
-            rootBox: 'mx-auto',
-            card: 'shadow-lg',
-          },
-        }}
-      />
-    </main>
+    <AuthLayout>
+      <AuthGate>
+        <SignInForm />
+      </AuthGate>
+    </AuthLayout>
   );
 }

@@ -1,0 +1,58 @@
+---
+description: Frontend standards — React Query, reusable components, feature folders
+globs: apps/web/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Frontend Standards (apps/web)
+
+## API layer
+
+- Use **apisauce** (`@/lib/api/apisauce`) for HTTP — not raw `fetch` in components.
+- Use **TanStack React Query** for reads (`useQuery`) and writes (`useMutation`).
+- Put query keys in `@/lib/api/query-keys.ts`; put hooks in `@/hooks/api/`.
+- Map apisauce failures to `ApiError` via `parseApiResponse`.
+
+## Forms
+
+- Use **react-hook-form** + **@hookform/resolvers/yup** for all user-facing forms.
+- Disable native HTML validation (`noValidate` on `<form>`).
+- Show field errors with `@/components/ui/form/field-error` under the input.
+- Use shared fields: `TextField`, `PasswordField`, `CheckboxField` from `@/components/ui/form`.
+
+## Feedback
+
+- Use **sonner** toasts (`toast.success`, `toast.error`) for API/auth outcomes.
+
+## Reusable components
+
+Prefer `@/components/ui/*` before one-off markup. Use `Brand`, `Button`, `MsIcon` for consistent UI.
+
+## Feature folder structure
+
+Each screen/feature lives in its own folder under `components/sections/`:
+
+```
+dashboard/
+  DashboardContainer.tsx   # hook: useDashboard() — logic only, no JSX
+  DashboardComponents.tsx  # presentational sub-components
+  Dashboard.tsx            # screen UI — composes components + hook
+  types.ts
+  constants.ts
+  index.ts
+```
+
+- **`*Container.tsx`** — state, handlers, form setup. Returns typed props. **No JSX.**
+- **`*Components.tsx`** — presentational pieces. Props in, JSX out.
+- **`Feature.tsx`** — calls container hook, composes components.
+- **`app/.../page.tsx`** — layout/metadata/redirect guards only. Renders `<Feature />`.
+
+## Buttons
+
+Use `@/components/ui/button` with variants: `primary`, `secondary`, `destructive`, `ghost`.
+
+## Brand
+
+- Wordmark: Newsreader serif + `.ai` in violet (`#5B3DF5`)
+- UI sans: Inter; headings: Plus Jakarta Sans
+- Logo mark: lowercase `l` SVG in `@/components/ui/logo-mark.tsx`
