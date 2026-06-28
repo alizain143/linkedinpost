@@ -6,7 +6,6 @@ export const ALLOWED_TRANSITIONS: Record<
   PostPackageStatus[]
 > = {
   [PostPackageStatus.draft]: [PostPackageStatus.ready_for_approval],
-  [PostPackageStatus.brief_created]: [],
   [PostPackageStatus.text_generating]: [],
   [PostPackageStatus.text_reviewing]: [],
   [PostPackageStatus.media_generating]: [],
@@ -37,7 +36,6 @@ export const ALLOWED_TRANSITIONS: Record<
 
 export const PIPELINE_COLUMN_ORDER: PostPackageStatus[] = [
   PostPackageStatus.draft,
-  PostPackageStatus.brief_created,
   PostPackageStatus.text_generating,
   PostPackageStatus.text_reviewing,
   PostPackageStatus.media_generating,
@@ -51,7 +49,6 @@ export const PIPELINE_COLUMN_ORDER: PostPackageStatus[] = [
 
 export const PIPELINE_LABELS: Record<PostPackageStatus, string> = {
   [PostPackageStatus.draft]: 'Draft',
-  [PostPackageStatus.brief_created]: 'Brief Created',
   [PostPackageStatus.text_generating]: 'Text Generating',
   [PostPackageStatus.text_reviewing]: 'Text Reviewing',
   [PostPackageStatus.media_generating]: 'Media Generating',

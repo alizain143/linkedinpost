@@ -12,8 +12,6 @@ import { resolveClerkProfileImageUrl } from './clerk-profile-image.util';
 import { CreateFromClerkDto } from './dto/create-from-clerk.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { toUserResponse, UserResponse } from './user.mapper';
-import { DocumentAttachedToType } from '../../common/constants/document.constants';
-
 @Injectable()
 export class UsersService {
   constructor(
@@ -186,11 +184,9 @@ export class UsersService {
     if (profileDocumentId !== undefined) {
       const previousDocumentId = user.profileDocumentId;
 
-      await this.documentsService.attachDocument({
+      await this.documentsService.attachProfileDocument({
         documentId: profileDocumentId,
         userId,
-        entityType: DocumentAttachedToType.USER,
-        entityId: userId,
       });
 
       if (previousDocumentId && previousDocumentId !== profileDocumentId) {

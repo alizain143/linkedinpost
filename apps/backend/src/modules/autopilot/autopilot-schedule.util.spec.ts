@@ -1,38 +1,41 @@
-import { AutopilotFrequency } from '@prisma/client';
 import {
   computeNextRunAt,
-  FREQUENCY_POSTING_DAYS,
+  derivePostingPresetLabel,
   isDueNow,
   nextPillarIndex,
   parsePostingHour,
-  resolvePostingDaysForFrequency,
+  POSTING_PRESET_DAYS,
+  resolvePostingDaysForPreset,
   resolveTopicFromPillar,
 } from './autopilot-schedule.util';
 
 describe('autopilot-schedule.util', () => {
   const timezone = 'America/New_York';
 
-  describe('frequency presets', () => {
+  describe('posting presets', () => {
     it('maps three_per_week to Mon Wed Thu Fri Sun', () => {
-      expect(resolvePostingDaysForFrequency(AutopilotFrequency.three_per_week)).toEqual(
-        [1, 3, 4, 5, 7],
-      );
+      expect(resolvePostingDaysForPreset('three_per_week')).toEqual([
+        1, 3, 4, 5, 7,
+      ]);
     });
 
     it('maps daily to all weekdays', () => {
-      expect(FREQUENCY_POSTING_DAYS[AutopilotFrequency.daily]).toEqual([
-        1, 2, 3, 4, 5, 6, 7,
-      ]);
+      expect(POSTING_PRESET_DAYS.daily).toEqual([1, 2, 3, 4, 5, 6, 7]);
+    });
+
+    it('derives preset label from posting days', () => {
+      expect(derivePostingPresetLabel([1, 2, 3, 4, 5])).toBe('weekdays');
+      expect(derivePostingPresetLabel([1, 2])).toBe('custom');
     });
   });
 
   describe('isDueNow', () => {
-  const baseConfig = {
-    enabled: true,
-    postingDays: [5],
-    postingTime: '09:00',
-    lastRunDateKey: null,
-  };
+    const baseConfig = {
+      enabled: true,
+      postingDays: [5],
+      postingTime: '09:00',
+      lastRunDateKey: null,
+    };
 
     it('returns false when disabled', () => {
       const now = new Date('2026-06-26T13:00:00.000Z');

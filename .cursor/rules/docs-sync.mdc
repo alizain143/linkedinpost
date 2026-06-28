@@ -1,0 +1,50 @@
+---
+description: Keep architecture, schema, and slice docs in sync when backend/domain changes
+globs:
+  - apps/backend/prisma/**
+  - apps/backend/src/modules/**
+  - SLICE-*.md
+  - CURRENT_ARCHITECTURE.md
+  - DATABASE_SCHEMA.md
+  - PRODUCT_OVERVIEW.md
+alwaysApply: false
+---
+
+# Documentation sync (mandatory on domain changes)
+
+When you change **Prisma schema**, **migrations**, **backend modules**, **API routes**, or **ship a slice**, update the matching docs in the **same PR/task** — do not leave docs stale.
+
+## Doc map
+
+| File | Update when |
+|------|-------------|
+| `apps/backend/prisma/schema.prisma` | Source of truth — change code first |
+| `DATABASE_SCHEMA.md` | Any model/enum/field/index/FK/semantic change |
+| `CURRENT_ARCHITECTURE.md` | New module, flow, integration, API area, or known inconsistency fixed |
+| `PRODUCT_OVERVIEW.md` | Slice done, progress tracker, route inventory, feature status |
+| `SLICE-NN-*.md` | New slice spec or marking slice complete |
+| `apps/backend/*.md` | Module-specific deep-dive (`GENERATION.md`, `COUNCIL.md`, etc.) when behavior changes |
+
+## Checklist — schema / migration
+
+1. Edit `schema.prisma` + add migration.
+2. Update `DATABASE_SCHEMA.md`: affected table(s), enum values, relations, caveats, "Last synced" line.
+3. If architecture-level impact (new entity, dropped table, tenancy change): update `CURRENT_ARCHITECTURE.md`.
+4. Run tests; note breaking API changes in slice or overview doc.
+
+## Checklist — new slice / feature
+
+1. Create or update `SLICE-NN-feature.md` at repo root.
+2. Mark progress in `PRODUCT_OVERVIEW.md` (tracker + module status table).
+3. Add routes/modules to `CURRENT_ARCHITECTURE.md` if user-facing.
+4. Add tables/fields to `DATABASE_SCHEMA.md` if schema changed.
+
+## Field documentation style (`DATABASE_SCHEMA.md`)
+
+Per table: field name, type, null, default, one-line **what it stores** and **who writes it** (module/service). Flag dead enums and denormalized fields.
+
+## Do not
+
+- Document planned schema that is not in `schema.prisma`.
+- Duplicate full enum lists in `CURRENT_ARCHITECTURE.md` — link to `DATABASE_SCHEMA.md` instead.
+- Skip doc updates because the change "feels small".

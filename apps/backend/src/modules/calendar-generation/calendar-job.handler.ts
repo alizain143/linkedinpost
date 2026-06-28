@@ -26,7 +26,7 @@ export class CalendarJobHandler implements JobHandler {
       job.userId,
       job.creditCost,
       CreditTransactionType.calendar,
-      generationJobId,
+      { generationJobId },
     );
 
     await this.prisma.generationJob.update({

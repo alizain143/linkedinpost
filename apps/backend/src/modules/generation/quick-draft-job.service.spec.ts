@@ -140,7 +140,7 @@ describe('QuickDraftJobService', () => {
       userId,
       1,
       CreditTransactionType.generation,
-      jobId,
+      { generationJobId: jobId },
     );
     expect(result.status).toBe(GenerationJobStatus.completed);
     expect(result.creditCharged).toBe(true);

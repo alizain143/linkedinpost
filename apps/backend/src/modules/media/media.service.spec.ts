@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { PostMediaSource, PostMediaType } from '@prisma/client';
+import { PostMediaType } from '@prisma/client';
 import { createMockPrismaService } from '../../test/prisma.mock';
 import { postId } from '../../test/fixtures';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -52,7 +52,6 @@ describe('MediaService', () => {
       mimeType: 'image/png',
       altText: 'Quote card',
       mediaType: PostMediaType.quote_card,
-      source: PostMediaSource.council,
       sortOrder: 0,
     });
     r2Storage.getObjectBuffer.mockResolvedValue(Buffer.from('png-bytes'));

@@ -1,11 +1,10 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { AutopilotFrequency } from '@prisma/client';
 import {
   ArrayMaxSize,
   ArrayMinSize,
   IsArray,
   IsBoolean,
-  IsEnum,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
@@ -14,6 +13,14 @@ import {
   Max,
   Min,
 } from 'class-validator';
+import type { AutopilotPostingPreset } from '../autopilot-schedule.util';
+
+const POSTING_PRESETS: AutopilotPostingPreset[] = [
+  'three_per_week',
+  'daily',
+  'weekdays',
+  'weekly',
+];
 
 export class UpsertAutopilotConfigDto {
   @ApiPropertyOptional({ example: true })
@@ -26,10 +33,14 @@ export class UpsertAutopilotConfigDto {
   @IsUUID()
   contentProfileId?: string;
 
-  @ApiPropertyOptional({ enum: AutopilotFrequency, example: AutopilotFrequency.three_per_week })
+  @ApiPropertyOptional({
+    enum: POSTING_PRESETS,
+    example: 'three_per_week',
+    description: 'Optional preset; expands to postingDays when postingDays omitted',
+  })
   @IsOptional()
-  @IsEnum(AutopilotFrequency)
-  frequency?: AutopilotFrequency;
+  @IsIn(POSTING_PRESETS)
+  postingPreset?: AutopilotPostingPreset;
 
   @ApiPropertyOptional({
     example: [1, 3, 4, 5, 7],

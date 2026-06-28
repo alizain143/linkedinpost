@@ -1,10 +1,9 @@
-import { PostMedia, PostMediaSource, PostMediaType } from '@prisma/client';
+import { PostMedia, PostMediaType } from '@prisma/client';
 
 export interface PostMediaResponse {
   id: string;
   postPackageId: string;
   mediaType: PostMediaType;
-  source: PostMediaSource;
   url: string;
   altText: string;
   sortOrder: number;
@@ -16,7 +15,7 @@ export interface PostMediaResponse {
 export interface AttachCouncilMediaInput {
   workspaceId: string;
   postPackageId: string;
-  councilRunId: string;
+  generationJobId: string;
   mediaType: PostMediaType;
   altText: string;
   imageBuffer: Buffer;
@@ -31,7 +30,6 @@ export function toPostMediaResponse(
     id: media.id,
     postPackageId: media.postPackageId,
     mediaType: media.mediaType,
-    source: media.source,
     url,
     altText: media.altText,
     sortOrder: media.sortOrder,

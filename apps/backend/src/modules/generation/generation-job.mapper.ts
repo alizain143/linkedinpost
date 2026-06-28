@@ -23,11 +23,8 @@ type CouncilEventRecord = {
   durationMs: number | null;
 };
 
-type JobWithCouncil = GenerationJob & {
-  councilRun?: {
-    id: string;
-    events: CouncilEventRecord[];
-  } | null;
+type JobWithCouncilEvents = GenerationJob & {
+  councilEvents?: CouncilEventRecord[];
 };
 
 function mapCouncilEvent(event: CouncilEventRecord): CouncilEventDto {
@@ -48,7 +45,7 @@ function mapCouncilEvent(event: CouncilEventRecord): CouncilEventDto {
 }
 
 export function toGenerationJobResponse(
-  job: JobWithCouncil,
+  job: JobWithCouncilEvents,
 ): GenerationJobResponseDto {
   const progress = job.progress as GenerationJobProgress | null;
 
@@ -84,12 +81,9 @@ export function toGenerationJobResponse(
     errorCode: job.errorCode,
     errorMessage: job.errorMessage,
     postPackageId: job.postPackageId,
-    councilRunId: job.councilRun?.id ?? null,
     progress: progress ?? null,
     result,
-    events: job.councilRun?.events
-      ? job.councilRun.events.map(mapCouncilEvent)
-      : null,
+    events: job.councilEvents?.map(mapCouncilEvent) ?? null,
     createdAt: job.createdAt,
     updatedAt: job.updatedAt,
     completedAt: job.completedAt,

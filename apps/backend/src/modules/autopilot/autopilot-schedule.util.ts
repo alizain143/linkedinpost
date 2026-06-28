@@ -1,4 +1,3 @@
-import { AutopilotFrequency } from '@prisma/client';
 import { getTodayDateKey } from '../calendar/calendar-date.util';
 import {
   addDaysToDateKey,
@@ -8,18 +7,39 @@ import {
 
 export const AUTOPILOT_CREDIT_COST = 10;
 export const DEFAULT_POSTING_TIME = '09:00';
+export const DEFAULT_POSTING_DAYS = [1, 3, 4, 5, 7];
 
-export const FREQUENCY_POSTING_DAYS: Record<AutopilotFrequency, number[]> = {
-  [AutopilotFrequency.three_per_week]: [1, 3, 4, 5, 7],
-  [AutopilotFrequency.daily]: [1, 2, 3, 4, 5, 6, 7],
-  [AutopilotFrequency.weekdays]: [1, 2, 3, 4, 5],
-  [AutopilotFrequency.weekly]: [1],
+export type AutopilotPostingPreset =
+  | 'three_per_week'
+  | 'daily'
+  | 'weekdays'
+  | 'weekly';
+
+export const POSTING_PRESET_DAYS: Record<AutopilotPostingPreset, number[]> = {
+  three_per_week: [1, 3, 4, 5, 7],
+  daily: [1, 2, 3, 4, 5, 6, 7],
+  weekdays: [1, 2, 3, 4, 5],
+  weekly: [1],
 };
 
-export function resolvePostingDaysForFrequency(
-  frequency: AutopilotFrequency,
+export function resolvePostingDaysForPreset(
+  preset: AutopilotPostingPreset,
 ): number[] {
-  return [...FREQUENCY_POSTING_DAYS[frequency]];
+  return [...POSTING_PRESET_DAYS[preset]];
+}
+
+export function derivePostingPresetLabel(
+  postingDays: number[],
+): AutopilotPostingPreset | 'custom' {
+  const normalized = [...postingDays].sort((a, b) => a - b).join(',');
+
+  for (const [preset, days] of Object.entries(POSTING_PRESET_DAYS)) {
+    if ([...days].sort((a, b) => a - b).join(',') === normalized) {
+      return preset as AutopilotPostingPreset;
+    }
+  }
+
+  return 'custom';
 }
 
 export function getLocalHour(timezone: string, now = new Date()): number {

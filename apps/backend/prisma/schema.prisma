@@ -14,11 +14,12 @@ enum DocumentStatus {
 
 enum DocumentPurpose {
   profile
-  user_document
 }
 
-enum DocumentAttachedToType {
-  user
+enum WorkspaceMemberRole {
+  owner
+  editor
+  viewer
 }
 
 enum UserPlan {
@@ -41,7 +42,6 @@ enum ContentGoal {
 
 enum PostPackageStatus {
   draft
-  brief_created
   text_generating
   text_reviewing
   media_generating
@@ -78,13 +78,6 @@ enum CreditTransactionType {
   adjustment
 }
 
-enum AutopilotFrequency {
-  three_per_week
-  daily
-  weekdays
-  weekly
-}
-
 enum GenerationJobStatus {
   pending
   running
@@ -102,10 +95,6 @@ enum PostMediaType {
   quote_card
 }
 
-enum PostMediaSource {
-  council
-}
-
 enum CouncilAgentRole {
   writer
   reviewer
@@ -115,14 +104,6 @@ enum CouncilAgentRole {
 }
 
 enum CouncilEventStatus {
-  running
-  completed
-  failed
-  skipped
-}
-
-enum CouncilRunStatus {
-  pending
   running
   completed
   failed
@@ -184,7 +165,6 @@ model Subscription {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([stripeCustomerId])
   @@map("subscriptions")
 }
 
@@ -208,8 +188,6 @@ model Document {
   purpose         DocumentPurpose
   uploadExpiresAt DateTime                @db.Timestamptz(6)
   attachedAt      DateTime?               @db.Timestamptz(6)
-  attachedToType  DocumentAttachedToType?
-  attachedToId    String?                 @db.Uuid
   createdAt       DateTime                @default(now()) @db.Timestamptz(6)
   updatedAt       DateTime                @updatedAt @db.Timestamptz(6)
 
@@ -247,7 +225,6 @@ model AutopilotConfig {
   workspaceId      String             @unique @db.Uuid
   contentProfileId String?            @db.Uuid
   enabled          Boolean            @default(false)
-  frequency        AutopilotFrequency @default(three_per_week)
   postingDays      Int[]              @default([1, 3, 4, 5, 7])
   postingTime      String             @default("09:00")
   lastPillarIndex  Int                @default(0)
@@ -267,7 +244,7 @@ model AutopilotConfig {
 model WorkspaceMember {
   workspaceId String @db.Uuid
   userId      String @db.Uuid
-  role        String @default("owner")
+  role        WorkspaceMemberRole @default(owner)
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -347,7 +324,6 @@ model PostPackage {
   workspace      Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   contentProfile ContentProfile? @relation(fields: [contentProfileId], references: [id], onDelete: SetNull)
   versions       PostVersion[]
-  councilRuns    CouncilRun[]
   generationJobs GenerationJob[]
   media          PostMedia[]
   approvalTokens ApprovalToken[]
@@ -378,71 +354,78 @@ model PostVersion {
 }
 
 model PostMedia {
-  id            String          @id @default(uuid()) @db.Uuid
-  postPackageId String          @db.Uuid
-  councilRunId  String?         @db.Uuid
-  mediaType     PostMediaType
-  source        PostMediaSource @default(council)
-  storageKey    String
-  storageBucket String
-  mimeType      String
-  sizeBytes     Int
-  altText       String
-  sortOrder     Int             @default(0)
-  createdAt     DateTime        @default(now()) @db.Timestamptz(6)
-  updatedAt     DateTime        @updatedAt @db.Timestamptz(6)
+  id              String        @id @default(uuid()) @db.Uuid
+  postPackageId   String        @db.Uuid
+  generationJobId String?       @db.Uuid
+  mediaType       PostMediaType
+  storageKey      String
+  storageBucket   String
+  mimeType        String
+  sizeBytes       Int
+  altText         String
+  sortOrder       Int           @default(0)
+  createdAt       DateTime      @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime      @updatedAt @db.Timestamptz(6)
 
-  postPackage PostPackage @relation(fields: [postPackageId], references: [id], onDelete: Cascade)
-  councilRun  CouncilRun? @relation(fields: [councilRunId], references: [id], onDelete: SetNull)
+  postPackage   PostPackage    @relation(fields: [postPackageId], references: [id], onDelete: Cascade)
+  generationJob GenerationJob? @relation(fields: [generationJobId], references: [id], onDelete: SetNull)
 
   @@index([postPackageId])
-  @@index([councilRunId])
+  @@index([generationJobId])
   @@map("post_media")
 }
 
 model CreditTransaction {
-  id        String                @id @default(uuid()) @db.Uuid
-  userId    String                @db.Uuid
-  amount    Int
-  type      CreditTransactionType
-  reason    String?
-  createdAt DateTime              @default(now()) @db.Timestamptz(6)
+  id              String                @id @default(uuid()) @db.Uuid
+  userId          String                @db.Uuid
+  generationJobId String?               @db.Uuid
+  amount          Int
+  type            CreditTransactionType
+  reason          String?
+  createdAt       DateTime              @default(now()) @db.Timestamptz(6)
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  generationJob GenerationJob? @relation(fields: [generationJobId], references: [id], onDelete: SetNull)
 
   @@index([userId, createdAt])
+  @@index([generationJobId])
   @@map("credit_transactions")
 }
 
 model GenerationJob {
-  id            String              @id @default(uuid()) @db.Uuid
-  workspaceId   String              @db.Uuid
-  userId        String              @db.Uuid
-  type          GenerationJobType
-  status        GenerationJobStatus @default(pending)
-  flowId        String
-  promptVersion String              @default("v1")
-  model         String?
-  input         Json
-  result        Json?
-  errorCode     String?
-  errorMessage  String?
-  inputTokens   Int?
-  outputTokens  Int?
-  creditCost    Int                 @default(1)
-  creditCharged Boolean             @default(false)
-  postPackageId String?             @db.Uuid
-  currentStep   String?
-  progress      Json?
-  createdAt     DateTime            @default(now()) @db.Timestamptz(6)
-  updatedAt     DateTime            @updatedAt @db.Timestamptz(6)
-  completedAt   DateTime?           @db.Timestamptz(6)
-  deletedAt     DateTime?           @db.Timestamptz(6)
+  id              String              @id @default(uuid()) @db.Uuid
+  workspaceId     String              @db.Uuid
+  userId          String              @db.Uuid
+  type            GenerationJobType
+  status          GenerationJobStatus @default(pending)
+  flowId          String
+  promptVersion   String              @default("v1")
+  model           String?
+  input           Json
+  result          Json?
+  errorCode       String?
+  errorMessage    String?
+  inputTokens     Int?
+  outputTokens    Int?
+  creditCost      Int                 @default(1)
+  creditCharged   Boolean             @default(false)
+  postPackageId   String?             @db.Uuid
+  revisionCount   Int                 @default(0)
+  mediaRegenCount Int                 @default(0)
+  finalScore      Int?
+  currentStep     String?
+  progress        Json?
+  createdAt       DateTime            @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime            @updatedAt @db.Timestamptz(6)
+  completedAt     DateTime?           @db.Timestamptz(6)
+  deletedAt       DateTime?           @db.Timestamptz(6)
 
-  workspace   Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  postPackage PostPackage? @relation(fields: [postPackageId], references: [id], onDelete: SetNull)
-  councilRun  CouncilRun?
+  workspace          Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postPackage        PostPackage?        @relation(fields: [postPackageId], references: [id], onDelete: SetNull)
+  councilEvents      CouncilEvent[]
+  media              PostMedia[]
+  creditTransactions CreditTransaction[]
 
   @@index([userId, createdAt])
   @@index([workspaceId, createdAt])
@@ -451,30 +434,9 @@ model GenerationJob {
   @@map("generation_jobs")
 }
 
-model CouncilRun {
-  id              String           @id @default(uuid()) @db.Uuid
-  workspaceId     String           @db.Uuid
-  generationJobId String           @unique @db.Uuid
-  postPackageId   String           @db.Uuid
-  status          CouncilRunStatus @default(pending)
-  revisionCount   Int              @default(0)
-  mediaRegenCount Int              @default(0)
-  finalScore      Int?
-  createdAt       DateTime         @default(now()) @db.Timestamptz(6)
-  completedAt     DateTime?        @db.Timestamptz(6)
-
-  generationJob GenerationJob @relation(fields: [generationJobId], references: [id], onDelete: Cascade)
-  postPackage   PostPackage   @relation(fields: [postPackageId], references: [id], onDelete: Cascade)
-  events        CouncilEvent[]
-  media         PostMedia[]
-
-  @@index([postPackageId])
-  @@map("council_runs")
-}
-
 model CouncilEvent {
   id              String             @id @default(uuid()) @db.Uuid
-  councilRunId    String             @db.Uuid
+  generationJobId String             @db.Uuid
   agentRole       CouncilAgentRole
   stepOrder       Int
   revisionAttempt Int                @default(1)
@@ -491,9 +453,9 @@ model CouncilEvent {
   completedAt     DateTime?          @db.Timestamptz(6)
   durationMs      Int?
 
-  councilRun CouncilRun @relation(fields: [councilRunId], references: [id], onDelete: Cascade)
+  generationJob GenerationJob @relation(fields: [generationJobId], references: [id], onDelete: Cascade)
 
-  @@index([councilRunId, stepOrder])
+  @@index([generationJobId, stepOrder])
   @@map("council_events")
 }
 

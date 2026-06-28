@@ -55,7 +55,7 @@ QuickDraftRequestDto
     → PromptRenderer (quick-draft v1)
     → ConfigModelRouter.text().complete()
     → QuickDraftOutputParser
-    → CreditsService.consume() on success
+    → CreditsService.consume({ generationJobId }) on success
     → GenerationJob completed + result JSON
 ```
 
@@ -64,12 +64,12 @@ QuickDraftRequestDto
 ```
 POST /generate/council
     → CouncilJobService.enqueueCouncil()
-    → GenerationJob (pending) + PostPackage + CouncilRun
+    → GenerationJob (pending) + PostPackage
     → BullMQ generation-jobs queue
     → GenerationJobProcessor
-    → CouncilJobHandler → CouncilOrchestrator
+    → CouncilJobHandler → CouncilOrchestrator.run(jobId)
     → CouncilEvent timeline + job progress updates
-    → CreditsService.consume(3) on success
+    → CreditsService.consume(3, council, { generationJobId }) on success
 ```
 
 ## Autopilot (Slice 15)
@@ -81,10 +81,12 @@ Hourly cron (AutopilotTickJob)
     → AutopilotDispatchService.dispatch()
     → CouncilJobService.enqueueCouncil({ source: autopilot, scheduledAt, creditCost: 10 })
     → CouncilJobHandler → CouncilOrchestrator (full pipeline + media)
-    → CreditsService.consume(10, autopilot) on success
+    → CreditsService.consume(10, autopilot, { generationJobId }) on success
 ```
 
 Config API: `GET` / `PUT` `/v1/workspaces/:workspaceId/autopilot`, planned posts at `.../autopilot/planned`.
+
+Autopilot schedule is stored as `postingDays` (ISO weekday ints) + `postingTime` (HH:mm). The API may accept a `postingPreset` helper that maps to days but does not persist a separate frequency column.
 
 ## Job states
 
@@ -95,7 +97,7 @@ Config API: `GET` / `PUT` `/v1/workspaces/:workspaceId/autopilot`, planned posts
 | `completed` | Result ready; credit charged |
 | `failed` | `errorCode` set; no credit charge |
 
-Council jobs include `progress`, `postPackageId`, `councilRunId`, and `events[]`.
+Council jobs include `progress`, `postPackageId`, council fields (`revisionCount`, `mediaRegenCount`, `finalScore`), and `events[]`.
 
 ## Context providers
 

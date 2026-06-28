@@ -6,10 +6,8 @@ import {
 } from '@nestjs/common';
 import { Document, DocumentStatus } from '@prisma/client';
 import {
-  ATTACHMENT_PURPOSE,
   DOCUMENT_PENDING_MAX_AGE_MS,
   DOCUMENT_PRESIGNED_URL_TTL_SECONDS,
-  DocumentAttachedToType,
   DocumentPurpose,
   PURPOSE_MIME_TYPES,
 } from '../../common/constants/document.constants';
@@ -26,8 +24,6 @@ export interface DocumentResponse {
   sizeBytes: number;
   purpose: DocumentPurpose;
   attachedAt: Date | null;
-  attachedToType: DocumentAttachedToType | null;
-  attachedToId: string | null;
   createdAt: Date;
   downloadUrl?: string;
 }
@@ -110,11 +106,9 @@ export class DocumentsService {
     }
   }
 
-  async attachDocument(params: {
+  async attachProfileDocument(params: {
     documentId: string;
     userId: string;
-    entityType: DocumentAttachedToType;
-    entityId: string;
   }): Promise<Document> {
     const document = await this.prisma.document.findFirst({
       where: { id: params.documentId, userId: params.userId },
@@ -127,26 +121,15 @@ export class DocumentsService {
       });
     }
 
-    const expectedPurpose = ATTACHMENT_PURPOSE[params.entityType];
-    if (document.purpose !== expectedPurpose) {
+    if (document.purpose !== DocumentPurpose.PROFILE) {
       throw new BadRequestException({
-        error: `Document purpose must be ${expectedPurpose} for this attachment`,
+        error: 'Document purpose must be profile for this attachment',
         code: 'DOCUMENT_PURPOSE_MISMATCH',
       });
     }
 
     if (document.status === DocumentStatus.attached) {
-      if (
-        document.attachedToType === params.entityType &&
-        document.attachedToId === params.entityId
-      ) {
-        return document;
-      }
-
-      throw new BadRequestException({
-        error: 'Document is already attached elsewhere',
-        code: 'DOCUMENT_ALREADY_ATTACHED',
-      });
+      return document;
     }
 
     if (document.uploadExpiresAt.getTime() < Date.now()) {
@@ -175,8 +158,6 @@ export class DocumentsService {
       data: {
         status: DocumentStatus.attached,
         attachedAt: new Date(),
-        attachedToType: params.entityType,
-        attachedToId: params.entityId,
       },
     });
   }
@@ -273,22 +254,13 @@ export class DocumentsService {
       sizeBytes: Number(document.sizeBytes),
       purpose: document.purpose as DocumentPurpose,
       attachedAt: document.attachedAt,
-      attachedToType: document.attachedToType as DocumentAttachedToType | null,
-      attachedToId: document.attachedToId,
       createdAt: document.createdAt,
     };
 
     if (includeDownloadUrl && document.status === DocumentStatus.attached) {
-      if (document.purpose === DocumentPurpose.PROFILE) {
-        response.downloadUrl =
-          this.r2BucketService.getPublicProfileUrl(document.storageKey) ??
-          undefined;
-      } else {
-        response.downloadUrl = await this.r2Storage.createDownloadUrl(
-          document.storageBucket,
-          document.storageKey,
-        );
-      }
+      response.downloadUrl =
+        this.r2BucketService.getPublicProfileUrl(document.storageKey) ??
+        undefined;
     }
 
     return response;

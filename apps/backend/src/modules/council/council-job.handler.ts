@@ -22,14 +22,9 @@ export class CouncilJobHandler implements JobHandler {
   async handle(generationJobId: string): Promise<void> {
     const job = await this.prisma.generationJob.findUniqueOrThrow({
       where: { id: generationJobId },
-      include: { councilRun: true },
     });
 
-    if (!job.councilRun) {
-      throw new Error(`Council run not found for job ${generationJobId}`);
-    }
-
-    await this.councilOrchestrator.run(job.councilRun.id);
+    await this.councilOrchestrator.run(generationJobId);
 
     const post = job.postPackageId
       ? await this.prisma.postPackage.findUnique({
@@ -42,12 +37,9 @@ export class CouncilJobHandler implements JobHandler {
         ? CreditTransactionType.autopilot
         : CreditTransactionType.council;
 
-    await this.creditsService.consume(
-      job.userId,
-      job.creditCost,
-      creditType,
+    await this.creditsService.consume(job.userId, job.creditCost, creditType, {
       generationJobId,
-    );
+    });
 
     await this.prisma.generationJob.update({
       where: { id: generationJobId },

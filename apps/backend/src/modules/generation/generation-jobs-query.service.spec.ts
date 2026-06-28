@@ -33,14 +33,10 @@ describe('GenerationJobsQueryService', () => {
       createdAt: new Date(),
       updatedAt: new Date(),
       completedAt: null,
-      councilRun: {
-        id: 'run-1',
-        events: [],
-      },
+      councilEvents: [],
     });
 
     const result = await service.getJobForUser('job-1', userId);
-    expect(result.councilRunId).toBe('run-1');
     expect(result.events).toEqual([]);
   });
 

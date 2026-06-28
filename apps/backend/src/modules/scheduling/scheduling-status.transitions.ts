@@ -6,7 +6,6 @@ export const SCHEDULE_TRANSITIONS: Record<
   PostPackageStatus[]
 > = {
   [PostPackageStatus.draft]: [],
-  [PostPackageStatus.brief_created]: [],
   [PostPackageStatus.text_generating]: [],
   [PostPackageStatus.text_reviewing]: [],
   [PostPackageStatus.media_generating]: [],

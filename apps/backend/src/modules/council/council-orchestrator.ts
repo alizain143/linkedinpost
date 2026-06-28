@@ -2,13 +2,15 @@ import { Injectable, Logger, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   CouncilAgentRole,
-  CouncilRunStatus,
+  CreditTransactionType,
   GenerationJobStatus,
   PostMediaType,
   PostPackageStatus,
   Prisma,
 } from '@prisma/client';
+import { MEDIA_REGEN_CREDIT_COST } from '../../common/constants/media.constants';
 import { PrismaService } from '../../prisma/prisma.service';
+import { CreditsService } from '../credits/credits.service';
 import { CouncilInput, CouncilPriorStep } from '../generation/generation.types';
 import { MODEL_ROUTER } from '../generation/llm/model-capability.types';
 import type { ModelRouter } from '../generation/llm/model-capability.types';
@@ -38,19 +40,21 @@ export class CouncilOrchestrator {
     private readonly councilEventService: CouncilEventService,
     private readonly postsService: PostsService,
     private readonly mediaService: MediaService,
+    private readonly creditsService: CreditsService,
     @Inject(MODEL_ROUTER) private readonly modelRouter: ModelRouter,
   ) {}
 
-  async run(councilRunId: string): Promise<void> {
-    const run = await this.prisma.councilRun.findUniqueOrThrow({
-      where: { id: councilRunId },
-      include: {
-        generationJob: true,
-        postPackage: true,
-      },
+  async run(generationJobId: string): Promise<void> {
+    const job = await this.prisma.generationJob.findUniqueOrThrow({
+      where: { id: generationJobId },
+      include: { postPackage: true },
     });
 
-    const input = run.generationJob.input as unknown as CouncilInput;
+    if (!job.postPackageId || !job.postPackage) {
+      throw new Error(`Council job ${generationJobId} missing post package`);
+    }
+
+    const input = job.input as unknown as CouncilInput;
     const passScore = this.configService.get<number>('council.passScore', 75);
     const maxTextRevisions = this.configService.get<number>(
       'council.maxTextRevisions',
@@ -62,24 +66,18 @@ export class CouncilOrchestrator {
     );
     const totalSteps = councilTotalSteps(maxTextRevisions, maxMediaRegens);
 
-    await this.prisma.councilRun.update({
-      where: { id: councilRunId },
-      data: { status: CouncilRunStatus.running },
-    });
-
     const priorSteps: CouncilPriorStep[] = [];
     let stepOrder = 0;
     let completedSteps = 0;
     let revisionCount = 0;
     let mediaRegenCount = 0;
 
-    const generationJobId = run.generationJobId;
-    const postPackageId = run.postPackageId;
+    const postPackageId = job.postPackageId;
+    const workspaceId = job.workspaceId;
 
     try {
       let writerAttempt = 1;
       let draft = await this.executeWriter(
-        councilRunId,
         generationJobId,
         input,
         priorSteps,
@@ -107,7 +105,6 @@ export class CouncilOrchestrator {
 
       let reviewerAttempt = 1;
       let review = await this.executeReviewer(
-        councilRunId,
         generationJobId,
         input,
         priorSteps,
@@ -129,7 +126,6 @@ export class CouncilOrchestrator {
         );
 
         draft = await this.executeWriter(
-          councilRunId,
           generationJobId,
           input,
           priorSteps,
@@ -156,7 +152,6 @@ export class CouncilOrchestrator {
         );
 
         review = await this.executeReviewer(
-          councilRunId,
           generationJobId,
           input,
           priorSteps,
@@ -169,7 +164,6 @@ export class CouncilOrchestrator {
       }
 
       const finalCopy = await this.executeEditor(
-        councilRunId,
         generationJobId,
         input,
         priorSteps,
@@ -210,7 +204,6 @@ export class CouncilOrchestrator {
 
       let mediaAttempt = 1;
       let media = await this.executeMediaCreator(
-        councilRunId,
         generationJobId,
         input,
         priorSteps,
@@ -223,7 +216,6 @@ export class CouncilOrchestrator {
       let lastMediaCreatorEventId = media.eventId;
 
       let mediaReview = await this.executeMediaReviewer(
-        councilRunId,
         generationJobId,
         input,
         priorSteps,
@@ -237,8 +229,14 @@ export class CouncilOrchestrator {
         mediaRegenCount++;
         mediaAttempt++;
 
+        await this.creditsService.consume(
+          job.userId,
+          MEDIA_REGEN_CREDIT_COST,
+          CreditTransactionType.media,
+          { generationJobId, reason: 'media regen' },
+        );
+
         media = await this.executeMediaCreator(
-          councilRunId,
           generationJobId,
           input,
           priorSteps,
@@ -251,7 +249,6 @@ export class CouncilOrchestrator {
         lastMediaCreatorEventId = media.eventId;
 
         mediaReview = await this.executeMediaReviewer(
-          councilRunId,
           generationJobId,
           input,
           priorSteps,
@@ -267,9 +264,9 @@ export class CouncilOrchestrator {
       }
 
       const attachedMedia = await this.mediaService.attachCouncilMedia({
-        workspaceId: run.workspaceId,
+        workspaceId,
         postPackageId,
-        councilRunId,
+        generationJobId,
         mediaType: PostMediaType.quote_card,
         altText: media.spec.altText,
         imageBuffer: media.imageBuffer,
@@ -293,43 +290,34 @@ export class CouncilOrchestrator {
         PostPackageStatus.ready_for_approval,
       );
 
-      await this.prisma.councilRun.update({
-        where: { id: councilRunId },
-        data: {
-          status: CouncilRunStatus.completed,
-          revisionCount,
-          mediaRegenCount,
-          finalScore: review.overall,
-          completedAt: new Date(),
-        },
-      });
-
       await this.prisma.generationJob.update({
         where: { id: generationJobId },
         data: {
           status: GenerationJobStatus.completed,
+          revisionCount,
+          mediaRegenCount,
+          finalScore: review.overall,
           result: {
             postPackageId,
-            finalScore: review.overall,
             revisionCount,
             mediaRegenCount,
           } as unknown as Prisma.InputJsonValue,
           completedAt: new Date(),
-          model: run.generationJob.model,
+          model: job.model,
         },
       });
     } catch (err) {
-      this.logger.error(`Council run ${councilRunId} failed`, err);
+      this.logger.error(`Council job ${generationJobId} failed`, err);
 
       await this.postsService.applyCouncilPipelineStatus(
         postPackageId,
         PostPackageStatus.failed,
       );
 
-      await this.prisma.councilRun.update({
-        where: { id: councilRunId },
+      await this.prisma.generationJob.update({
+        where: { id: generationJobId },
         data: {
-          status: CouncilRunStatus.failed,
+          status: GenerationJobStatus.failed,
           revisionCount,
           mediaRegenCount,
           completedAt: new Date(),
@@ -341,7 +329,6 @@ export class CouncilOrchestrator {
   }
 
   private async executeWriter(
-    councilRunId: string,
     generationJobId: string,
     input: CouncilInput,
     priorSteps: CouncilPriorStep[],
@@ -356,7 +343,6 @@ export class CouncilOrchestrator {
         : `Writer applying revision ${revisionAttempt}`;
 
     const started = await this.councilEventService.startEvent({
-      councilRunId,
       generationJobId,
       agentRole: CouncilAgentRole.writer,
       stepOrder,
@@ -394,7 +380,6 @@ export class CouncilOrchestrator {
   }
 
   private async executeReviewer(
-    councilRunId: string,
     generationJobId: string,
     input: CouncilInput,
     priorSteps: CouncilPriorStep[],
@@ -404,7 +389,6 @@ export class CouncilOrchestrator {
     totalSteps: number,
   ): Promise<ReviewerOutput> {
     const started = await this.councilEventService.startEvent({
-      councilRunId,
       generationJobId,
       agentRole: CouncilAgentRole.reviewer,
       stepOrder,
@@ -452,7 +436,6 @@ export class CouncilOrchestrator {
   }
 
   private async executeEditor(
-    councilRunId: string,
     generationJobId: string,
     input: CouncilInput,
     priorSteps: CouncilPriorStep[],
@@ -461,7 +444,6 @@ export class CouncilOrchestrator {
     totalSteps: number,
   ) {
     const started = await this.councilEventService.startEvent({
-      councilRunId,
       generationJobId,
       agentRole: CouncilAgentRole.editor,
       stepOrder,
@@ -496,7 +478,6 @@ export class CouncilOrchestrator {
   }
 
   private async executeMediaCreator(
-    councilRunId: string,
     generationJobId: string,
     input: CouncilInput,
     priorSteps: CouncilPriorStep[],
@@ -506,7 +487,6 @@ export class CouncilOrchestrator {
     totalSteps: number,
   ): Promise<CouncilMediaDraft & { eventId: string }> {
     const started = await this.councilEventService.startEvent({
-      councilRunId,
       generationJobId,
       agentRole: CouncilAgentRole.media_creator,
       stepOrder,
@@ -575,7 +555,6 @@ export class CouncilOrchestrator {
   }
 
   private async executeMediaReviewer(
-    councilRunId: string,
     generationJobId: string,
     input: CouncilInput,
     priorSteps: CouncilPriorStep[],
@@ -584,7 +563,6 @@ export class CouncilOrchestrator {
     totalSteps: number,
   ) {
     const started = await this.councilEventService.startEvent({
-      councilRunId,
       generationJobId,
       agentRole: CouncilAgentRole.media_reviewer,
       stepOrder,

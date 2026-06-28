@@ -327,7 +327,10 @@ export class PostsService {
     const post = await this.findPostInWorkspace(workspaceId, id);
     this.assertEditable(post);
 
-    await this.prisma.postPackage.delete({ where: { id } });
+    await this.prisma.postPackage.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
     return { deleted: true };
   }
 

@@ -39,7 +39,6 @@ describe('CouncilJobHandler', () => {
       creditCost: 10,
       postPackageId: 'post-1',
       type: GenerationJobType.council,
-      councilRun: { id: 'run-1' },
     });
     prisma.postPackage.findUnique.mockResolvedValue({
       id: 'post-1',
@@ -49,12 +48,12 @@ describe('CouncilJobHandler', () => {
 
     await handler.handle('job-1');
 
-    expect(councilOrchestrator.run).toHaveBeenCalledWith('run-1');
+    expect(councilOrchestrator.run).toHaveBeenCalledWith('job-1');
     expect(creditsService.consume).toHaveBeenCalledWith(
       userId,
       10,
       CreditTransactionType.autopilot,
-      'job-1',
+      { generationJobId: 'job-1' },
     );
   });
 
@@ -65,7 +64,6 @@ describe('CouncilJobHandler', () => {
       creditCost: 3,
       postPackageId: 'post-2',
       type: GenerationJobType.council,
-      councilRun: { id: 'run-2' },
     });
     prisma.postPackage.findUnique.mockResolvedValue({
       id: 'post-2',
@@ -79,7 +77,7 @@ describe('CouncilJobHandler', () => {
       userId,
       3,
       CreditTransactionType.council,
-      'job-2',
+      { generationJobId: 'job-2' },
     );
   });
 });

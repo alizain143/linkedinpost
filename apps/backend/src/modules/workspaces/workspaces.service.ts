@@ -9,6 +9,7 @@ import {
   PostPackageStatus,
   Workspace,
   WorkspaceType,
+  Prisma,
 } from '@prisma/client';
 import { AGENCY_MAX_CLIENT_WORKSPACES } from '../../common/constants/plan.constants';
 import { NOT_DELETED } from '../../common/constants/soft-delete.constants';
@@ -251,16 +252,30 @@ export class WorkspacesService {
 
     const name = firstName ? `${firstName}'s Workspace` : 'Personal';
 
-    return this.prisma.workspace.create({
-      data: {
-        name,
-        type: WorkspaceType.personal,
-        ownerId: userId,
-        members: {
-          create: { userId, role: 'owner' },
+    try {
+      return await this.prisma.workspace.create({
+        data: {
+          name,
+          type: WorkspaceType.personal,
+          ownerId: userId,
+          members: {
+            create: { userId, role: 'owner' },
+          },
         },
-      },
-    });
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        const existingAfterRace = await this.findPersonalWorkspace(userId);
+        if (existingAfterRace) {
+          return existingAfterRace;
+        }
+      }
+
+      throw error;
+    }
   }
 
   async assertMember(userId: string, workspaceId: string): Promise<Workspace> {

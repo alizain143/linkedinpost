@@ -56,12 +56,6 @@ export type MockPrismaService = {
     update: jest.Mock;
     updateMany: jest.Mock;
     findFirst: jest.Mock;
-    findUnique: jest.Mock;
-    findUniqueOrThrow: jest.Mock;
-  };
-  councilRun: {
-    create: jest.Mock;
-    update: jest.Mock;
     findMany: jest.Mock;
     findUnique: jest.Mock;
     findUniqueOrThrow: jest.Mock;
@@ -163,12 +157,6 @@ export function createMockPrismaService(): MockPrismaService {
       update: jest.fn(),
       updateMany: jest.fn(),
       findFirst: jest.fn(),
-      findUnique: jest.fn(),
-      findUniqueOrThrow: jest.fn(),
-    },
-    councilRun: {
-      create: jest.fn(),
-      update: jest.fn(),
       findMany: jest.fn(),
       findUnique: jest.fn(),
       findUniqueOrThrow: jest.fn(),

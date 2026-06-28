@@ -1,9 +1,13 @@
 import { AutopilotConfig } from '@prisma/client';
-import { computeNextRunAt } from './autopilot-schedule.util';
+import {
+  AutopilotPostingPreset,
+  computeNextRunAt,
+  derivePostingPresetLabel,
+} from './autopilot-schedule.util';
 
 export interface AutopilotConfigResponse {
   enabled: boolean;
-  frequency: AutopilotConfig['frequency'];
+  postingPreset: AutopilotPostingPreset | 'custom';
   postingDays: number[];
   postingTime: string;
   contentProfileId: string | null;
@@ -23,7 +27,7 @@ export function toAutopilotConfigResponse(
 
   return {
     enabled: config.enabled,
-    frequency: config.frequency,
+    postingPreset: derivePostingPresetLabel(config.postingDays),
     postingDays: config.postingDays,
     postingTime: config.postingTime,
     contentProfileId: config.contentProfileId,

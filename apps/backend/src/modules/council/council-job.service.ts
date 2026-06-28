@@ -1,6 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import {
-  CouncilRunStatus,
   GenerationJobType,
   PostPackageStatus,
   PostSource,
@@ -80,23 +79,10 @@ export class CouncilJobService {
       postPackageId: post.id,
     });
 
-    await this.prisma.councilRun.create({
-      data: {
-        workspaceId,
-        generationJobId: job.id,
-        postPackageId: post.id,
-        status: CouncilRunStatus.pending,
-      },
-    });
-
     const fullJob = await this.prisma.generationJob.findUniqueOrThrow({
       where: { id: job.id },
       include: {
-        councilRun: {
-          include: {
-            events: { orderBy: { stepOrder: 'asc' } },
-          },
-        },
+        councilEvents: { orderBy: { stepOrder: 'asc' } },
       },
     });
 
@@ -121,14 +107,14 @@ export class CouncilJobService {
       });
     }
 
-    const runs = await this.prisma.councilRun.findMany({
-      where: { postPackageId: postId },
+    const jobs = await this.prisma.generationJob.findMany({
+      where: { postPackageId: postId, type: GenerationJobType.council },
       include: {
-        events: { orderBy: { stepOrder: 'asc' } },
+        councilEvents: { orderBy: { stepOrder: 'asc' } },
       },
       orderBy: { createdAt: 'desc' },
     });
 
-    return toCouncilTimelineResponse(postId, runs);
+    return toCouncilTimelineResponse(postId, jobs);
   }
 }

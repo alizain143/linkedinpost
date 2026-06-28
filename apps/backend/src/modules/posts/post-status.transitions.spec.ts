@@ -17,7 +17,6 @@ describe('post-status.transitions', () => {
     });
 
     it('blocks AI stages from manual transitions in v1', () => {
-      expect(ALLOWED_TRANSITIONS[PostPackageStatus.brief_created]).toEqual([]);
       expect(ALLOWED_TRANSITIONS[PostPackageStatus.text_generating]).toEqual(
         [],
       );

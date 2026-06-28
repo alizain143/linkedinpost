@@ -163,9 +163,6 @@ export class GenerationJobResponseDto {
   @ApiPropertyOptional({ format: 'uuid' })
   postPackageId!: string | null;
 
-  @ApiPropertyOptional({ format: 'uuid' })
-  councilRunId!: string | null;
-
   @ApiPropertyOptional({ type: GenerationJobProgressDto })
   progress!: GenerationJobProgressDto | null;
 

@@ -13,9 +13,10 @@ describe('CreditsService', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
-    prisma.user.findUniqueOrThrow.mockResolvedValue(
-      buildUser({ plan: UserPlan.pro }),
-    );
+    prisma.user.findUniqueOrThrow.mockResolvedValue({
+      ...buildUser({ plan: UserPlan.pro }),
+      subscription: null,
+    });
     prisma.creditTransaction.aggregate.mockResolvedValue({ _sum: { amount: 0 } });
     prisma.creditTransaction.create.mockResolvedValue({});
 
@@ -83,12 +84,13 @@ describe('CreditsService', () => {
         userId,
         1,
         CreditTransactionType.generation,
-        'quick draft',
+        { reason: 'quick draft', generationJobId: 'job-1' },
       );
 
       expect(prisma.creditTransaction.create).toHaveBeenCalledWith({
         data: {
           userId,
+          generationJobId: 'job-1',
           amount: -1,
           type: CreditTransactionType.generation,
           reason: 'quick draft',

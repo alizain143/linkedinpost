@@ -28,7 +28,7 @@ export class MediaService {
     this.r2BucketService.assertPostMediaSize(input.imageBuffer.length);
 
     const existing = await this.prisma.postMedia.findMany({
-      where: { councilRunId: input.councilRunId },
+      where: { generationJobId: input.generationJobId },
     });
 
     for (const row of existing) {
@@ -39,7 +39,7 @@ export class MediaService {
 
     if (existing.length > 0) {
       await this.prisma.postMedia.deleteMany({
-        where: { councilRunId: input.councilRunId },
+        where: { generationJobId: input.generationJobId },
       });
     }
 
@@ -62,9 +62,8 @@ export class MediaService {
       data: {
         id: postMediaId,
         postPackageId: input.postPackageId,
-        councilRunId: input.councilRunId,
+        generationJobId: input.generationJobId,
         mediaType: input.mediaType,
-        source: 'council',
         storageKey,
         storageBucket,
         mimeType: input.mimeType,

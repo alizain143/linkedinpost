@@ -66,7 +66,7 @@ export class QuickDraftJobService {
         userId,
         1,
         CreditTransactionType.generation,
-        job.id,
+        { generationJobId: job.id },
       );
 
       const completed = await this.prisma.generationJob.update({

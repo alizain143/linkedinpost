@@ -11,11 +11,7 @@ export class GenerationJobsQueryService {
     const job = await this.prisma.generationJob.findFirst({
       where: { id: jobId, userId, ...NOT_DELETED },
       include: {
-        councilRun: {
-          include: {
-            events: { orderBy: { stepOrder: 'asc' } },
-          },
-        },
+        councilEvents: { orderBy: { stepOrder: 'asc' } },
       },
     });
 

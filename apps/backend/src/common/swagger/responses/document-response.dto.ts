@@ -1,9 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { DocumentStatus } from '@prisma/client';
-import {
-  DocumentAttachedToType,
-  DocumentPurpose,
-} from '../../constants/document.constants';
+import { DocumentPurpose } from '../../constants/document.constants';
 
 export class InitUploadResponseDto {
   @ApiProperty({ format: 'uuid' })
@@ -34,12 +31,6 @@ export class DocumentResponseDto {
 
   @ApiProperty({ type: String, format: 'date-time', nullable: true })
   attachedAt!: Date | null;
-
-  @ApiProperty({ enum: DocumentAttachedToType, nullable: true })
-  attachedToType!: DocumentAttachedToType | null;
-
-  @ApiProperty({ format: 'uuid', nullable: true })
-  attachedToId!: string | null;
 
   @ApiProperty({ type: String, format: 'date-time' })
   createdAt!: Date;

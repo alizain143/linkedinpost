@@ -67,15 +67,16 @@ describe('PostsService', () => {
       ).rejects.toThrow(ConflictException);
     });
 
-    it('deletes draft post', async () => {
+    it('soft-deletes draft post', async () => {
       prisma.postPackage.findFirst.mockResolvedValue(buildPost());
-      prisma.postPackage.delete.mockResolvedValue(buildPost());
+      prisma.postPackage.update.mockResolvedValue(buildPost());
 
       const result = await service.remove(workspaceId, postId, userId);
 
       expect(result).toEqual({ deleted: true });
-      expect(prisma.postPackage.delete).toHaveBeenCalledWith({
+      expect(prisma.postPackage.update).toHaveBeenCalledWith({
         where: { id: postId },
+        data: { deletedAt: expect.any(Date) },
       });
     });
   });

@@ -13,7 +13,6 @@ export class CouncilEventService {
   constructor(private readonly prisma: PrismaService) {}
 
   async startEvent(params: {
-    councilRunId: string;
     generationJobId: string;
     agentRole: CouncilAgentRole;
     stepOrder: number;
@@ -24,7 +23,7 @@ export class CouncilEventService {
   }) {
     const event = await this.prisma.councilEvent.create({
       data: {
-        councilRunId: params.councilRunId,
+        generationJobId: params.generationJobId,
         agentRole: params.agentRole,
         stepOrder: params.stepOrder,
         revisionAttempt: params.revisionAttempt,

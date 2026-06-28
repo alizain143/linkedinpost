@@ -1,5 +1,4 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { AutopilotFrequency } from '@prisma/client';
 import { createMockPrismaService } from '../../test/prisma.mock';
 import { buildUser, userId, workspaceId } from '../../test/fixtures';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -18,7 +17,6 @@ describe('AutopilotTickService', () => {
     workspaceId,
     contentProfileId: null,
     enabled: true,
-    frequency: AutopilotFrequency.three_per_week,
     postingDays: [5],
     postingTime: '09:00',
     lastPillarIndex: 0,

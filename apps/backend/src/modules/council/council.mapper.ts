@@ -1,4 +1,4 @@
-import { CouncilEvent, CouncilRun } from '@prisma/client';
+import { CouncilEvent, GenerationJob } from '@prisma/client';
 
 export interface CouncilEventResponse {
   id: string;
@@ -52,27 +52,27 @@ export function toCouncilEventResponse(
 }
 
 export function toCouncilRunResponse(
-  run: CouncilRun & { events: CouncilEvent[] },
+  job: GenerationJob & { councilEvents: CouncilEvent[] },
 ): CouncilRunResponse {
   return {
-    id: run.id,
-    generationJobId: run.generationJobId,
-    status: run.status,
-    finalScore: run.finalScore,
-    revisionCount: run.revisionCount,
-    mediaRegenCount: run.mediaRegenCount,
-    createdAt: run.createdAt,
-    completedAt: run.completedAt,
-    events: run.events.map(toCouncilEventResponse),
+    id: job.id,
+    generationJobId: job.id,
+    status: job.status,
+    finalScore: job.finalScore,
+    revisionCount: job.revisionCount,
+    mediaRegenCount: job.mediaRegenCount,
+    createdAt: job.createdAt,
+    completedAt: job.completedAt,
+    events: job.councilEvents.map(toCouncilEventResponse),
   };
 }
 
 export function toCouncilTimelineResponse(
   postPackageId: string,
-  runs: Array<CouncilRun & { events: CouncilEvent[] }>,
+  jobs: Array<GenerationJob & { councilEvents: CouncilEvent[] }>,
 ): CouncilTimelineResponse {
   return {
     postPackageId,
-    runs: runs.map(toCouncilRunResponse),
+    runs: jobs.map(toCouncilRunResponse),
   };
 }

@@ -3,7 +3,6 @@ import {
   PostPackageStatus,
   PostSource,
   PostType,
-  PostMediaSource,
   PostMediaType,
 } from '@prisma/client';
 
@@ -42,9 +41,6 @@ export class PostMediaResponseDto {
 
   @ApiProperty({ enum: PostMediaType })
   mediaType!: PostMediaType;
-
-  @ApiProperty({ enum: PostMediaSource })
-  source!: PostMediaSource;
 
   @ApiProperty({ example: 'https://cdn.example.com/workspaces/.../media/uuid.png' })
   url!: string;

@@ -10,8 +10,6 @@ export default registerAs('r2', () => ({
   buckets: {
     [DocumentPurpose.PROFILE]:
       process.env.R2_BUCKET_PROFILE_IMAGES ?? 'profile-images',
-    [DocumentPurpose.USER_DOCUMENT]:
-      process.env.R2_BUCKET_USER_DOCUMENTS ?? 'user-documents',
   },
   postMediaBucket: process.env.R2_BUCKET_POST_MEDIA ?? 'post-media',
 }));

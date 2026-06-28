@@ -6,7 +6,7 @@ import {
 import { CreditTransactionType, UserPlan } from '@prisma/client';
 import { getCreditLimitForPlan } from '../../common/constants/plan.constants';
 import { PrismaService } from '../../prisma/prisma.service';
-import { getUtcMonthPeriod } from './credits-period.util';
+import { resolveCreditPeriod } from './credits-period.util';
 
 export interface CreditsBalance {
   plan: UserPlan;
@@ -18,6 +18,11 @@ export interface CreditsBalance {
   percentUsed: number;
 }
 
+export interface ConsumeCreditsOptions {
+  generationJobId?: string;
+  reason?: string;
+}
+
 @Injectable()
 export class CreditsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -25,9 +30,13 @@ export class CreditsService {
   async getBalance(userId: string, now = new Date()): Promise<CreditsBalance> {
     const user = await this.prisma.user.findUniqueOrThrow({
       where: { id: userId },
+      include: { subscription: true },
     });
 
-    const { periodStart, periodEnd } = getUtcMonthPeriod(now);
+    const { periodStart, periodEnd } = resolveCreditPeriod(
+      user.subscription,
+      now,
+    );
     const used = await this.getUsedCredits(userId, periodStart, periodEnd);
     const limit = getCreditLimitForPlan(user.plan);
     const remaining = Math.max(0, limit - used);
@@ -69,8 +78,11 @@ export class CreditsService {
     userId: string,
     cost: number,
     type: CreditTransactionType,
-    reason?: string,
+    options?: ConsumeCreditsOptions | string,
   ): Promise<CreditsBalance> {
+    const normalizedOptions: ConsumeCreditsOptions =
+      typeof options === 'string' ? { reason: options } : (options ?? {});
+
     if (cost <= 0) {
       throw new HttpException(
         {
@@ -84,9 +96,13 @@ export class CreditsService {
     return this.prisma.$transaction(async (tx) => {
       const user = await tx.user.findUniqueOrThrow({
         where: { id: userId },
+        include: { subscription: true },
       });
       const now = new Date();
-      const { periodStart, periodEnd } = getUtcMonthPeriod(now);
+      const { periodStart, periodEnd } = resolveCreditPeriod(
+        user.subscription,
+        now,
+      );
       const used = await this.getUsedCredits(
         userId,
         periodStart,
@@ -110,9 +126,10 @@ export class CreditsService {
       await tx.creditTransaction.create({
         data: {
           userId,
+          generationJobId: normalizedOptions.generationJobId ?? null,
           amount: -cost,
           type,
-          reason: reason ?? null,
+          reason: normalizedOptions.reason ?? null,
         },
       });
 
@@ -130,6 +147,34 @@ export class CreditsService {
           limit > 0 ? Math.round((nextUsed / limit) * 100) : 0,
       };
     });
+  }
+
+  async grant(
+    userId: string,
+    amount: number,
+    type: CreditTransactionType = CreditTransactionType.adjustment,
+    reason?: string,
+  ): Promise<CreditsBalance> {
+    if (amount <= 0) {
+      throw new HttpException(
+        {
+          error: 'Grant amount must be positive',
+          code: 'VALIDATION_ERROR',
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    await this.prisma.creditTransaction.create({
+      data: {
+        userId,
+        amount,
+        type,
+        reason: reason ?? null,
+      },
+    });
+
+    return this.getBalance(userId);
   }
 
   private async getUsedCredits(

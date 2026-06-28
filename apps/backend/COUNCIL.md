@@ -22,9 +22,9 @@ Requires **Redis** (`REDIS_URL`). Without Redis, council POST returns `503 REDIS
 ## Pipeline
 
 - **Text revision loop:** if reviewer `overall < COUNCIL_PASS_SCORE` (default 75), writer revises once (max `COUNCIL_MAX_TEXT_REVISIONS=1`)
-- **Media regen loop:** stub media reviewer may fail once (max `COUNCIL_MAX_MEDIA_REGENS=1`)
+- **Media regen loop:** media reviewer may fail once (max `COUNCIL_MAX_MEDIA_REGENS=1`); each regen charges **5 credits** (`CreditTransactionType.media`)
 - **Output:** creates `PostPackage` at enqueue, updates through pipeline, final status `ready_for_approval`
-- **Credits:** 3 on success only (`CreditTransactionType.council`)
+- **Credits:** 3 on success (`CreditTransactionType.council`); media regens billed separately
 
 ## Env
 
@@ -40,11 +40,21 @@ OPENAI_TEXT_MODEL=gpt-5.4
 
 ## Data model
 
-- `CouncilRun` — one execution per job
-- `CouncilEvent` — append-only timeline per agent step
-- `GenerationJob` — async job tracking with `progress` JSON
+One **`GenerationJob`** (`type=council`) is the council execution unit:
 
-Media generation is **stubbed** in v1 (Phase 5 adds real images).
+| Field | Purpose |
+|-------|---------|
+| `revisionCount` | Text revision loops completed |
+| `mediaRegenCount` | Media regen loops completed |
+| `finalScore` | Reviewer overall score at completion |
+| `progress` | Polling UI step state |
+| `councilEvents[]` | Append-only timeline per agent step |
+
+`CouncilEvent` rows reference `generationJobId` (not a separate run table).
+
+`PostMedia` optionally references `generationJobId` for the job that produced the asset.
+
+The council history API (`GET .../posts/:postId/council`) maps council jobs to the existing `runs[]` response shape for backward compatibility (`id` = job id).
 
 ## Tests
 

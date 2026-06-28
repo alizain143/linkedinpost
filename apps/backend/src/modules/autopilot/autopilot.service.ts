@@ -4,12 +4,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
-  AutopilotFrequency,
   PostPackageStatus,
   PostSource,
 } from '@prisma/client';
 import { NOT_DELETED } from '../../common/constants/soft-delete.constants';
-import { BillingModule } from '../billing/billing.module';
 import { PlanFeatureService } from '../billing/plan-feature.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { DEFAULT_TIMEZONE } from '../calendar/calendar-date.util';
@@ -17,8 +15,9 @@ import { toPostPackageResponse } from '../posts/post.mapper';
 import { WorkspacesService } from '../workspaces/workspaces.service';
 import { toAutopilotConfigResponse } from './autopilot.mapper';
 import {
+  DEFAULT_POSTING_DAYS,
   DEFAULT_POSTING_TIME,
-  resolvePostingDaysForFrequency,
+  resolvePostingDaysForPreset,
 } from './autopilot-schedule.util';
 import { UpsertAutopilotConfigDto } from './dto/upsert-autopilot-config.dto';
 
@@ -66,13 +65,7 @@ export class AutopilotService {
       where: { workspaceId, ...NOT_DELETED },
     });
 
-    const frequency =
-      dto.frequency ?? existing?.frequency ?? AutopilotFrequency.three_per_week;
-    const postingDays =
-      dto.postingDays ??
-      (dto.frequency
-        ? resolvePostingDaysForFrequency(dto.frequency)
-        : existing?.postingDays ?? resolvePostingDaysForFrequency(frequency));
+    const postingDays = this.resolvePostingDays(dto, existing?.postingDays);
     const postingTime =
       dto.postingTime ?? existing?.postingTime ?? DEFAULT_POSTING_TIME;
 
@@ -93,17 +86,14 @@ export class AutopilotService {
       create: {
         workspaceId,
         enabled: dto.enabled ?? false,
-        frequency,
         postingDays,
         postingTime,
         contentProfileId: dto.contentProfileId ?? null,
       },
       update: {
         ...(dto.enabled !== undefined ? { enabled: dto.enabled } : {}),
-        ...(dto.frequency !== undefined ? { frequency: dto.frequency } : {}),
-        ...(dto.postingDays !== undefined ? { postingDays: dto.postingDays } : {}),
-        ...(dto.frequency !== undefined && dto.postingDays === undefined
-          ? { postingDays: resolvePostingDaysForFrequency(dto.frequency) }
+        ...(dto.postingDays !== undefined || dto.postingPreset !== undefined
+          ? { postingDays }
           : {}),
         ...(dto.postingTime !== undefined ? { postingTime: dto.postingTime } : {}),
         ...(dto.contentProfileId !== undefined
@@ -134,6 +124,21 @@ export class AutopilotService {
     return posts.map((post) => toPostPackageResponse(post));
   }
 
+  private resolvePostingDays(
+    dto: UpsertAutopilotConfigDto,
+    existingDays?: number[],
+  ): number[] {
+    if (dto.postingDays !== undefined) {
+      return dto.postingDays;
+    }
+
+    if (dto.postingPreset !== undefined) {
+      return resolvePostingDaysForPreset(dto.postingPreset);
+    }
+
+    return existingDays ?? [...DEFAULT_POSTING_DAYS];
+  }
+
   private async findOrCreateConfig(workspaceId: string) {
     const existing = await this.prisma.autopilotConfig.findFirst({
       where: { workspaceId, ...NOT_DELETED },
@@ -147,10 +152,7 @@ export class AutopilotService {
       data: {
         workspaceId,
         enabled: false,
-        frequency: AutopilotFrequency.three_per_week,
-        postingDays: resolvePostingDaysForFrequency(
-          AutopilotFrequency.three_per_week,
-        ),
+        postingDays: [...DEFAULT_POSTING_DAYS],
         postingTime: DEFAULT_POSTING_TIME,
       },
     });
