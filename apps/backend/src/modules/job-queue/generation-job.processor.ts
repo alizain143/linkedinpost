@@ -1,7 +1,8 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
-import { GenerationJobStatus } from '@prisma/client';
+import { GenerationJobStatus, PostSource } from '@prisma/client';
 import { Job } from 'bullmq';
+import { NOT_DELETED } from '../../common/constants/soft-delete.constants';
 import { PrismaService } from '../../prisma/prisma.service';
 import { extractGenerationError } from '../generation/generation.errors';
 import { GENERATION_JOBS_QUEUE } from './job-queue.constants';
@@ -91,7 +92,32 @@ export class GenerationJobProcessor extends WorkerHost {
         },
       });
 
+      await this.resetAutopilotRunIfFailed(generationJobId);
+
       throw err;
     }
+  }
+
+  private async resetAutopilotRunIfFailed(
+    generationJobId: string,
+  ): Promise<void> {
+    const job = await this.prisma.generationJob.findUnique({
+      where: { id: generationJobId },
+      include: {
+        postPackage: true,
+      },
+    });
+
+    if (job?.postPackage?.source !== PostSource.autopilot) {
+      return;
+    }
+
+    await this.prisma.autopilotConfig.updateMany({
+      where: {
+        workspaceId: job.workspaceId,
+        ...NOT_DELETED,
+      },
+      data: { lastRunDateKey: null },
+    });
   }
 }

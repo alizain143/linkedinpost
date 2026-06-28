@@ -23,6 +23,16 @@ export interface QuickDraftInput {
   resumeFrom?: 'media_creator';
 }
 
+export interface TopicSuggestionsInput {
+  workspaceId: string;
+  userId: string;
+  contentProfileId?: string;
+  postType?: PostType;
+  tone?: string;
+  pillar?: string;
+  additionalContext?: string;
+}
+
 export interface CouncilInput extends QuickDraftInput {
   brief?: string;
 }
@@ -168,6 +178,23 @@ export interface QuickDraftVariant {
 
 export interface QuickDraftResult {
   variants: QuickDraftVariant[];
+  promptId: string;
+  promptVersion: string;
+  model: string;
+  usage?: {
+    inputTokens: number;
+    outputTokens: number;
+  };
+}
+
+export interface TopicSuggestion {
+  topic: string;
+  pillar?: string;
+  rationale?: string;
+}
+
+export interface TopicSuggestionsResult {
+  suggestions: TopicSuggestion[];
   promptId: string;
   promptVersion: string;
   model: string;

@@ -108,6 +108,13 @@ Pipeline state machine. Transition rules split across `post-status.transitions.t
 | `calendar` | Bulk calendar generation job |
 | `autopilot` | Autopilot cron dispatch |
 
+### `AutopilotApprovalMode`
+
+| Value | Meaning |
+|-------|---------|
+| `require_approval` | Generated posts land in approval queue (default) |
+| `auto_schedule` | After council completes, system schedules to LinkedIn at posting slot |
+
 Affects credit type on charge (`council` vs `autopilot`) and dashboard filters.
 
 ### `PostType`
@@ -138,6 +145,7 @@ LLM / UI taxonomy for post format.
 | `calendar` | Yes | Bulk calendar (10 or 30) |
 | `autopilot` | Yes | Autopilot package (10) |
 | `media` | Yes | Media regen during council (5 credits per regen) |
+| `content_profile` | Yes | AI content profile save via approve-suggestions (1 credit each) |
 | `adjustment` | Yes | Admin grants / billing corrections via `CreditsService.grant()` |
 
 Ledger: negative `amount` = consumption. Balance = sum of negative amounts in current credit period vs plan limit.
@@ -610,7 +618,9 @@ One config per workspace (1:1).
 |-------|------|------|---------|-------------|
 | `id` | UUID | No | uuid() | |
 | `workspaceId` | UUID | No | — | **Unique.** FK → `workspaces.id` CASCADE |
-| `contentProfileId` | UUID | Yes | — | FK → `content_profiles.id` SET NULL. Strategy profile |
+| `contentProfileId` | UUID | Yes | — | FK → `content_profiles.id` SET NULL. Default strategy profile |
+| `dayProfileOverrides` | JSON | Yes | — | ISO weekday (1–7) → content profile UUID. Omitted days use default |
+| `approvalMode` | AutopilotApprovalMode | No | `require_approval` | `require_approval` or `auto_schedule` (auto-schedule to LinkedIn after council) |
 | `enabled` | Boolean | No | `false` | Cron picks up when true |
 | `postingDays` | Int[] | No | `[1,3,4,5,7]` | ISO weekday numbers (1=Mon … 7=Sun). **Source of truth for schedule** |
 | `postingTime` | String | No | `09:00` | HH:mm in user/workspace timezone |

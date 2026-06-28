@@ -1,8 +1,11 @@
 import { apiFetch } from "@/lib/api/fetch";
 import type {
   ApiContentProfile,
+  ApproveContentProfileSuggestionsBody,
+  ContentProfileSuggestionsResult,
   CreateContentProfileBody,
   DeleteContentProfileResponse,
+  SuggestContentProfilesBody,
   UpdateContentProfileBody,
 } from "@/lib/api/types/content-profile";
 
@@ -68,5 +71,35 @@ export async function deleteContentProfile(
     token,
     contentProfilesPath(workspaceId, profileId),
     { method: "DELETE" },
+  );
+}
+
+export async function suggestContentProfiles(
+  token: string,
+  workspaceId: string,
+  body: SuggestContentProfilesBody,
+): Promise<ContentProfileSuggestionsResult> {
+  return apiFetch<ContentProfileSuggestionsResult>(
+    token,
+    `${contentProfilesPath(workspaceId)}/suggest`,
+    {
+      method: "POST",
+      body: JSON.stringify(body),
+    },
+  );
+}
+
+export async function approveContentProfileSuggestions(
+  token: string,
+  workspaceId: string,
+  body: ApproveContentProfileSuggestionsBody,
+): Promise<ApiContentProfile[]> {
+  return apiFetch<ApiContentProfile[]>(
+    token,
+    `${contentProfilesPath(workspaceId)}/approve-suggestions`,
+    {
+      method: "POST",
+      body: JSON.stringify(body),
+    },
   );
 }

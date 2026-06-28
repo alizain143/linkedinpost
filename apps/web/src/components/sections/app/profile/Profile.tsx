@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { appLabel } from "@/components/app/app-ui";
 import { QueryState } from "@/components/app/query-state";
 import { Button } from "@/components/ui/button";
+import { ColorPickerField } from "@/components/ui/color-picker";
 import { Input, InputField, TextareaField } from "@/components/ui/input";
 import { MsIcon } from "@/components/ui/ms-icon";
 import { SelectField } from "@/components/ui/select";
@@ -24,6 +25,7 @@ import {
 } from "@/lib/content-goals";
 import { TONE_OPTIONS } from "@/lib/form-options";
 import { useAppUi } from "@/providers/app-ui-provider";
+import { AiContentProfileWizard } from "@/components/sections/app/profile/AiContentProfileWizard";
 
 type ProfileFormState = {
   name: string;
@@ -160,6 +162,7 @@ function ProfileEditor() {
   const [form, setForm] = useState<ProfileFormState>(emptyForm(true));
   const [addingPillar, setAddingPillar] = useState(false);
   const [newPillarName, setNewPillarName] = useState("");
+  const [aiWizardOpen, setAiWizardOpen] = useState(false);
 
   const initializedWorkspaceRef = useRef<string | null>(null);
   const isSaving = createProfile.isPending || updateProfile.isPending;
@@ -327,6 +330,17 @@ function ProfileEditor() {
   const showSelector = (profiles?.length ?? 0) > 0;
   const showEmptyBanner = profiles?.length === 0 && mode === "create";
 
+  const handleAiProfilesApproved = (created: ApiContentProfile[]) => {
+    const first = created[0];
+    if (!first) return;
+
+    void refetch().then(() => {
+      setMode("edit");
+      setSelectedProfileId(first.id);
+      setForm(profileToForm(first));
+    });
+  };
+
   return (
     <QueryState
       isLoading={workspaceLoading || profilesLoading || !activeWorkspaceId}
@@ -337,25 +351,46 @@ function ProfileEditor() {
       <div className="pp-gen" style={{ gridTemplateColumns: "1fr 372px" }}>
         <div className="space-y-4">
           <div className="rounded-[18px] border border-[#eceef4] bg-white p-6">
-            <h2 className="font-display text-lg font-bold">Content profile</h2>
-            <p className="mt-1 text-[13px] text-[#94a3b8]">
-              Your voice, audience, and strategy — used by every AI agent.
-              {activeWorkspace?.type === "client" ? (
-                <>
-                  {" "}
-                  Editing profile for{" "}
-                  <span className="font-semibold text-[#64748b]">
-                    {activeWorkspace.name}
-                  </span>
-                  .
-                </>
-              ) : null}
-            </p>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="font-display text-lg font-bold">Content profile</h2>
+                <p className="mt-1 text-[13px] text-[#94a3b8]">
+                  Your voice, audience, and strategy — used by every AI agent.
+                  {activeWorkspace?.type === "client" ? (
+                    <>
+                      {" "}
+                      Editing profile for{" "}
+                      <span className="font-semibold text-[#64748b]">
+                        {activeWorkspace.name}
+                      </span>
+                      .
+                    </>
+                  ) : null}
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="md"
+                onClick={() => setAiWizardOpen(true)}
+              >
+                Generate with AI
+              </Button>
+            </div>
 
             {showEmptyBanner ? (
               <div className="mt-4 rounded-xl border border-dashed border-[#dce3f0] bg-[#fafbff] px-4 py-3 text-[13px] text-[#64748b]">
-                No content profile yet. Create one to power AI generation for
-                this workspace.
+                <p>No content profile yet. Create one to power AI generation for
+                this workspace.</p>
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  className="mt-3"
+                  onClick={() => setAiWizardOpen(true)}
+                >
+                  Create with AI
+                </Button>
               </div>
             ) : null}
 
@@ -432,20 +467,16 @@ function ProfileEditor() {
                 options={toneOptions}
               />
               <div className="grid grid-cols-2 gap-3">
-                <InputField
+                <ColorPickerField
                   label="Brand primary"
                   value={form.brandPrimary}
-                  onChange={(event) =>
-                    updateField("brandPrimary", event.target.value)
-                  }
+                  onChange={(value) => updateField("brandPrimary", value)}
                   placeholder="#1a1a2e"
                 />
-                <InputField
+                <ColorPickerField
                   label="Brand accent"
                   value={form.brandAccent}
-                  onChange={(event) =>
-                    updateField("brandAccent", event.target.value)
-                  }
+                  onChange={(value) => updateField("brandAccent", value)}
                   placeholder="#5B3DF5"
                 />
               </div>
@@ -596,6 +627,16 @@ function ProfileEditor() {
           <VoicePreview form={form} />
         </div>
       </div>
+
+      {activeWorkspaceId ? (
+        <AiContentProfileWizard
+          open={aiWizardOpen}
+          workspaceId={activeWorkspaceId}
+          hasExistingProfiles={(profiles?.length ?? 0) > 0}
+          onClose={() => setAiWizardOpen(false)}
+          onApproved={handleAiProfilesApproved}
+        />
+      ) : null}
     </QueryState>
   );
 }

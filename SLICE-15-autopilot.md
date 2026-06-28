@@ -104,7 +104,13 @@ Insufficient credits: log + skip (autopilot stays enabled).
 
 ## Out of scope
 
-- Auto-publish without approval
+- Auto-publish without approval (immediate publish on generation — use auto-schedule instead)
 - Pro plan gating
-- Frontend Autopilot screen
+- Frontend Autopilot screen (see FE-SLICE-15, SLICE-21)
 - Email notifications
+
+## Note (SLICE-21)
+
+- Cron is hourly (`0 * * * *`), not per-minute
+- `frequency` enum removed — use `postingDays` + `postingPreset` label
+- Approval mode and day profile overrides added in SLICE-21

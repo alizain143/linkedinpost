@@ -16,12 +16,13 @@ import {
   useGenerationJob,
   usePremiumCouncilMutation,
   useQuickDraftMutation,
+  useTopicSuggestionsMutation,
 } from "@/hooks/api/use-generation-api";
 import { useCreatePost, useGeneratePostMediaMutation } from "@/hooks/api/use-posts-api";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { getApiErrorMessage } from "@/lib/api-error-messages";
 import { approvePost, fetchPost, transitionPostStatus } from "@/lib/api/posts";
-import type { QuickDraftVariant } from "@/lib/api/types/generation";
+import type { QuickDraftVariant, TopicSuggestion } from "@/lib/api/types/generation";
 import type { PostType } from "@/lib/api/types/enums";
 import {
   COUNCIL_CREDIT_COST,
@@ -43,6 +44,10 @@ import { LinkedInFeedPreview } from "@/components/sections/app/generate/LinkedIn
 import { MediaReferencePicker } from "@/components/sections/app/generate/MediaReferencePicker";
 import { MediaTemplatePicker } from "@/components/sections/app/generate/MediaTemplatePicker";
 import { GenerationHistoryPanel } from "@/components/sections/app/generate/GenerationHistoryPanel";
+import {
+  TopicMagicButton,
+  TopicSuggestionsPicker,
+} from "@/components/sections/app/generate/TopicSuggestionsPicker";
 import { fetchMediaReferences, submitMediaReferences } from "@/lib/api/media-references";
 import type { PostMediaType } from "@/lib/api/types/enums";
 import type { MediaReferenceCandidate } from "@/lib/api/types/media-references";
@@ -121,6 +126,7 @@ export default function Generate() {
   } = useContentProfiles(activeWorkspaceId);
 
   const quickDraft = useQuickDraftMutation(activeWorkspaceId);
+  const topicSuggestionsMutation = useTopicSuggestionsMutation(activeWorkspaceId);
   const councilMutation = useCouncilMutation(activeWorkspaceId);
   const premiumCouncilMutation = usePremiumCouncilMutation(activeWorkspaceId);
   const generatePostMedia = useGeneratePostMediaMutation(activeWorkspaceId);
@@ -177,6 +183,9 @@ export default function Generate() {
     {},
   );
   const [history, setHistory] = useState<GenerationHistoryEntry[]>([]);
+  const [topicSuggestions, setTopicSuggestions] = useState<TopicSuggestion[]>(
+    [],
+  );
 
   const councilCompletedRef = useRef<string | null>(null);
   const mediaCompletedRef = useRef<string | null>(null);
@@ -387,11 +396,40 @@ export default function Generate() {
 
   const handleProfileChange = (contentProfileId: string) => {
     const profile = profiles?.find((item) => item.id === contentProfileId);
+    setTopicSuggestions([]);
     setForm((current) => ({
       ...current,
       contentProfileId,
       pillar: "",
       tone: profile?.preferredTone ?? current.tone,
+    }));
+  };
+
+  const handleSuggestTopics = async () => {
+    if (!form.contentProfileId) {
+      showToast("Select a content profile first.", "error");
+      return;
+    }
+
+    try {
+      const result = await topicSuggestionsMutation.mutateAsync({
+        contentProfileId: form.contentProfileId || undefined,
+        postType: form.postType,
+        tone: (form.useCustomTone ? form.customTone : form.tone) || undefined,
+        pillar: form.pillar || undefined,
+        additionalContext: form.additionalContext.trim() || undefined,
+      });
+      setTopicSuggestions(result.suggestions);
+    } catch (error) {
+      showToast(getApiErrorMessage(error), "error");
+    }
+  };
+
+  const handleSelectTopicSuggestion = (suggestion: TopicSuggestion) => {
+    setForm((current) => ({
+      ...current,
+      topic: suggestion.topic,
+      ...(suggestion.pillar ? { pillar: suggestion.pillar } : {}),
     }));
   };
 
@@ -1066,9 +1104,22 @@ export default function Generate() {
         value={form.topic}
         maxLength={500}
         placeholder="A hard lesson from scaling my team"
+        labelAside={
+          <TopicMagicButton
+            onClick={() => void handleSuggestTopics()}
+            loading={topicSuggestionsMutation.isPending}
+            disabled={!form.contentProfileId || formDisabled}
+          />
+        }
         onChange={(event) =>
           setForm((current) => ({ ...current, topic: event.target.value }))
         }
+        disabled={formDisabled}
+      />
+
+      <TopicSuggestionsPicker
+        suggestions={topicSuggestions}
+        onSelect={handleSelectTopicSuggestion}
         disabled={formDisabled}
       />
 

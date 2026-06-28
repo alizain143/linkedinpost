@@ -25,7 +25,9 @@ import { CouncilJobService } from '../council/council-job.service';
 import { CalendarGenerateRequestDto } from '../calendar-generation/dto/calendar-generate-request.dto';
 import { CalendarJobService } from '../calendar-generation/calendar-job.service';
 import { QuickDraftRequestDto } from './dto/quick-draft-request.dto';
+import { TopicSuggestionsRequestDto } from './dto/topic-suggestions-request.dto';
 import { QuickDraftJobService } from './quick-draft-job.service';
+import { TopicSuggestionsService } from './topic-suggestions.service';
 
 @ApiTags('generation')
 @ApiBearerAuth('bearer')
@@ -36,6 +38,7 @@ export class GenerationController {
     private readonly quickDraftJobService: QuickDraftJobService,
     private readonly councilJobService: CouncilJobService,
     private readonly calendarJobService: CalendarJobService,
+    private readonly topicSuggestionsService: TopicSuggestionsService,
   ) {}
 
   @Post('quick')
@@ -100,5 +103,22 @@ export class GenerationController {
     @Body() dto: CalendarGenerateRequestDto,
   ) {
     return this.calendarJobService.enqueueCalendar(workspaceId, user.id, dto);
+  }
+
+  @Post('suggest-topics')
+  @ApiOperation({
+    summary: 'Suggest timely LinkedIn post topics based on profile and form context',
+  })
+  @ApiParam({ name: 'workspaceId', format: 'uuid' })
+  suggestTopics(
+    @CurrentUser() user: User,
+    @Param('workspaceId') workspaceId: string,
+    @Body() dto: TopicSuggestionsRequestDto,
+  ) {
+    return this.topicSuggestionsService.suggestTopics(
+      workspaceId,
+      user.id,
+      dto,
+    );
   }
 }

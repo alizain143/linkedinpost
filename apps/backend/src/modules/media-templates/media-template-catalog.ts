@@ -81,11 +81,13 @@ export function shouldUseTemplateRenderer(
   templateId?: string | null,
 ): boolean {
   if (isCatalogTemplateId(templateId)) return true;
-  return [
+  const textOverlayTypes: PostMediaType[] = [
     PostMediaType.branded_quote_card,
+    PostMediaType.quote_card,
     PostMediaType.stat_highlight,
     PostMediaType.tip_card,
-  ].includes(mediaType);
+  ];
+  return textOverlayTypes.includes(mediaType);
 }
 
 export function shouldSkipImageScout(templateId?: string | null): boolean {

@@ -47,3 +47,25 @@ export type UpdateContentProfileBody = Partial<CreateContentProfileBody>;
 export type DeleteContentProfileResponse = {
   deleted: boolean;
 };
+
+export type SuggestContentProfilesBody = {
+  roleTitle?: string;
+  industry?: string;
+  targetAudience?: string;
+  contentGoal?: ContentGoal;
+  offerDescription?: string;
+  notes?: string;
+};
+
+export type SuggestedContentProfile = CreateContentProfileBody;
+
+export type ContentProfileSuggestionsResult = {
+  profiles: SuggestedContentProfile[];
+  promptId: string;
+  promptVersion: string;
+  model: string;
+};
+
+export type ApproveContentProfileSuggestionsBody = {
+  profiles: CreateContentProfileBody[];
+};

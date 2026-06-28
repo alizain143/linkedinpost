@@ -24,6 +24,7 @@ import { GenerationMediaReferencesController } from './generation-media-referenc
 import { GenerationMediaReferencesService } from './generation-media-references.service';
 import { QuickDraftGenerator } from './flows/quick-draft.generator';
 import { CalendarSlotGenerator } from './flows/calendar-slot.generator';
+import { TopicSuggestionsGenerator } from './flows/topic-suggestions.generator';
 import { MODEL_ROUTER } from './llm/model-capability.types';
 import { ConfigModelRouter } from './llm/config-model-router';
 import { GoogleGenAIClientFactory } from './llm/google-genai.client';
@@ -34,7 +35,9 @@ import { OpenAiTextCompletionProvider } from './llm/openai-text-completion.provi
 import { PromptRenderer } from './prompt-renderer';
 import { QuickDraftOutputParser } from './quick-draft-output.parser';
 import { QuickDraftSingleOutputParser } from './quick-draft-single-output.parser';
+import { TopicSuggestionsOutputParser } from './topic-suggestions-output.parser';
 import { QuickDraftJobService } from './quick-draft-job.service';
+import { TopicSuggestionsService } from './topic-suggestions.service';
 
 @Module({
   imports: [
@@ -61,6 +64,7 @@ import { QuickDraftJobService } from './quick-draft-job.service';
     PromptRenderer,
     QuickDraftOutputParser,
     QuickDraftSingleOutputParser,
+    TopicSuggestionsOutputParser,
     MockTextCompletionProvider,
     MockImageGenerationProvider,
     GoogleGenAIClientFactory,
@@ -77,7 +81,9 @@ import { QuickDraftJobService } from './quick-draft-job.service';
     },
     QuickDraftGenerator,
     CalendarSlotGenerator,
+    TopicSuggestionsGenerator,
     QuickDraftJobService,
+    TopicSuggestionsService,
     GenerationJobsQueryService,
     GenerationMediaReferencesService,
   ],

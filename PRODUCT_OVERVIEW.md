@@ -28,6 +28,8 @@ Per-slice implementation specs live at the repo root:
 - [SLICE-18-stripe-billing.md](SLICE-18-stripe-billing.md) — Done
 - [SLICE-19-agency-client-workspaces.md](SLICE-19-agency-client-workspaces.md) — Done
 - [SLICE-20-approval-share-links.md](SLICE-20-approval-share-links.md) — Done
+- [SLICE-22-topic-suggestions.md](SLICE-22-topic-suggestions.md) — Done
+- [SLICE-23-ai-content-profiles.md](SLICE-23-ai-content-profiles.md) — Done
 
 ---
 
@@ -69,6 +71,8 @@ Update this section as features land. Tell the agent to mark items `[x]` when do
 - [x] Async job queue — BullMQ + Redis ([SLICE-09](SLICE-09-async-job-queue.md))
 - [x] AI Council pipeline v1 + timeline events ([SLICE-10](SLICE-10-ai-council.md))
 - [x] Credit deduct on generation
+- [x] Topic suggestions magic button — `POST /generate/suggest-topics` ([SLICE-22](SLICE-22-topic-suggestions.md))
+- [x] AI content profile suggestions — suggest free, 1 credit per approve ([SLICE-23](SLICE-23-ai-content-profiles.md))
 
 ### Phase 4 — LinkedIn publish
 
@@ -248,7 +252,7 @@ Unit that moves through the pipeline.
 | **approvals** | Approval queue, request changes | Queue + actions done |
 | **scheduling** | Schedule posts, timezone | Done ([SLICE-11](SLICE-11-scheduling-api.md)) |
 | **linkedin** | OAuth connect, publish API, profile sync | Done ([SLICE-12](SLICE-12-linkedin-publish.md)) |
-| **autopilot** | Config + cron generation | Not started |
+| **autopilot** | Config + cron generation + approval mode + day profiles | Done ([SLICE-15](SLICE-15-autopilot.md), [SLICE-21](SLICE-21-autopilot-v2.md)) |
 | **credits** | Ledger, deduct, monthly reset | Ledger stub + guard done |
 | **billing** | Stripe subscriptions | Complete (Slice 18) |
 | **notifications** | In-app + email + web push | Done (Slice 21) |

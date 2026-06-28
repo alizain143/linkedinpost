@@ -9,6 +9,8 @@ import { userId } from '../../test/fixtures';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreditsService } from '../credits/credits.service';
 import { mockNotificationEventServiceProvider } from '../../test/notification-event.mock';
+import { NotificationEventService } from '../notifications/notification-event.service';
+import { SchedulingService } from '../scheduling/scheduling.service';
 import { CouncilOrchestrator } from './council-orchestrator';
 import { CouncilJobHandler } from './council-job.handler';
 
@@ -17,6 +19,7 @@ describe('CouncilJobHandler', () => {
   const prisma = createMockPrismaService();
   const councilOrchestrator = { run: jest.fn() };
   const creditsService = { consume: jest.fn() };
+  const schedulingService = { scheduleAutopilotPost: jest.fn() };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -27,6 +30,7 @@ describe('CouncilJobHandler', () => {
         { provide: PrismaService, useValue: prisma },
         { provide: CouncilOrchestrator, useValue: councilOrchestrator },
         { provide: CreditsService, useValue: creditsService },
+        { provide: SchedulingService, useValue: schedulingService },
         mockNotificationEventServiceProvider(),
       ],
     }).compile();

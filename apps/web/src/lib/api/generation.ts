@@ -4,6 +4,8 @@ import type {
   CalendarGenerateRequestBody,
   CouncilRequestBody,
   QuickDraftRequestBody,
+  TopicSuggestionsRequestBody,
+  TopicSuggestionsResult,
 } from "@/lib/api/types/generation";
 
 export async function generateQuickDraft(
@@ -71,4 +73,19 @@ export async function fetchGenerationJob(
   jobId: string,
 ): Promise<ApiGenerationJob> {
   return apiFetch<ApiGenerationJob>(token, `/jobs/${jobId}`);
+}
+
+export async function suggestTopics(
+  token: string,
+  workspaceId: string,
+  body: TopicSuggestionsRequestBody,
+): Promise<TopicSuggestionsResult> {
+  return apiFetch<TopicSuggestionsResult>(
+    token,
+    `/workspaces/${workspaceId}/generate/suggest-topics`,
+    {
+      method: "POST",
+      body: JSON.stringify(body),
+    },
+  );
 }

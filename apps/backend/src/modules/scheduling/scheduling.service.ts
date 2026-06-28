@@ -1,6 +1,7 @@
 import {
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -13,10 +14,14 @@ import { WorkspacesService } from '../workspaces/workspaces.service';
 import { ListScheduledQueryDto } from './dto/list-scheduled-query.dto';
 import { SchedulePostDto } from './dto/schedule-post.dto';
 import { assertScheduleTransition } from './scheduling-status.transitions';
-import { validateScheduledAt } from './scheduling.validation';
+import {
+  resolveEffectiveScheduledAt,
+  validateScheduledAt,
+} from './scheduling.validation';
 
 @Injectable()
 export class SchedulingService {
+  private readonly logger = new Logger(SchedulingService.name);
   constructor(
     private readonly prisma: PrismaService,
     private readonly workspacesService: WorkspacesService,
@@ -281,6 +286,110 @@ export class SchedulingService {
     await this.publishJobEnqueueService.cancelPublish(postId);
 
     return toPostPackageResponse(post);
+  }
+
+  async scheduleAutopilotPost(
+    workspaceId: string,
+    postId: string,
+    preferredScheduledAt: Date | null,
+  ): Promise<boolean> {
+    const existing = await this.prisma.postPackage.findFirst({
+      where: { id: postId, workspaceId, ...NOT_DELETED },
+    });
+
+    if (!existing) {
+      return false;
+    }
+
+    if (existing.status !== PostPackageStatus.ready_for_approval) {
+      return false;
+    }
+
+    try {
+      this.publishJobEnqueueService.assertRedisAvailable();
+    } catch {
+      this.logger.warn(
+        `Skipping autopilot auto-schedule for post ${postId}: Redis unavailable`,
+      );
+      return false;
+    }
+
+    const validationOptions = this.validationOptions();
+    const baseScheduledAt =
+      preferredScheduledAt ?? existing.scheduledAt ?? new Date();
+    const scheduledAt = resolveEffectiveScheduledAt(
+      baseScheduledAt,
+      validationOptions,
+    );
+
+    validateScheduledAt(scheduledAt, validationOptions);
+
+    const approved = await this.prisma.postPackage.updateMany({
+      where: {
+        id: postId,
+        workspaceId,
+        ...NOT_DELETED,
+        status: PostPackageStatus.ready_for_approval,
+      },
+      data: {
+        status: PostPackageStatus.approved,
+        submittedForApprovalAt: null,
+        approvalFeedback: null,
+      },
+    });
+
+    if (approved.count === 0) {
+      return false;
+    }
+
+    const workspace = await this.prisma.workspace.findUniqueOrThrow({
+      where: { id: workspaceId },
+    });
+
+    const scheduled = await this.prisma.postPackage.updateMany({
+      where: {
+        id: postId,
+        workspaceId,
+        ...NOT_DELETED,
+        status: PostPackageStatus.approved,
+      },
+      data: {
+        status: PostPackageStatus.scheduled,
+        scheduledAt,
+      },
+    });
+
+    if (scheduled.count === 0) {
+      return false;
+    }
+
+    try {
+      await this.publishJobEnqueueService.enqueuePublish(
+        postId,
+        scheduledAt,
+        workspace.ownerId,
+      );
+      return true;
+    } catch (error) {
+      await this.prisma.postPackage.updateMany({
+        where: {
+          id: postId,
+          workspaceId,
+          status: PostPackageStatus.scheduled,
+          scheduledAt,
+        },
+        data: {
+          status: PostPackageStatus.approved,
+          scheduledAt: null,
+        },
+      });
+      this.logger.warn(
+        `Autopilot auto-schedule failed for post ${postId}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      return false;
+    }
   }
 
   async listUpcoming(

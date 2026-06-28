@@ -32,7 +32,6 @@ import {
   formatResetDate,
 } from "@/lib/format-relative-time";
 import { getPostTypeLabel } from "@/lib/post-types";
-import { DEFAULT_TIMEZONE } from "@/lib/timezones";
 import { cn } from "@/lib/utils";
 import { useAppUi } from "@/providers/app-ui-provider";
 
@@ -78,13 +77,11 @@ function AutopilotDashboardCard({
 }: {
   workspaceId: string;
 }) {
-  const { data: currentUser } = useCurrentUser();
   const { data: config, isLoading: configLoading } =
     useAutopilotConfig(workspaceId);
   const { data: plannedPosts, isLoading: plannedLoading } =
     useAutopilotPlannedPosts(workspaceId);
 
-  const timezone = currentUser?.timezone || DEFAULT_TIMEZONE;
   const isLoading = configLoading || plannedLoading;
   const statusBadge = config ? getAutopilotStatusBadge(config) : null;
 
@@ -131,7 +128,6 @@ function AutopilotDashboardCard({
         <AutopilotStatusSummary
           config={config}
           plannedPosts={plannedPosts}
-          timezone={timezone}
           compact
         />
       )}

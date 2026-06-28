@@ -5,6 +5,7 @@ import {
   AUTOPILOT_CREDIT_COST,
   CALENDAR_30_DAY_CREDIT_COST,
   CALENDAR_7_DAY_CREDIT_COST,
+  CONTENT_PROFILE_AI_CREDIT_COST,
   COUNCIL_CREDIT_COST,
   QUICK_DRAFT_CREDIT_COST,
 } from "@/lib/credit-costs";
@@ -23,6 +24,10 @@ export const BILLING_CREDIT_COSTS = [
     cost: `${CALENDAR_30_DAY_CREDIT_COST} credits`,
   },
   { action: "Autopilot post", cost: `${AUTOPILOT_CREDIT_COST} credits` },
+  {
+    action: "AI content profile",
+    cost: `${CONTENT_PROFILE_AI_CREDIT_COST} credit each`,
+  },
 ] as const;
 
 const PLAN_NAME_MAP: Record<string, UserPlan> = {

@@ -11,9 +11,9 @@ import {
 import { queryKeys } from "@/lib/api/query-keys";
 import type {
   ApiAutopilotConfig,
+  ApiAutopilotPlannedPost,
   UpsertAutopilotConfigBody,
 } from "@/lib/api/types/autopilot";
-import type { ApiPostPackage } from "@/lib/api/types/post";
 
 export function useAutopilotConfig(workspaceId: string | null | undefined) {
   const { getToken, isLoaded, isSignedIn } = useAuth();
@@ -87,4 +87,4 @@ export function useInvalidateAutopilot(workspaceId: string | null | undefined) {
   }, [queryClient, workspaceId]);
 }
 
-export type { ApiAutopilotConfig, ApiPostPackage };
+export type { ApiAutopilotConfig, ApiAutopilotPlannedPost };

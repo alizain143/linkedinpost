@@ -9,6 +9,22 @@ export interface ScheduleValidationOptions {
 const DEFAULT_MIN_LEAD_MINUTES = 15;
 const DEFAULT_MAX_DAYS = 90;
 
+export function resolveEffectiveScheduledAt(
+  scheduledAt: Date,
+  options?: ScheduleValidationOptions,
+): Date {
+  const now = options?.now ?? new Date();
+  const minLeadMs =
+    (options?.minLeadMinutes ?? DEFAULT_MIN_LEAD_MINUTES) * 60 * 1000;
+  const minAllowed = now.getTime() + minLeadMs;
+
+  if (scheduledAt.getTime() >= minAllowed) {
+    return scheduledAt;
+  }
+
+  return new Date(minAllowed);
+}
+
 export function validateScheduledAt(
   scheduledAt: Date | undefined,
   options?: ScheduleValidationOptions,

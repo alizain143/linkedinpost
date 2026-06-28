@@ -137,7 +137,7 @@ StripeWebhookEvent (idempotency)
 | PostPackageStatus | draft, text_generating, … | No `brief_created` |
 | PostSource | manual, calendar, autopilot, generation | |
 | PostType | personal_story, list_post, how_to, … | |
-| CreditTransactionType | generation, council, media, calendar, autopilot, adjustment | All types used |
+| CreditTransactionType | generation, council, media, calendar, autopilot, content_profile, adjustment | All types used |
 | GenerationJobStatus | pending, running, completed, failed | Council lifecycle uses this |
 | GenerationJobType | quick_draft, council, calendar, media | `media` = quote card on existing draft |
 | PostMediaType | quote_card | Single value only |
@@ -176,7 +176,7 @@ Three transition maps govern different subsystems:
 1. **Quick draft** — sync, 1 credit, returns variants in job result (no PostPackage)
 2. **Council** — async, 3 credits (10 for autopilot), creates PostPackage + GenerationJob; media regens cost 5 credits each
 3. **Calendar bulk** — async, 10/30 credits, creates multiple PostPackages with `source=calendar`
-4. **Autopilot** — cron dispatches council jobs with `source=autopilot`; schedule from `postingDays` + `postingTime`
+4. **Autopilot** — cron dispatches council jobs with `source=autopilot`; schedule from `postingDays` + `postingTime`; optional `approvalMode=auto_schedule` approves + schedules after council; day profile overrides via `dayProfileOverrides` JSON
 
 Council agent pipeline: writer → reviewer → editor → media_creator → media_reviewer
 
@@ -201,12 +201,12 @@ Council agent pipeline: writer → reviewer → editor → media_creator → med
 | Auth | `GET/PATCH /v1/auth/me`, `POST /v1/auth/logout`, Clerk webhook |
 | Documents | `POST /v1/documents/init`, `GET /v1/documents/:id` |
 | Workspaces | `GET /v1/workspaces`, `GET current`, `POST`, `GET/PATCH/DELETE :workspaceId` |
-| Content profiles | CRUD `/v1/workspaces/:workspaceId/content-profiles` |
+| Content profiles | CRUD + AI suggest/approve `/v1/workspaces/:workspaceId/content-profiles` |
 | Posts | CRUD + status + approve/reject/request-changes + versions |
 | Pipeline | `GET .../pipeline` |
 | Calendar | `GET .../calendar` |
 | Approvals | `GET .../approvals` |
-| Generate | `POST .../generate/quick`, `council`, `council-premium`, `calendar`; `POST .../posts/:id/generate-media` |
+| Generate | `POST .../generate/quick`, `suggest-topics`, `council`, `council-premium`, `calendar`; `POST .../posts/:id/generate-media` |
 | Jobs | `GET /v1/jobs/:id` |
 | Council | `GET .../posts/:postId/council` |
 | Credits | `GET /v1/credits` |
@@ -244,7 +244,7 @@ Council agent pipeline: writer → reviewer → editor → media_creator → med
 | pro | $19 / 200 | Calendar, autopilot, scheduling |
 | agency | $49 / 1000 | 5 client workspaces, approval links |
 
-Credit costs (from product spec): Quick Draft 1 · Council 3 · Post+Media 10 · Regenerate Media 5 · 7-day Calendar 10 · 30-day Calendar 30 · Autopilot 10
+Credit costs (from product spec): Quick Draft 1 · Council 3 · Post+Media 10 · Regenerate Media 5 · 7-day Calendar 10 · 30-day Calendar 30 · Autopilot 10 · AI Content Profile 1 (on approve)
 
 Agency max client workspaces: 5 (enforced in code)
 

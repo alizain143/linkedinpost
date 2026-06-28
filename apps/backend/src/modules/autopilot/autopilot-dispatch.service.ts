@@ -7,10 +7,17 @@ import {
   DEFAULT_TIMEZONE,
   getTodayDateKey,
 } from '../calendar/calendar-date.util';
-import { localDateTimeToUtc } from '../calendar-generation/calendar-schedule.util';
+import {
+  getIsoWeekdayFromDateKey,
+  localDateTimeToUtc,
+} from '../calendar-generation/calendar-schedule.util';
 import { CouncilJobService } from '../council/council-job.service';
 import { CreditsService } from '../credits/credits.service';
 import { GenerationJobEnqueueService } from '../job-queue/generation-job-enqueue.service';
+import {
+  readDayProfileOverrides,
+  resolveProfileIdForWeekday,
+} from './autopilot-profile.util';
 import {
   AUTOPILOT_CREDIT_COST,
   nextPillarIndex,
@@ -68,9 +75,20 @@ export class AutopilotDispatchService {
       return { success: false };
     }
 
+    const todayKey = getTodayDateKey(timezone || DEFAULT_TIMEZONE, now);
+    const weekday = getIsoWeekdayFromDateKey(todayKey, timezone);
+    const dayProfileOverrides = readDayProfileOverrides(
+      config.dayProfileOverrides,
+    );
+    const profileId = resolveProfileIdForWeekday(
+      weekday,
+      config.contentProfileId,
+      dayProfileOverrides,
+    );
+
     const profile = await this.resolveContentProfile(
       config.workspaceId,
-      config.contentProfileId,
+      profileId,
     );
     if (!profile) {
       this.logger.warn(
@@ -90,7 +108,6 @@ export class AutopilotDispatchService {
     const pillarIndex = config.lastPillarIndex % pillars.length;
     const pillar = pillars[pillarIndex];
     const topic = resolveTopicFromPillar(pillar.name);
-    const todayKey = getTodayDateKey(timezone || DEFAULT_TIMEZONE, now);
     const scheduledAt = localDateTimeToUtc(
       todayKey,
       config.postingTime,

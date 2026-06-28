@@ -1,9 +1,9 @@
 import { apiFetch } from "@/lib/api/fetch";
 import type {
   ApiAutopilotConfig,
+  ApiAutopilotPlannedPost,
   UpsertAutopilotConfigBody,
 } from "@/lib/api/types/autopilot";
-import type { ApiPostPackage } from "@/lib/api/types/post";
 
 function autopilotPath(workspaceId: string, suffix?: string): string {
   const base = `/workspaces/${workspaceId}/autopilot`;
@@ -31,6 +31,6 @@ export async function upsertAutopilotConfig(
 export async function fetchAutopilotPlannedPosts(
   token: string,
   workspaceId: string,
-): Promise<ApiPostPackage[]> {
-  return apiFetch<ApiPostPackage[]>(token, autopilotPath(workspaceId, "planned"));
+): Promise<ApiAutopilotPlannedPost[]> {
+  return apiFetch<ApiAutopilotPlannedPost[]>(token, autopilotPath(workspaceId, "planned"));
 }

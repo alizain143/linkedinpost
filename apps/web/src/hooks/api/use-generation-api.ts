@@ -9,6 +9,7 @@ import {
   generateCouncil,
   generateCouncilPremium,
   generateQuickDraft,
+  suggestTopics,
 } from "@/lib/api/generation";
 import { queryKeys } from "@/lib/api/query-keys";
 import type {
@@ -16,6 +17,8 @@ import type {
   CalendarGenerateRequestBody,
   CouncilRequestBody,
   QuickDraftRequestBody,
+  TopicSuggestionsRequestBody,
+  TopicSuggestionsResult,
 } from "@/lib/api/types/generation";
 import { shouldPollJob } from "@/lib/council-utils";
 import { invalidateNotificationQueries } from "@/lib/notification-query-invalidation";
@@ -35,6 +38,20 @@ export function useQuickDraftMutation(workspaceId: string | null | undefined) {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.credits });
+    },
+  });
+}
+
+export function useTopicSuggestionsMutation(
+  workspaceId: string | null | undefined,
+) {
+  const { getToken } = useAuth();
+
+  return useMutation<TopicSuggestionsResult, Error, TopicSuggestionsRequestBody>({
+    mutationFn: async (body) => {
+      const token = await getToken();
+      if (!token || !workspaceId) throw new Error("Not authenticated");
+      return suggestTopics(token, workspaceId, body);
     },
   });
 }

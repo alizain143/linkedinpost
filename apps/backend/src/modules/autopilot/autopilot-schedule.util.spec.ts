@@ -1,4 +1,5 @@
 import {
+  computeNextGenerationAt,
   computeNextRunAt,
   derivePostingPresetLabel,
   isDueNow,
@@ -121,6 +122,43 @@ describe('autopilot-schedule.util', () => {
       const next = computeNextRunAt([5], '09:00', timezone, now);
       expect(next).not.toBeNull();
       expect(next!.toISOString()).toBe('2026-07-03T13:00:00.000Z');
+    });
+  });
+
+  describe('computeNextGenerationAt', () => {
+    const config = {
+      enabled: true,
+      postingDays: [5],
+      postingTime: '09:00',
+      lastRunDateKey: null,
+    };
+
+    it('returns due_now when posting slot passed but not yet run today', () => {
+      const now = new Date('2026-06-26T14:00:00.000Z');
+      const result = computeNextGenerationAt(config, timezone, now);
+
+      expect(result.state).toBe('due_now');
+      expect(result.at?.toISOString()).toBe('2026-06-26T13:00:00.000Z');
+    });
+
+    it('returns scheduled for a future slot', () => {
+      const now = new Date('2026-06-26T12:30:00.000Z');
+      const result = computeNextGenerationAt(config, timezone, now);
+
+      expect(result.state).toBe('scheduled');
+      expect(result.at?.toISOString()).toBe('2026-06-26T13:00:00.000Z');
+    });
+
+    it('returns paused when autopilot is disabled', () => {
+      const now = new Date('2026-06-26T14:00:00.000Z');
+      const result = computeNextGenerationAt(
+        { ...config, enabled: false },
+        timezone,
+        now,
+      );
+
+      expect(result.state).toBe('paused');
+      expect(result.at).toBeNull();
     });
   });
 

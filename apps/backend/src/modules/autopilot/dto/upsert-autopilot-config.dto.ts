@@ -6,6 +6,7 @@ import {
   IsBoolean,
   IsIn,
   IsInt,
+  IsObject,
   IsOptional,
   IsString,
   IsUUID,
@@ -22,6 +23,8 @@ const POSTING_PRESETS: AutopilotPostingPreset[] = [
   'weekly',
 ];
 
+const APPROVAL_MODES = ['require_approval', 'auto_schedule'] as const;
+
 export class UpsertAutopilotConfigDto {
   @ApiPropertyOptional({ example: true })
   @IsOptional()
@@ -32,6 +35,22 @@ export class UpsertAutopilotConfigDto {
   @IsOptional()
   @IsUUID()
   contentProfileId?: string;
+
+  @ApiPropertyOptional({
+    description: 'ISO weekday (1–7) → content profile UUID overrides',
+    example: { '1': 'uuid', '3': 'uuid' },
+  })
+  @IsOptional()
+  @IsObject()
+  dayProfileOverrides?: Record<string, string>;
+
+  @ApiPropertyOptional({
+    enum: APPROVAL_MODES,
+    example: 'require_approval',
+  })
+  @IsOptional()
+  @IsIn(APPROVAL_MODES)
+  approvalMode?: (typeof APPROVAL_MODES)[number];
 
   @ApiPropertyOptional({
     enum: POSTING_PRESETS,

@@ -23,8 +23,11 @@ import {
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ClerkAuthGuard } from '../../common/guards/clerk-auth.guard';
 import { ContentProfilesService } from './content-profiles.service';
+import { ContentProfileAiService } from './content-profile-ai.service';
 import { CreateContentProfileDto } from './dto/create-content-profile.dto';
 import { UpdateContentProfileDto } from './dto/update-content-profile.dto';
+import { SuggestContentProfilesDto } from './dto/suggest-content-profiles.dto';
+import { ApproveContentProfileSuggestionsDto } from './dto/approve-content-profile-suggestions.dto';
 
 @ApiTags('content-profiles')
 @ApiBearerAuth('bearer')
@@ -33,6 +36,7 @@ import { UpdateContentProfileDto } from './dto/update-content-profile.dto';
 export class ContentProfilesController {
   constructor(
     private readonly contentProfilesService: ContentProfilesService,
+    private readonly contentProfileAiService: ContentProfileAiService,
   ) {}
 
   @Get()
@@ -53,6 +57,40 @@ export class ContentProfilesController {
     @Body() dto: CreateContentProfileDto,
   ) {
     return this.contentProfilesService.create(workspaceId, user.id, dto);
+  }
+
+  @Post('suggest')
+  @ApiOperation({ summary: 'Generate AI content profile suggestions (free preview)' })
+  @ApiParam({ name: 'workspaceId', format: 'uuid' })
+  @ApiDataResponse(ContentProfileResponseDto, { isArray: true })
+  suggestProfiles(
+    @CurrentUser() user: User,
+    @Param('workspaceId') workspaceId: string,
+    @Body() dto: SuggestContentProfilesDto,
+  ) {
+    return this.contentProfileAiService.suggestProfiles(
+      workspaceId,
+      user.id,
+      dto,
+    );
+  }
+
+  @Post('approve-suggestions')
+  @ApiOperation({
+    summary: 'Save approved AI content profile suggestions (1 credit each)',
+  })
+  @ApiParam({ name: 'workspaceId', format: 'uuid' })
+  @ApiDataResponse(ContentProfileResponseDto, { isArray: true, status: 201 })
+  approveSuggestions(
+    @CurrentUser() user: User,
+    @Param('workspaceId') workspaceId: string,
+    @Body() dto: ApproveContentProfileSuggestionsDto,
+  ) {
+    return this.contentProfileAiService.approveSuggestions(
+      workspaceId,
+      user.id,
+      dto,
+    );
   }
 
   @Get(':id')

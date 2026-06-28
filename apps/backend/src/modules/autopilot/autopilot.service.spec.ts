@@ -5,6 +5,7 @@ import { userId, workspaceId } from '../../test/fixtures';
 import { PrismaService } from '../../prisma/prisma.service';
 import { WorkspacesService } from '../workspaces/workspaces.service';
 import { PlanFeatureService } from '../billing/plan-feature.service';
+import { LinkedInConnectionService } from '../linkedin/linkedin.services';
 import { AutopilotService } from './autopilot.service';
 
 describe('AutopilotService', () => {
@@ -12,11 +13,19 @@ describe('AutopilotService', () => {
   const prisma = createMockPrismaService();
   const workspacesService = { assertMember: jest.fn() };
   const planFeatureService = { assertAllows: jest.fn() };
+  const linkedInConnectionService = {
+    getConnection: jest.fn().mockResolvedValue({
+      connected: true,
+      publishReady: true,
+    }),
+  };
 
   const config = {
     id: 'autopilot-1',
     workspaceId,
     contentProfileId: null,
+    dayProfileOverrides: null,
+    approvalMode: 'require_approval' as const,
     enabled: false,
     postingDays: [1, 3, 4, 5, 7],
     postingTime: '09:00',
@@ -42,6 +51,10 @@ describe('AutopilotService', () => {
         { provide: PrismaService, useValue: prisma },
         { provide: WorkspacesService, useValue: workspacesService },
         { provide: PlanFeatureService, useValue: planFeatureService },
+        {
+          provide: LinkedInConnectionService,
+          useValue: linkedInConnectionService,
+        },
       ],
     }).compile();
 

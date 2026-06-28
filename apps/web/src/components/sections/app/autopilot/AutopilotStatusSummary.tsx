@@ -1,17 +1,16 @@
 "use client";
 
-import type { ApiAutopilotConfig } from "@/lib/api/types/autopilot";
-import type { ApiPostPackage } from "@/lib/api/types/post";
+import type { ApiAutopilotConfig, ApiAutopilotPlannedPost } from "@/lib/api/types/autopilot";
 import {
+  formatApprovalModeLabel,
   formatAutopilotFrequency,
+  formatNextLinkedInPublish,
   formatNextRunAt,
-  formatPlannedPostSchedule,
 } from "@/lib/autopilot-utils";
 
 type AutopilotStatusSummaryProps = {
   config: ApiAutopilotConfig;
-  plannedPosts?: ApiPostPackage[];
-  timezone: string;
+  plannedPosts?: ApiAutopilotPlannedPost[];
   compact?: boolean;
 };
 
@@ -28,12 +27,16 @@ export function getAutopilotStatusBadge(config: ApiAutopilotConfig): {
 export function AutopilotStatusSummary({
   config,
   plannedPosts = [],
-  timezone,
   compact = false,
 }: AutopilotStatusSummaryProps) {
-  const nextPublish = plannedPosts[0]?.scheduledAt;
+  const timezone = config.timezone;
   const frequency = formatAutopilotFrequency(config);
-  const nextGeneration = formatNextRunAt(config.nextRunAt, timezone);
+  const nextGeneration = formatNextRunAt(
+    config.nextRunAt,
+    timezone,
+    config.nextGenerationState,
+  );
+  const nextPublish = formatNextLinkedInPublish({ config, plannedPosts });
 
   return (
     <div
@@ -44,15 +47,7 @@ export function AutopilotStatusSummary({
       }
     >
       <div>
-        <div
-          className={
-            compact
-              ? "text-[11px] text-white/60"
-              : "text-[11px] text-white/60"
-          }
-        >
-          Frequency
-        </div>
+        <div className="text-[11px] text-white/60">Frequency</div>
         <div
           className={
             compact
@@ -61,6 +56,18 @@ export function AutopilotStatusSummary({
           }
         >
           {frequency}
+        </div>
+      </div>
+      <div>
+        <div className="text-[11px] text-white/60">Approval mode</div>
+        <div
+          className={
+            compact
+              ? "text-[13.5px] font-semibold"
+              : "font-semibold"
+          }
+        >
+          {formatApprovalModeLabel(config.approvalMode)}
         </div>
       </div>
       <div>
@@ -76,7 +83,7 @@ export function AutopilotStatusSummary({
         </div>
       </div>
       <div>
-        <div className="text-[11px] text-white/60">Next publish</div>
+        <div className="text-[11px] text-white/60">Next LinkedIn publish</div>
         <div
           className={
             compact
@@ -84,8 +91,13 @@ export function AutopilotStatusSummary({
               : "font-semibold"
           }
         >
-          {nextPublish ? formatPlannedPostSchedule(nextPublish) : "—"}
+          {nextPublish.primary}
         </div>
+        {nextPublish.secondary ? (
+          <div className="mt-0.5 text-[11px] text-white/60">
+            {nextPublish.secondary}
+          </div>
+        ) : null}
       </div>
     </div>
   );

@@ -5,6 +5,27 @@ import type {
   PostType,
 } from "@/lib/api/types/enums";
 
+export type TopicSuggestion = {
+  topic: string;
+  pillar?: string;
+  rationale?: string;
+};
+
+export type TopicSuggestionsRequestBody = {
+  contentProfileId?: string;
+  postType?: PostType;
+  tone?: string;
+  pillar?: string;
+  additionalContext?: string;
+};
+
+export type TopicSuggestionsResult = {
+  suggestions: TopicSuggestion[];
+  promptId: string;
+  promptVersion: string;
+  model: string;
+};
+
 export type QuickDraftVariant = {
   hook: string;
   body: string;

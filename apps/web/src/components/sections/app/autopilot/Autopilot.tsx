@@ -20,19 +20,28 @@ import {
 } from "@/hooks/api/use-autopilot-api";
 import { useContentProfiles } from "@/hooks/api/use-content-profiles-api";
 import { useCredits } from "@/hooks/api/use-credits-api";
+import { useLinkedInConnection } from "@/hooks/api/use-linkedin-api";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { getApiErrorMessage } from "@/lib/api-error-messages";
-import type { AutopilotPostingPreset } from "@/lib/api/types/autopilot";
+import type {
+  AutopilotApprovalMode,
+  AutopilotPostingPreset,
+} from "@/lib/api/types/autopilot";
 import {
+  APPROVAL_MODE_OPTIONS,
   AUTOPILOT_CREDIT_COST,
+  buildDayProfileOverrides,
   canUseAutopilot,
   derivePostingPreset,
+  formatAutopilotPublishState,
   formatPlannedPostSchedule,
   POSTING_PRESET_OPTIONS,
+  readDayProfileOverrides,
   togglePostingDay,
 } from "@/lib/autopilot-utils";
 import { POSTING_DAY_OPTIONS } from "@/lib/calendar-generation-utils";
 import { getPlanGateState } from "@/lib/plan-gate-utils";
+import { getPostSourceLabel } from "@/lib/post-source";
 import { DEFAULT_TIMEZONE, timezoneLabel } from "@/lib/timezones";
 import { useAppUi } from "@/providers/app-ui-provider";
 
@@ -41,7 +50,33 @@ type ScheduleFormState = {
   postingPreset: AutopilotPostingPreset | "custom";
   postingTime: string;
   contentProfileId: string;
+  approvalMode: AutopilotApprovalMode;
+  dayOverrides: Record<number, string>;
 };
+
+function buildUpsertBody(form: ScheduleFormState, enabled?: boolean) {
+  const scheduleBody =
+    form.postingPreset !== "custom"
+      ? {
+          postingPreset: form.postingPreset,
+          postingTime: form.postingTime,
+        }
+      : {
+          postingDays: form.postingDays,
+          postingTime: form.postingTime,
+        };
+
+  return {
+    ...(enabled !== undefined ? { enabled } : {}),
+    ...scheduleBody,
+    contentProfileId: form.contentProfileId || undefined,
+    approvalMode: form.approvalMode,
+    dayProfileOverrides: buildDayProfileOverrides(
+      form.dayOverrides,
+      form.contentProfileId,
+    ),
+  };
+}
 
 function AutopilotSkeleton() {
   return (
@@ -63,8 +98,8 @@ export default function Autopilot() {
   const { balance, isLoading: creditsLoading, isError: creditsError, refetch: refetchCredits } =
     useCredits();
   const { data: currentUser } = useCurrentUser();
+  const { data: linkedInConnection } = useLinkedInConnection();
 
-  const timezone = currentUser?.timezone || DEFAULT_TIMEZONE;
   const planGate = getPlanGateState({
     isLoading: creditsLoading,
     isError: creditsError,
@@ -81,6 +116,8 @@ export default function Autopilot() {
     error: configError,
     refetch: refetchConfig,
   } = useAutopilotConfig(activeWorkspaceId);
+
+  const timezone = config?.timezone || currentUser?.timezone || DEFAULT_TIMEZONE;
 
   const {
     data: plannedPosts,
@@ -103,8 +140,11 @@ export default function Autopilot() {
     postingPreset: "three_per_week",
     postingTime: "09:00",
     contentProfileId: "",
+    approvalMode: "require_approval",
+    dayOverrides: {},
   });
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [showDayOverrides, setShowDayOverrides] = useState(false);
 
   const initializedWorkspaceRef = useRef<string | null>(null);
 
@@ -118,7 +158,13 @@ export default function Autopilot() {
         postingPreset: config.postingPreset,
         postingTime: config.postingTime,
         contentProfileId: config.contentProfileId ?? "",
+        approvalMode: config.approvalMode,
+        dayOverrides: readDayProfileOverrides(config.dayProfileOverrides),
       });
+      setShowDayOverrides(
+        Object.keys(readDayProfileOverrides(config.dayProfileOverrides)).length >
+          0,
+      );
     }
   }, [activeWorkspaceId, config]);
 
@@ -153,6 +199,9 @@ export default function Autopilot() {
     [form.postingDays],
   );
 
+  const linkedInReady =
+    linkedInConnection?.connected && linkedInConnection?.publishReady;
+
   const handleToggleEnabled = useCallback(() => {
     if (!config || !autopilotAllowed) return;
 
@@ -178,9 +227,15 @@ export default function Autopilot() {
       return;
     }
 
-    upsertMutation.mutate(
-      { enabled: true },
-      {
+    if (form.approvalMode === "auto_schedule" && !linkedInReady) {
+      showToast(
+        "Connect LinkedIn with publish permission before enabling auto-schedule.",
+        "error",
+      );
+      return;
+    }
+
+    upsertMutation.mutate(buildUpsertBody(form, true), {
         onSuccess: () => {
           showToast("Autopilot turned on", "auto_mode");
         },
@@ -198,6 +253,8 @@ export default function Autopilot() {
     autopilotAllowed,
     config,
     confirmPauseAutopilot,
+    form,
+    linkedInReady,
     profileMissingPillars,
     showToast,
     upsertMutation,
@@ -245,22 +302,16 @@ export default function Autopilot() {
       return;
     }
 
+    if (form.approvalMode === "auto_schedule" && !linkedInReady) {
+      setSaveError(
+        "Connect LinkedIn with publish permission before saving auto-schedule mode.",
+      );
+      return;
+    }
+
     setSaveError(null);
 
-    const body =
-      form.postingPreset !== "custom"
-        ? {
-            postingPreset: form.postingPreset,
-            postingTime: form.postingTime,
-            contentProfileId: form.contentProfileId || undefined,
-          }
-        : {
-            postingDays: form.postingDays,
-            postingTime: form.postingTime,
-            contentProfileId: form.contentProfileId || undefined,
-          };
-
-    upsertMutation.mutate(body, {
+    upsertMutation.mutate(buildUpsertBody(form), {
       onSuccess: () => {
         showToast("Autopilot schedule saved", "save");
       },
@@ -335,7 +386,7 @@ export default function Autopilot() {
                 lessons&quot;), then save your schedule again.
               </p>
               <Button
-                href="/app/settings"
+                href="/app/profile"
                 variant="secondary"
                 size="sm"
                 className="mt-3"
@@ -398,7 +449,6 @@ export default function Autopilot() {
             <AutopilotStatusSummary
               config={config}
               plannedPosts={plannedPosts}
-              timezone={timezone}
             />
           </div>
 
@@ -450,7 +500,7 @@ export default function Autopilot() {
                 }}
               />
               <p className="mt-2 text-[12px] text-[#64748b]">
-                Uses your account timezone ({timezoneLabel(timezone)}).
+                Uses workspace timezone ({timezoneLabel(timezone)}).
               </p>
               {saveError ? (
                 <p className="mt-3 text-[13px] font-medium text-[#dc2626]">
@@ -494,19 +544,116 @@ export default function Autopilot() {
                   </Button>
                 </div>
               ) : (
-                <SelectField
-                  label="Content profile"
-                  selectClassName="text-sm"
-                  options={profileOptions}
-                  value={form.contentProfileId}
-                  onChange={(event) => {
-                    setForm((prev) => ({
-                      ...prev,
-                      contentProfileId: event.target.value,
-                    }));
-                    setSaveError(null);
-                  }}
-                />
+                <>
+                  <SelectField
+                    label="Default content profile"
+                    selectClassName="text-sm"
+                    options={profileOptions}
+                    value={form.contentProfileId}
+                    onChange={(event) => {
+                      setForm((prev) => ({
+                        ...prev,
+                        contentProfileId: event.target.value,
+                      }));
+                      setSaveError(null);
+                    }}
+                  />
+
+                  <div className="mt-4">
+                    <button
+                      type="button"
+                      className="text-[13px] font-semibold text-[#4f46e5]"
+                      onClick={() => setShowDayOverrides((value) => !value)}
+                    >
+                      {showDayOverrides ? "Hide day overrides" : "Customize by day"}
+                    </button>
+                    {showDayOverrides ? (
+                      <div className="mt-3 space-y-2">
+                        {form.postingDays
+                          .slice()
+                          .sort((a, b) => a - b)
+                          .map((day) => {
+                            const dayLabel =
+                              POSTING_DAY_OPTIONS.find((option) => option.value === day)
+                                ?.label ?? `Day ${day}`;
+                            const overrideOptions = [
+                              { value: "", label: "Use default profile" },
+                              ...profileOptions,
+                            ];
+
+                            return (
+                              <SelectField
+                                key={day}
+                                label={dayLabel}
+                                selectClassName="text-sm"
+                                options={overrideOptions}
+                                value={form.dayOverrides[day] ?? ""}
+                                onChange={(event) => {
+                                  const profileId = event.target.value;
+                                  setForm((prev) => {
+                                    const dayOverrides = { ...prev.dayOverrides };
+                                    if (!profileId) {
+                                      delete dayOverrides[day];
+                                    } else {
+                                      dayOverrides[day] = profileId;
+                                    }
+                                    return { ...prev, dayOverrides };
+                                  });
+                                  setSaveError(null);
+                                }}
+                              />
+                            );
+                          })}
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="mt-5 border-t border-[#eef0f5] pt-4">
+                    <div className="mb-3 text-[13px] font-semibold text-[#1e293b]">
+                      After generation
+                    </div>
+                    <div className="space-y-2">
+                      {APPROVAL_MODE_OPTIONS.map((option) => (
+                        <label
+                          key={option.value}
+                          className={`flex cursor-pointer gap-3 rounded-[11px] border px-3 py-3 ${
+                            form.approvalMode === option.value
+                              ? "border-[#c7d2fe] bg-[#eef2ff]"
+                              : "border-[#eef0f5] bg-white"
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="approvalMode"
+                            value={option.value}
+                            checked={form.approvalMode === option.value}
+                            onChange={() => {
+                              setForm((prev) => ({
+                                ...prev,
+                                approvalMode: option.value,
+                              }));
+                              setSaveError(null);
+                            }}
+                            className="mt-1"
+                          />
+                          <span>
+                            <span className="block text-sm font-semibold text-[#1e293b]">
+                              {option.label}
+                            </span>
+                            <span className="mt-0.5 block text-[12px] text-[#64748b]">
+                              {option.description}
+                            </span>
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                    {form.approvalMode === "auto_schedule" && !linkedInReady ? (
+                      <p className="mt-3 text-[12px] text-[#92400e]">
+                        Connect LinkedIn with publish permission to use auto-schedule.
+                      </p>
+                    ) : null}
+                  </div>
+                </>
               )}
               <p className="mt-4 text-[12.5px] text-[#64748b]">
                 Each autopilot post uses {AUTOPILOT_CREDIT_COST} credits via AI
@@ -528,14 +675,24 @@ export default function Autopilot() {
                     className="flex items-center justify-between rounded-[11px] border border-[#eef0f5] px-4 py-3 hover:border-[#dfe3f0] hover:bg-[#fafbff]"
                   >
                     <div>
-                      <div className="text-xs font-bold text-[#94a3b8]">
-                        {post.scheduledAt
-                          ? formatPlannedPostSchedule(post.scheduledAt)
-                          : "Unscheduled"}
+                      <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-[#94a3b8]">
+                        <span>
+                          {post.scheduledAt
+                            ? formatPlannedPostSchedule(post.scheduledAt, timezone)
+                            : "Unscheduled"}
+                        </span>
+                        <span className="rounded-full bg-[#eef2ff] px-2 py-0.5 text-[10px] font-bold text-[#4f46e5]">
+                          {getPostSourceLabel(post.source)}
+                        </span>
                       </div>
                       <div className="text-sm font-semibold text-[#1e293b]">
                         {post.topic || post.hook}
                       </div>
+                      {post.publishState ? (
+                        <div className="mt-1 text-[12px] text-[#64748b]">
+                          {formatAutopilotPublishState(post.publishState)}
+                        </div>
+                      ) : null}
                     </div>
                     <StatusBadge status={post.status} />
                   </Link>

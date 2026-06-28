@@ -61,6 +61,11 @@ enum PostSource {
   generation
 }
 
+enum AutopilotApprovalMode {
+  require_approval
+  auto_schedule
+}
+
 enum PostType {
   personal_story
   list_post
@@ -82,6 +87,7 @@ enum CreditTransactionType {
   media
   calendar
   autopilot
+  content_profile
   adjustment
 }
 
@@ -274,17 +280,19 @@ model Workspace {
 }
 
 model AutopilotConfig {
-  id               String             @id @default(uuid()) @db.Uuid
-  workspaceId      String             @unique @db.Uuid
-  contentProfileId String?            @db.Uuid
-  enabled          Boolean            @default(false)
-  postingDays      Int[]              @default([1, 3, 4, 5, 7])
-  postingTime      String             @default("09:00")
-  lastPillarIndex  Int                @default(0)
-  lastRunDateKey   String?
-  createdAt        DateTime           @default(now()) @db.Timestamptz(6)
-  updatedAt        DateTime           @updatedAt @db.Timestamptz(6)
-  deletedAt        DateTime?          @db.Timestamptz(6)
+  id                  String                @id @default(uuid()) @db.Uuid
+  workspaceId         String                @unique @db.Uuid
+  contentProfileId    String?               @db.Uuid
+  dayProfileOverrides Json?
+  approvalMode        AutopilotApprovalMode @default(require_approval)
+  enabled             Boolean               @default(false)
+  postingDays         Int[]                 @default([1, 3, 4, 5, 7])
+  postingTime         String                @default("09:00")
+  lastPillarIndex     Int                   @default(0)
+  lastRunDateKey      String?
+  createdAt           DateTime              @default(now()) @db.Timestamptz(6)
+  updatedAt           DateTime              @updatedAt @db.Timestamptz(6)
+  deletedAt           DateTime?             @db.Timestamptz(6)
 
   workspace      Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   contentProfile ContentProfile? @relation(fields: [contentProfileId], references: [id], onDelete: SetNull)

@@ -10,6 +10,7 @@ Council pipeline: [`COUNCIL.md`](COUNCIL.md)
 | Method | Route | Cost | Mode |
 |--------|-------|------|------|
 | `POST` | `/v1/workspaces/:workspaceId/generate/quick` | 1 credit | Sync (200) |
+| `POST` | `/v1/workspaces/:workspaceId/generate/suggest-topics` | Free | Sync (200) — 5–8 topic ideas |
 | `POST` | `/v1/workspaces/:workspaceId/generate/council` | 3 credits | Async (202) |
 | `POST` | `/v1/workspaces/:workspaceId/generate/council-premium` | 10 credits | Async (202) — Post + Media tier |
 | `POST` | `/v1/workspaces/:workspaceId/generate/calendar` | 10 / 30 credits | Async (202) |
@@ -25,6 +26,7 @@ Guards: `ClerkAuthGuard` + `CreditsGuard` on quick draft and council only. Calen
 
 ```bash
 POST /v1/workspaces/{wsId}/generate/quick
+POST /v1/workspaces/{wsId}/generate/suggest-topics
 POST /v1/workspaces/{wsId}/generate/council
 POST /v1/workspaces/{wsId}/generate/council-premium
 POST /v1/workspaces/{wsId}/generate/calendar
@@ -179,6 +181,7 @@ Registry keys: `quick-draft` v1, `quick-draft-single` v1 (calendar slots), `coun
 `GenerationModule` exports:
 
 - `QuickDraftGenerator`
+- `TopicSuggestionsGenerator`
 - `QuickDraftJobService`
 - `ContextAssembler`
 - `PromptRenderer`

@@ -1,0 +1,1 @@
+export const CONTENT_PROFILE_AI_CREDIT_COST = 1;

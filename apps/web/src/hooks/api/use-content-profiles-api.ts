@@ -3,15 +3,20 @@
 import { useAuth } from "@clerk/nextjs";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  approveContentProfileSuggestions,
   createContentProfile,
   deleteContentProfile,
   fetchContentProfiles,
+  suggestContentProfiles,
   updateContentProfile,
 } from "@/lib/api/content-profiles";
 import { queryKeys } from "@/lib/api/query-keys";
 import type {
   ApiContentProfile,
+  ApproveContentProfileSuggestionsBody,
+  ContentProfileSuggestionsResult,
   CreateContentProfileBody,
+  SuggestContentProfilesBody,
   UpdateContentProfileBody,
 } from "@/lib/api/types/content-profile";
 
@@ -93,6 +98,51 @@ export function useDeleteContentProfile(workspaceId: string | null | undefined) 
           queryKey: queryKeys.contentProfiles.list(workspaceId),
         });
       }
+    },
+  });
+}
+
+export function useSuggestContentProfiles(
+  workspaceId: string | null | undefined,
+) {
+  const { getToken } = useAuth();
+
+  return useMutation<
+    ContentProfileSuggestionsResult,
+    Error,
+    SuggestContentProfilesBody
+  >({
+    mutationFn: async (body) => {
+      const token = await getToken();
+      if (!token || !workspaceId) throw new Error("Not authenticated");
+      return suggestContentProfiles(token, workspaceId, body);
+    },
+  });
+}
+
+export function useApproveContentProfileSuggestions(
+  workspaceId: string | null | undefined,
+) {
+  const { getToken } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    ApiContentProfile[],
+    Error,
+    ApproveContentProfileSuggestionsBody
+  >({
+    mutationFn: async (body) => {
+      const token = await getToken();
+      if (!token || !workspaceId) throw new Error("Not authenticated");
+      return approveContentProfileSuggestions(token, workspaceId, body);
+    },
+    onSuccess: () => {
+      if (workspaceId) {
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.contentProfiles.list(workspaceId),
+        });
+      }
+      void queryClient.invalidateQueries({ queryKey: queryKeys.credits });
     },
   });
 }

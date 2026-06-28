@@ -121,6 +121,49 @@ export function computeNextRunAt(
   return null;
 }
 
+export type NextGenerationState = 'due_now' | 'scheduled' | 'paused';
+
+export interface NextGenerationResult {
+  at: Date | null;
+  state: NextGenerationState;
+}
+
+export function computeNextGenerationAt(
+  config: AutopilotDueCheckInput,
+  timezone: string,
+  now = new Date(),
+): NextGenerationResult {
+  if (!config.enabled || config.postingDays.length === 0) {
+    return { at: null, state: 'paused' };
+  }
+
+  if (isDueNow(config, timezone, now)) {
+    const todayKey = getTodayDateKey(timezone, now);
+    return {
+      at: postingSlotUtc(todayKey, config.postingTime, timezone),
+      state: 'due_now',
+    };
+  }
+
+  const next = computeNextRunAt(
+    config.postingDays,
+    config.postingTime,
+    timezone,
+    now,
+  );
+
+  return { at: next, state: next ? 'scheduled' : 'paused' };
+}
+
+export function computeNextPlannedSlot(
+  postingDays: number[],
+  postingTime: string,
+  timezone: string,
+  now = new Date(),
+): Date | null {
+  return computeNextRunAt(postingDays, postingTime, timezone, now);
+}
+
 export function resolveTopicFromPillar(pillarName: string): string {
   return `Insights on ${pillarName}`;
 }

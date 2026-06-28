@@ -29,6 +29,8 @@ describe('AutopilotDispatchService', () => {
     id: 'autopilot-1',
     workspaceId,
     contentProfileId: null,
+    dayProfileOverrides: null,
+    approvalMode: 'require_approval' as const,
     enabled: true,
     postingDays: [5],
     postingTime: '09:00',
@@ -36,6 +38,7 @@ describe('AutopilotDispatchService', () => {
     lastRunDateKey: null,
     createdAt: new Date(),
     updatedAt: new Date(),
+    deletedAt: null,
   };
 
   beforeEach(async () => {
@@ -83,6 +86,45 @@ describe('AutopilotDispatchService', () => {
 
     expect(result.success).toBe(false);
     expect(councilJobService.enqueueCouncil).not.toHaveBeenCalled();
+  });
+
+  it('uses day profile override for the current weekday', async () => {
+    const now = new Date('2026-06-26T13:00:00.000Z');
+    prisma.contentProfile.findFirst.mockImplementation(async ({ where }) => {
+      if (where.id === 'profile-override') {
+        return {
+          id: 'profile-override',
+          workspaceId,
+          pillars: [{ id: 'p2', name: 'Leadership', sortOrder: 0 }],
+        };
+      }
+      return {
+        id: 'profile-1',
+        workspaceId,
+        pillars: [{ id: 'p1', name: 'Founder lessons', sortOrder: 0 }],
+      };
+    });
+
+    await service.dispatch(
+      {
+        ...config,
+        contentProfileId: 'profile-1',
+        dayProfileOverrides: { '5': 'profile-override' },
+      },
+      userId,
+      'America/New_York',
+      now,
+    );
+
+    expect(councilJobService.enqueueCouncil).toHaveBeenCalledWith(
+      workspaceId,
+      userId,
+      expect.objectContaining({
+        topic: 'Insights on Leadership',
+        contentProfileId: 'profile-override',
+      }),
+      expect.any(Object),
+    );
   });
 
   it('enqueues council with autopilot source and 10 credits', async () => {
