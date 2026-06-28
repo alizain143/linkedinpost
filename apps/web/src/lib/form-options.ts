@@ -25,11 +25,6 @@ export const AUTOPILOT_STRATEGY_FIELDS = [
   { label: "Media preference", options: ["Text card + image", "Carousel", "Text only"], default: "Text card + image" },
 ] as const;
 
-export const PUBLISHING_SETTING_FIELDS = [
-  { label: "Default account", options: ["Maya Reyes · Profile"], default: "Maya Reyes · Profile" },
-  { label: "Approval mode", options: ["Require approval before publish"], default: "Require approval before publish" },
-] as const;
-
 export const CONTACT_SUBJECT_OPTIONS = [
   "General question",
   "Billing & plans",

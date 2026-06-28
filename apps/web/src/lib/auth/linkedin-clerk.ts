@@ -9,14 +9,17 @@ const LINKEDIN_PROVIDERS = new Set([
   "linkedin",
 ]);
 
-type LinkedInExternalAccount = {
+export type LinkedInExternalAccount = {
   provider: string;
   firstName: string | null;
   lastName: string | null;
   username?: string | null;
   emailAddress: string;
   approvedScopes?: string;
-  verification: { status: string | null } | null;
+  verification: {
+    status: string | null;
+    externalVerificationRedirectURL?: URL | null;
+  } | null;
   reauthorize?: (params: {
     additionalScopes?: string[];
     redirectUrl?: string;
@@ -39,6 +42,36 @@ export function findLinkedInExternalAccount(
     (account) =>
       isLinkedInProvider(account.provider) &&
       account.verification?.status === "verified",
+  );
+}
+
+export function listLinkedInExternalAccounts(
+  user: ClerkUserWithExternalAccounts | null | undefined,
+) {
+  return (
+    user?.externalAccounts.filter((account) =>
+      isLinkedInProvider(account.provider),
+    ) ?? []
+  );
+}
+
+/** Prefer verified + publish-ready; otherwise resume an in-progress link. */
+export function findLinkedInAccountForConnect(
+  user: ClerkUserWithExternalAccounts | null | undefined,
+) {
+  const accounts = listLinkedInExternalAccounts(user);
+  const verified = accounts.filter(
+    (account) => account.verification?.status === "verified",
+  );
+  const publishReady = verified.find((account) =>
+    getLinkedInApprovedScopes(account).includes(LINKEDIN_PUBLISH_SCOPE),
+  );
+  if (publishReady) return publishReady;
+  if (verified[0]) return verified[0];
+
+  return (
+    accounts.find((account) => account.verification?.status !== "verified") ??
+    null
   );
 }
 
@@ -86,4 +119,20 @@ export function isLinkedInPublishReady(
   return getLinkedInApprovedScopes(linkedInAccount).includes(
     LINKEDIN_PUBLISH_SCOPE,
   );
+}
+
+export function getExternalVerificationRedirectUrl(
+  account: LinkedInExternalAccount | null | undefined,
+) {
+  return account?.verification?.externalVerificationRedirectURL?.href ?? null;
+}
+
+/** Custom Clerk flows must navigate to the provider OAuth URL themselves. */
+export function redirectToExternalAccountVerification(
+  account: LinkedInExternalAccount,
+) {
+  const href = getExternalVerificationRedirectUrl(account);
+  if (!href) return false;
+  window.location.assign(href);
+  return true;
 }

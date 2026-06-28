@@ -1,0 +1,35 @@
+import { Module, forwardRef } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import councilConfig from '../../config/council.config';
+import { PrismaModule } from '../../prisma/prisma.module';
+import { CreditsModule } from '../credits/credits.module';
+import { CouncilModule } from '../council/council.module';
+import { GenerationModule } from '../generation/generation.module';
+import { MediaModule } from '../media/media.module';
+import { PostsModule } from '../posts/posts.module';
+import { WorkspacesModule } from '../workspaces/workspaces.module';
+import { MediaJobHandler } from './media-job.handler';
+import { MediaJobHandlerRegistrar } from './media-job-handler.registrar';
+import { MediaJobService } from './media-job.service';
+import { MediaOnlyOrchestrator } from './media-only-orchestrator';
+
+@Module({
+  imports: [
+    ConfigModule.forFeature(councilConfig),
+    PrismaModule,
+    WorkspacesModule,
+    CreditsModule,
+    forwardRef(() => PostsModule),
+    MediaModule,
+    forwardRef(() => CouncilModule),
+    forwardRef(() => GenerationModule),
+  ],
+  providers: [
+    MediaOnlyOrchestrator,
+    MediaJobService,
+    MediaJobHandler,
+    MediaJobHandlerRegistrar,
+  ],
+  exports: [MediaJobService],
+})
+export class MediaGenerationModule {}

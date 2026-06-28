@@ -25,6 +25,16 @@ export function getApiErrorMessage(
           error.message ||
           "Upgrade your plan to unlock this feature."
         );
+      case "AUTOPILOT_NO_PILLARS":
+        return (
+          error.message ||
+          "Add at least one content pillar to your profile before enabling autopilot."
+        );
+      case "AUTOPILOT_NO_CONTENT_PROFILE":
+        return (
+          error.message ||
+          "Add a content profile before enabling autopilot."
+        );
       case "CALENDAR_SLOT_PLAN_FAILED":
         return (
           error.message ||
@@ -42,6 +52,14 @@ export function getApiErrorMessage(
         return "Finish LinkedIn setup to grant publish permission.";
       case "REDIS_UNAVAILABLE":
         return "Background jobs are temporarily unavailable. Try again shortly.";
+      case "POST_ALREADY_HAS_MEDIA":
+        return "This post already has a quote card attached.";
+      case "MEDIA_JOB_IN_PROGRESS":
+        return "Media generation is already running for this post.";
+      case "INVALID_POST_STATUS":
+        return error.message || "Media can only be generated for draft posts.";
+      case "MEDIA_GENERATION_FAILED":
+        return error.message || "Quote card generation failed. Try again.";
       case "COUNCIL_CONTEXT_ERROR":
         return error.message || "Check your content profile and try again.";
       case "COUNCIL_AGENT_FAILED":

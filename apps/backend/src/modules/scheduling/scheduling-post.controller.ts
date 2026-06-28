@@ -59,7 +59,9 @@ export class SchedulingPostController {
   }
 
   @Delete(':id/schedule')
-  @ApiOperation({ summary: 'Cancel a scheduled post and return it to approved' })
+  @ApiOperation({
+    summary: 'Cancel a scheduled post and return it to approved',
+  })
   @ApiParam({ name: 'workspaceId', format: 'uuid' })
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiDataResponse(PostPackageResponseDto)

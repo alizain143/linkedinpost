@@ -318,7 +318,9 @@ export class WorkspacesService {
     }
   }
 
-  private async getWorkspaceStats(workspaceId: string): Promise<WorkspaceStats> {
+  private async getWorkspaceStats(
+    workspaceId: string,
+  ): Promise<WorkspaceStats> {
     const [draftCount, scheduledCount, defaultProfile] = await Promise.all([
       this.prisma.postPackage.count({
         where: {

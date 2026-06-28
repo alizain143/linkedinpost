@@ -4,7 +4,5 @@ import {
 } from '../generation.types';
 
 export interface TextCompletionProvider {
-  complete(
-    request: TextCompletionRequest,
-  ): Promise<TextCompletionResponse>;
+  complete(request: TextCompletionRequest): Promise<TextCompletionResponse>;
 }

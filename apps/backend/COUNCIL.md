@@ -7,6 +7,7 @@ Multi-agent LinkedIn post generation: Writer → Reviewer → Editor → Media C
 | Method | Route | Cost | Response |
 |--------|-------|------|----------|
 | `POST` | `/v1/workspaces/:workspaceId/generate/council` | 3 credits | **202** + `jobId` |
+| `POST` | `/v1/workspaces/:workspaceId/generate/council-premium` | 10 credits | **202** + `jobId` (bundled media regen) |
 | `GET` | `/v1/jobs/:id` | — | Job + `progress` + `events[]` |
 | `GET` | `/v1/workspaces/:workspaceId/posts/:postId/council` | — | Full run history |
 
@@ -21,10 +22,10 @@ Requires **Redis** (`REDIS_URL`). Without Redis, council POST returns `503 REDIS
 
 ## Pipeline
 
-- **Text revision loop:** if reviewer `overall < COUNCIL_PASS_SCORE` (default 75), writer revises once (max `COUNCIL_MAX_TEXT_REVISIONS=1`)
+- **Text revision loop:** if reviewer `overall < COUNCIL_PASS_SCORE` (default 75), writer revises once (max `COUNCIL_MAX_TEXT_REVISIONS=1`). Premium council (`creditCost >= 10`) uses pass score **90** — injected into the reviewer prompt via `{{council.passScore}}`.
 - **Media regen loop:** media reviewer may fail once (max `COUNCIL_MAX_MEDIA_REGENS=1`); each regen charges **5 credits** (`CreditTransactionType.media`) **after** successful R2 attach
 - **Output:** creates `PostPackage` at enqueue, updates through pipeline, final status `ready_for_approval`
-- **Credits:** handler charges 3 on success (`CreditTransactionType.council`) after orchestrator completes; orchestrator does not set `status=completed` or `creditCharged`
+- **Credits:** handler charges 3 on success (`CreditTransactionType.council`) after orchestrator completes; media regen (up to 5 credits each) is checked and charged during the orchestrator regen loop; enqueue only requires the base 3-credit council cost
 - **Retry:** processor skips when `creditCharged`; orchestrator can resume; `failed → text_generating` allowed for council retry
 
 ## Env

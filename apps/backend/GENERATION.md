@@ -11,7 +11,9 @@ Council pipeline: [`COUNCIL.md`](COUNCIL.md)
 |--------|-------|------|------|
 | `POST` | `/v1/workspaces/:workspaceId/generate/quick` | 1 credit | Sync (200) |
 | `POST` | `/v1/workspaces/:workspaceId/generate/council` | 3 credits | Async (202) |
+| `POST` | `/v1/workspaces/:workspaceId/generate/council-premium` | 10 credits | Async (202) — Post + Media tier |
 | `POST` | `/v1/workspaces/:workspaceId/generate/calendar` | 10 / 30 credits | Async (202) |
+| `POST` | `/v1/workspaces/:workspaceId/posts/:id/generate-media` | 5 credits | Async (202) — quote card on draft |
 | `GET` | `/v1/workspaces/:workspaceId/autopilot` | — | Config + next run |
 | `PUT` | `/v1/workspaces/:workspaceId/autopilot` | — | Upsert autopilot config |
 | `GET` | `/v1/workspaces/:workspaceId/autopilot/planned` | — | Upcoming autopilot posts |
@@ -24,7 +26,9 @@ Guards: `ClerkAuthGuard` + `CreditsGuard` on quick draft and council only. Calen
 ```bash
 POST /v1/workspaces/{wsId}/generate/quick
 POST /v1/workspaces/{wsId}/generate/council
+POST /v1/workspaces/{wsId}/generate/council-premium
 POST /v1/workspaces/{wsId}/generate/calendar
+POST /v1/workspaces/{wsId}/posts/{postId}/generate-media
 GET  /v1/jobs/{jobId}
 GET  /v1/workspaces/{wsId}/posts/{postId}/council
 ```
@@ -71,6 +75,29 @@ POST /generate/council
     → CouncilJobHandler charges credits + sets `completed` + `creditCharged`
 ```
 
+## Media-only job (draft quote card)
+
+```
+POST /posts/:id/generate-media
+    → MediaJobService.enqueueMedia()
+    → GenerationJob (type=media, pending) on existing draft PostPackage
+    → BullMQ generation-jobs queue
+    → MediaJobHandler → MediaOnlyOrchestrator.run(jobId)
+    → Post status: draft → media_generating → draft (with PostMedia attached)
+    → MediaJobHandler charges 5 credits (CreditTransactionType.media)
+```
+
+Requires Redis. Blocks if post is not `draft` or already has media.
+
+## Premium council (Post + Media UI)
+
+```
+POST /generate/council-premium
+    → CouncilJobService.enqueueCouncil({ creditCost: 10 })
+    → Same CouncilOrchestrator pipeline as standard council
+    → Pass score default 90 (vs 75); first media regen included in bundle (no extra 5-credit charge)
+```
+
 ## Autopilot (Slice 15)
 
 Autopilot reuses council jobs — no new `GenerationJobType`.
@@ -113,7 +140,17 @@ Council agents also receive `priorSteps` in rendered prompts.
 
 ## Prompts
 
-Registry keys: `quick-draft` v1, `council-writer`, `council-reviewer`, `council-editor`, `council-media-creator`, `council-media-reviewer` v1.
+Registry keys: `quick-draft` v1, `quick-draft-single` v1 (calendar slots), `council-writer`, `council-reviewer`, `council-editor`, `council-media-creator`, `council-media-reviewer` v1, `calendar-planner` v1.
+
+### Prompt design (token efficiency)
+
+- **System prompts** hold role, LinkedIn constraints, JSON schema, and rubrics (stable across calls).
+- **User prompts** use compact `<profile>`, `<brief>`, `<request>`, `<post>` blocks — not labeled prose lines.
+- **Field budgets** in `PromptRenderer`: writing sample 400 chars, brief/context 600 chars, offer 200 chars, avoid-words 150 chars.
+- **Council `priorSteps`** are projected per agent (`prior-steps-projector.ts`) and serialized compactly (no pretty-print).
+- **Calendar slots** use `quick-draft-single` (1 post) instead of `quick-draft` (3 variants) to cut output tokens.
+- **Image generation** composes `headlineText` + `styleNotes` + visual `imagePrompt` in `GoogleImageGenerationProvider.buildPrompt()`.
+- **Reviewer threshold** uses `{{council.passScore}}` from orchestrator (75 standard, 90 premium).
 
 ## LLM layer
 

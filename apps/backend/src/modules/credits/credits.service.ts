@@ -1,8 +1,4 @@
-import {
-  HttpException,
-  HttpStatus,
-  Injectable,
-} from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { CreditTransactionType, UserPlan } from '@prisma/client';
 import { getCreditLimitForPlan } from '../../common/constants/plan.constants';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -45,8 +41,7 @@ export class CreditsService {
     const used = await this.getUsedCredits(userId, periodStart, periodEnd);
     const limit = getCreditLimitForPlan(user.plan);
     const remaining = Math.max(0, limit - used);
-    const percentUsed =
-      limit > 0 ? Math.round((used / limit) * 100) : 0;
+    const percentUsed = limit > 0 ? Math.round((used / limit) * 100) : 0;
 
     return {
       plan: user.plan,
@@ -163,8 +158,7 @@ export class CreditsService {
         used: nextUsed,
         limit,
         remaining: nextRemaining,
-        percentUsed:
-          limit > 0 ? Math.round((nextUsed / limit) * 100) : 0,
+        percentUsed: limit > 0 ? Math.round((nextUsed / limit) * 100) : 0,
       };
     });
   }

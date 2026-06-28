@@ -24,7 +24,9 @@ type PostWithWorkspace = PostPackage & {
   workspace: { id: string; name: string };
 };
 
-export function toApprovalQueueItem(post: PostWithWorkspace): ApprovalQueueItem {
+export function toApprovalQueueItem(
+  post: PostWithWorkspace,
+): ApprovalQueueItem {
   return {
     id: post.id,
     hook: post.hook,

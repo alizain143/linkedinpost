@@ -180,9 +180,7 @@ export class CalendarService {
       .map((post) => ({ post, instant: this.getCalendarInstant(post) }))
       .filter(
         ({ instant }) =>
-          instant &&
-          instant >= rangeStart &&
-          instant <= rangeEnd,
+          instant && instant >= rangeStart && instant <= rangeEnd,
       )
       .sort((a, b) => a.instant!.getTime() - b.instant!.getTime())
       .slice(0, limit)
@@ -246,9 +244,7 @@ export class CalendarService {
     }
 
     const results = await Promise.all(queries);
-    const merged = new Map(
-      results.flat().map((post) => [post.id, post]),
-    );
+    const merged = new Map(results.flat().map((post) => [post.id, post]));
 
     return [...merged.values()].sort(
       (a, b) =>
@@ -296,9 +292,7 @@ export class CalendarService {
     }
 
     for (const events of grouped.values()) {
-      events.sort(
-        (a, b) => a.scheduledAt.getTime() - b.scheduledAt.getTime(),
-      );
+      events.sort((a, b) => a.scheduledAt.getTime() - b.scheduledAt.getTime());
     }
 
     return grouped;

@@ -7,6 +7,7 @@ import { fetchCredits } from "@/lib/api/credits";
 import { queryKeys } from "@/lib/api/query-keys";
 import type { ApiCreditsBalance } from "@/lib/api/types/credits";
 import { canAffordCredits, isCreditsExhausted } from "@/lib/credit-costs";
+import { getCreditUsageDisplay } from "@/lib/credit-usage";
 
 export function useCredits() {
   const { getToken, isLoaded, isSignedIn } = useAuth();
@@ -29,13 +30,17 @@ export function useCredits() {
         isExhausted: false,
         canAfford: (_cost: number) => true,
         percentUsed: 0,
+        usage: null,
       };
     }
+
+    const usage = getCreditUsageDisplay(balance);
 
     return {
       isExhausted: isCreditsExhausted(balance),
       canAfford: (cost: number) => canAffordCredits(balance.remaining, cost),
-      percentUsed: balance.percentUsed,
+      percentUsed: usage.usagePercent,
+      usage,
     };
   }, [balance]);
 

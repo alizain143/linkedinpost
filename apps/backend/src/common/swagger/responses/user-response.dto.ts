@@ -10,6 +10,12 @@ export class UserNotificationPrefsDto {
 
   @ApiProperty({ example: false })
   productUpdates!: boolean;
+
+  @ApiProperty({ example: true })
+  publishAlerts!: boolean;
+
+  @ApiProperty({ example: true })
+  pushEnabled!: boolean;
 }
 
 export class UserResponseDto {

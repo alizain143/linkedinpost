@@ -10,10 +10,7 @@ export const DEFAULT_POSTING_TIME = '09:00';
 export const DEFAULT_POSTING_DAYS = [1, 3, 4, 5, 7];
 
 export type AutopilotPostingPreset =
-  | 'three_per_week'
-  | 'daily'
-  | 'weekdays'
-  | 'weekly';
+  'three_per_week' | 'daily' | 'weekdays' | 'weekly';
 
 export const POSTING_PRESET_DAYS: Record<AutopilotPostingPreset, number[]> = {
   three_per_week: [1, 3, 4, 5, 7],
@@ -57,6 +54,14 @@ export function parsePostingHour(postingTime: string): number {
   return hour;
 }
 
+function postingSlotUtc(
+  dateKey: string,
+  postingTime: string,
+  timezone: string,
+): Date {
+  return localDateTimeToUtc(dateKey, postingTime, timezone);
+}
+
 export interface AutopilotDueCheckInput {
   enabled: boolean;
   postingDays: number[];
@@ -83,9 +88,8 @@ export function isDueNow(
     return false;
   }
 
-  const currentHour = getLocalHour(timezone, now);
-  const targetHour = parsePostingHour(config.postingTime);
-  return currentHour === targetHour;
+  const scheduledAt = postingSlotUtc(todayKey, config.postingTime, timezone);
+  return now.getTime() >= scheduledAt.getTime();
 }
 
 export function computeNextRunAt(
@@ -99,8 +103,6 @@ export function computeNextRunAt(
   }
 
   const todayKey = getTodayDateKey(timezone, now);
-  const currentHour = getLocalHour(timezone, now);
-  const targetHour = parsePostingHour(postingTime);
 
   for (let offset = 0; offset < 14; offset++) {
     const dateKey = addDaysToDateKey(todayKey, offset, timezone);
@@ -110,11 +112,10 @@ export function computeNextRunAt(
       continue;
     }
 
-    if (offset === 0 && currentHour >= targetHour) {
-      continue;
+    const slot = postingSlotUtc(dateKey, postingTime, timezone);
+    if (slot.getTime() > now.getTime()) {
+      return slot;
     }
-
-    return localDateTimeToUtc(dateKey, postingTime, timezone);
   }
 
   return null;

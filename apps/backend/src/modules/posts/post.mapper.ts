@@ -65,7 +65,9 @@ type PostPackageWithVersionCount = PostPackage & {
   versions?: PostVersion[];
 };
 
-export function toPostVersionResponse(version: PostVersion): PostVersionResponse {
+export function toPostVersionResponse(
+  version: PostVersion,
+): PostVersionResponse {
   return {
     id: version.id,
     postPackageId: version.postPackageId,

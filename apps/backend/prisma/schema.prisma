@@ -89,6 +89,7 @@ enum GenerationJobType {
   quick_draft
   council
   calendar
+  media
 }
 
 enum PostMediaType {
@@ -118,6 +119,32 @@ enum SubscriptionStatus {
   unpaid
 }
 
+enum NotificationType {
+  generation_complete
+  post_ready_for_approval
+  client_approved
+  client_requested_changes
+  publish_succeeded
+  publish_failed
+  weekly_content_reminder
+  product_update
+}
+
+enum NotificationDeliveryChannel {
+  email
+  push
+}
+
+enum NotificationDeliveryStatus {
+  pending
+  sent
+  failed
+}
+
+enum PushDevicePlatform {
+  web
+}
+
 model User {
   id                      String    @id @default(uuid()) @db.Uuid
   clerkId                 String    @unique
@@ -130,6 +157,8 @@ model User {
   emailWeeklyReminders    Boolean   @default(true)
   emailGenerationComplete Boolean   @default(true)
   emailProductUpdates     Boolean   @default(false)
+  emailPublishAlerts      Boolean   @default(true)
+  pushEnabled             Boolean   @default(true)
   plan                    UserPlan  @default(free)
   linkedInMemberId        String?
   linkedInProfileSyncedAt DateTime? @db.Timestamptz(6)
@@ -146,6 +175,8 @@ model User {
   generationJobs       GenerationJob[]
   subscription         Subscription?
   createdApprovalTokens ApprovalToken[] @relation("ApprovalTokenCreator")
+  notifications         Notification[]
+  pushDeviceTokens      PushDeviceToken[]
 
   @@map("users")
 }
@@ -222,6 +253,7 @@ model Workspace {
   postPackages    PostPackage[]
   generationJobs  GenerationJob[]
   autopilotConfig AutopilotConfig?
+  notifications   Notification[]
 
   @@index([ownerId])
   @@index([ownerId, type, deletedAt])
@@ -484,4 +516,60 @@ model ApprovalToken {
   @@index([postPackageId])
   @@index([postPackageId, revokedAt, usedAt])
   @@map("approval_tokens")
+}
+
+model Notification {
+  id          String           @id @default(uuid()) @db.Uuid
+  userId      String           @db.Uuid
+  workspaceId String?          @db.Uuid
+  type        NotificationType
+  title       String
+  body        String
+  actionUrl   String?
+  entityType  String?
+  entityId    String?          @db.Uuid
+  metadata    Json?
+  dedupeKey   String?          @unique
+  readAt      DateTime?        @db.Timestamptz(6)
+  createdAt   DateTime         @default(now()) @db.Timestamptz(6)
+
+  user       User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace  Workspace?             @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  deliveries NotificationDelivery[]
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([userId, readAt])
+  @@map("notifications")
+}
+
+model PushDeviceToken {
+  id         String             @id @default(uuid()) @db.Uuid
+  userId     String             @db.Uuid
+  token      String             @unique
+  platform   PushDevicePlatform @default(web)
+  userAgent  String?
+  lastSeenAt DateTime           @default(now()) @db.Timestamptz(6)
+  revokedAt  DateTime?          @db.Timestamptz(6)
+  createdAt  DateTime           @default(now()) @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_device_tokens")
+}
+
+model NotificationDelivery {
+  id             String                      @id @default(uuid()) @db.Uuid
+  notificationId String                      @db.Uuid
+  channel        NotificationDeliveryChannel
+  status         NotificationDeliveryStatus  @default(pending)
+  providerId     String?
+  error          String?                     @db.Text
+  createdAt      DateTime                    @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime                    @updatedAt @db.Timestamptz(6)
+
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@unique([notificationId, channel])
+  @@map("notification_deliveries")
 }

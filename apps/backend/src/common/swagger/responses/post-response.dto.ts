@@ -42,7 +42,9 @@ export class PostMediaResponseDto {
   @ApiProperty({ enum: PostMediaType })
   mediaType!: PostMediaType;
 
-  @ApiProperty({ example: 'https://cdn.example.com/workspaces/.../media/uuid.png' })
+  @ApiProperty({
+    example: 'https://cdn.example.com/workspaces/.../media/uuid.png',
+  })
   url!: string;
 
   @ApiProperty()

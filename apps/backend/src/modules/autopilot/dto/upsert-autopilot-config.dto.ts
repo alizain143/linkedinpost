@@ -36,7 +36,8 @@ export class UpsertAutopilotConfigDto {
   @ApiPropertyOptional({
     enum: POSTING_PRESETS,
     example: 'three_per_week',
-    description: 'Optional preset; expands to postingDays when postingDays omitted',
+    description:
+      'Optional preset; expands to postingDays when postingDays omitted',
   })
   @IsOptional()
   @IsIn(POSTING_PRESETS)

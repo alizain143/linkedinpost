@@ -2,7 +2,7 @@
 
 > **Source of truth:** `apps/backend/prisma/schema.prisma`  
 > **Companion docs:** [CURRENT_ARCHITECTURE.md](CURRENT_ARCHITECTURE.md) · [PRODUCT_OVERVIEW.md](PRODUCT_OVERVIEW.md)  
-> **Last synced:** June 2026 (schema cleanup phases 1–3)
+> **Last synced:** June 2026 (notifications slice + schema cleanup phases 1–3)
 
 Developer reference for every PostgreSQL table, field, enum, and relationship. Read this before writing Prisma queries, migrations, or API mappers.
 
@@ -153,6 +153,7 @@ Council jobs use this status exclusively (no separate run status).
 | `quick_draft` | Sync | No |
 | `council` | Async (BullMQ) | Yes |
 | `calendar` | Async | Yes (many) |
+| `media` | Async | No (existing draft) |
 
 ### `PostMediaType`
 
@@ -199,6 +200,31 @@ Mirrors Stripe subscription status. Synced in `BillingSyncService`.
 | `processed` | Handler succeeded |
 | `failed` | Handler failed; Stripe replay will retry dispatch |
 
+### `NotificationType`
+
+| Value | Trigger |
+|-------|---------|
+| `generation_complete` | Async generation job finished |
+| `post_ready_for_approval` | Council sets post to approval queue |
+| `client_approved` | Public approval link approve |
+| `client_requested_changes` | Public approval link request changes |
+| `publish_succeeded` | LinkedIn publish worker success |
+| `publish_failed` | LinkedIn publish worker failure |
+| `weekly_content_reminder` | Monday 9am user timezone cron |
+| `product_update` | Admin broadcast (future) |
+
+### `NotificationDeliveryChannel`
+
+`email` | `push`
+
+### `NotificationDeliveryStatus`
+
+`pending` | `sent` | `failed`
+
+### `PushDevicePlatform`
+
+`web` (v1)
+
 ---
 
 ## Tables
@@ -217,9 +243,11 @@ Account identity. Synced from Clerk on sign-in/webhook.
 | `profileDocumentId` | UUID | Yes | — | **Unique.** FK → `documents.id`. Avatar from R2 |
 | `profileImageUrl` | String | Yes | — | Public URL (may duplicate document URL) |
 | `timezone` | String | No | `America/New_York` | Used for scheduling/autopilot. `PATCH /auth/me` |
-| `emailWeeklyReminders` | Boolean | No | `true` | Notification pref (stored only; no email worker yet) |
-| `emailGenerationComplete` | Boolean | No | `true` | Notification pref |
-| `emailProductUpdates` | Boolean | No | `false` | Notification pref |
+| `emailWeeklyReminders` | Boolean | No | `true` | Email pref for weekly cron reminders |
+| `emailGenerationComplete` | Boolean | No | `true` | Email pref for generation/approval-ready events |
+| `emailProductUpdates` | Boolean | No | `false` | Email pref for product broadcasts |
+| `emailPublishAlerts` | Boolean | No | `true` | Email pref for publish success/failure |
+| `pushEnabled` | Boolean | No | `true` | Master web push toggle (`PATCH /auth/me`) |
 | `plan` | UserPlan | No | `free` | **Denormalized** from Stripe. Credit limit source |
 | `linkedInMemberId` | String | Yes | — | LinkedIn member URN/id for publish API |
 | `linkedInProfileSyncedAt` | Timestamptz | Yes | — | Last profile sync timestamp |
@@ -228,7 +256,7 @@ Account identity. Synced from Clerk on sign-in/webhook.
 | `updatedAt` | Timestamptz | No | auto | |
 | `deletedAt` | Timestamptz | Yes | — | Soft delete on account removal |
 
-**Relations:** `profileDocument`, `documents[]`, `ownedWorkspaces[]`, `workspaceMemberships[]`, `creditTransactions[]`, `generationJobs[]`, `subscription?`, `createdApprovalTokens[]`
+**Relations:** `profileDocument`, `documents[]`, `ownedWorkspaces[]`, `workspaceMemberships[]`, `creditTransactions[]`, `generationJobs[]`, `subscription?`, `createdApprovalTokens[]`, `notifications[]`, `pushDeviceTokens[]`
 
 **Module:** `users`, `auth`
 
@@ -499,7 +527,7 @@ Tracks every AI job (sync quick draft and async council/calendar). Council jobs 
 | `id` | UUID | No | uuid() | Returned as `jobId` to clients |
 | `workspaceId` | UUID | No | — | FK → `workspaces.id` CASCADE |
 | `userId` | UUID | No | — | FK → `users.id` CASCADE. Who triggered / who pays credits |
-| `type` | GenerationJobType | No | — | `quick_draft` \| `council` \| `calendar` |
+| `type` | GenerationJobType | No | — | `quick_draft` \| `council` \| `calendar` \| `media` |
 | `status` | GenerationJobStatus | No | `pending` | |
 | `flowId` | String | No | — | e.g. `council`, `quick-draft` — maps to prompt set |
 | `promptVersion` | String | No | `v1` | Prompt template version |
@@ -605,6 +633,74 @@ Hashed share links for client approval without login (agency feature).
 **Public API:** `/v1/public/approval/:token` (no auth)
 
 **Module:** `approval-share`
+
+---
+
+### `notifications` → `Notification`
+
+In-app notification feed (user-scoped, optional workspace context for deep links).
+
+| Field | Type | Null | Default | Description |
+|-------|------|------|---------|-------------|
+| `id` | UUID | No | uuid() | |
+| `userId` | UUID | No | — | FK → `users.id` CASCADE. Recipient |
+| `workspaceId` | UUID | Yes | — | FK → `workspaces.id` SET NULL. Context |
+| `type` | NotificationType | No | — | Event category |
+| `title` | String | No | — | Display title |
+| `body` | String | No | — | Display body |
+| `actionUrl` | String | Yes | — | Frontend deep link |
+| `entityType` | String | Yes | — | e.g. `post`, `job` |
+| `entityId` | UUID | Yes | — | Related entity id |
+| `metadata` | JSON | Yes | — | Extra payload |
+| `dedupeKey` | String | Yes | — | **Unique.** Idempotency key |
+| `readAt` | Timestamptz | Yes | — | Null = unread |
+| `createdAt` | Timestamptz | No | now() | |
+
+**Indexes:** `(userId, createdAt DESC)`, `(userId, readAt)`
+
+**Module:** `notifications`
+
+---
+
+### `push_device_tokens` → `PushDeviceToken`
+
+FCM web push registration tokens per user/browser.
+
+| Field | Type | Null | Default | Description |
+|-------|------|------|---------|-------------|
+| `id` | UUID | No | uuid() | |
+| `userId` | UUID | No | — | FK → `users.id` CASCADE |
+| `token` | String | No | — | **Unique.** FCM registration token |
+| `platform` | PushDevicePlatform | No | `web` | Device platform |
+| `userAgent` | String | Yes | — | Browser UA at registration |
+| `lastSeenAt` | Timestamptz | No | now() | Last refresh |
+| `revokedAt` | Timestamptz | Yes | — | Invalid/expired token |
+| `createdAt` | Timestamptz | No | now() | |
+
+**Indexes:** `userId`
+
+**Module:** `notifications`
+
+---
+
+### `notification_deliveries` → `NotificationDelivery`
+
+Audit log for async email/push delivery attempts.
+
+| Field | Type | Null | Default | Description |
+|-------|------|------|---------|-------------|
+| `id` | UUID | No | uuid() | |
+| `notificationId` | UUID | No | — | FK → `notifications.id` CASCADE |
+| `channel` | NotificationDeliveryChannel | No | — | `email` or `push` |
+| `status` | NotificationDeliveryStatus | No | `pending` | `pending`, `sent`, `failed` |
+| `providerId` | String | Yes | — | Resend message id or FCM batch id |
+| `error` | Text | Yes | — | Failure message |
+| `createdAt` | Timestamptz | No | now() | |
+| `updatedAt` | Timestamptz | No | auto | |
+
+**Unique:** `(notificationId, channel)`
+
+**Module:** `notifications`
 
 ---
 

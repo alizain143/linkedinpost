@@ -19,6 +19,7 @@ import {
 import { PostPackageStatus } from '@prisma/client';
 import { toPostPackageResponse } from '../posts/post.mapper';
 import { MediaService } from '../media/media.service';
+import { NotificationEventService } from '../notifications/notification-event.service';
 
 @Injectable()
 export class LinkedInConnectionService {
@@ -44,19 +45,24 @@ export class LinkedInConnectionService {
     const publishReady = this.clerkOAuthService.hasPublishScope(approvedScopes);
 
     const profileName = account
-      ? [account.firstName, account.lastName].filter(Boolean).join(' ').trim() ||
+      ? [account.firstName, account.lastName]
+          .filter(Boolean)
+          .join(' ')
+          .trim() ||
         account.username ||
         account.emailAddress ||
         null
       : null;
 
-    return {
+    const status = {
       connected,
       publishReady,
       profileName: profileName || null,
       approvedScopes,
       linkedInMemberId: user.linkedInMemberId,
     };
+
+    return status;
   }
 }
 
@@ -75,7 +81,9 @@ export class LinkedInProfileService {
   }
 
   async syncProfile(userId: string): Promise<LinkedInProfileData> {
-    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+    });
     const accessToken = await this.clerkOAuthService.getLinkedInAccessToken(
       user.clerkId,
     );
@@ -111,6 +119,7 @@ export class LinkedInPublishService {
     private readonly linkedInApiClient: LinkedInApiClient,
     private readonly linkedInProfileService: LinkedInProfileService,
     private readonly mediaService: MediaService,
+    private readonly notificationEvents: NotificationEventService,
   ) {}
 
   async publishPostForOwner(postPackageId: string, ownerUserId: string) {
@@ -213,6 +222,14 @@ export class LinkedInPublishService {
         include: { _count: { select: { versions: true } } },
       });
 
+      await this.notificationEvents.emitPublishResult({
+        userId: ownerUserId,
+        workspaceId: post.workspaceId,
+        postPackageId: post.id,
+        postHook: post.hook,
+        succeeded: true,
+      });
+
       return toPostPackageResponse(updated);
     } catch (error) {
       const message =
@@ -237,6 +254,14 @@ export class LinkedInPublishService {
           publishErrorMessage: message,
         },
         include: { _count: { select: { versions: true } } },
+      });
+
+      await this.notificationEvents.emitPublishResult({
+        userId: ownerUserId,
+        workspaceId: post.workspaceId,
+        postPackageId: post.id,
+        postHook: post.hook,
+        succeeded: false,
       });
 
       return toPostPackageResponse(failed);

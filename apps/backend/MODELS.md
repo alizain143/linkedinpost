@@ -26,6 +26,8 @@ Verify the exact OpenAI API model slug in the dashboard when upgrading.
 
 `ConfigModelRouter.image()` uses mock when `MEDIA_GENERATION_MOCK=true` or no Google creds; otherwise `GoogleImageGenerationProvider`.
 
+**Image prompt assembly:** Media Creator outputs `imagePrompt` (visual/layout only), `headlineText`, and `styleNotes`. The Google provider merges them into one deterministic prompt (headline rendered exactly, visual/style separate) — shorter LLM output, better quote-card text legibility.
+
 ### Env
 
 ```env

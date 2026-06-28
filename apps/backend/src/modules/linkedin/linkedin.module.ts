@@ -3,6 +3,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule } from '@nestjs/config';
 import linkedinConfig from '../../config/linkedin.config';
 import { PrismaModule } from '../../prisma/prisma.module';
+import { AuthModule } from '../auth/auth.module';
 import { MediaModule } from '../media/media.module';
 import { WorkspacesModule } from '../workspaces/workspaces.module';
 import { REDIS_ENABLED } from '../job-queue/job-queue.constants';
@@ -14,7 +15,10 @@ import {
   LinkedInProfileService,
   LinkedInPublishService,
 } from './linkedin.services';
-import { LinkedInController, LinkedInPostController } from './linkedin.controller';
+import {
+  LinkedInController,
+  LinkedInPostController,
+} from './linkedin.controller';
 import { PublishJobEnqueueService } from './publish-job-enqueue.service';
 import { PublishJobProcessor } from './publish-job.processor';
 import { PublishReconcileService } from './publish-reconcile.service';
@@ -25,6 +29,7 @@ const redisEnabled = Boolean(process.env.REDIS_URL);
   imports: [
     ConfigModule.forFeature(linkedinConfig),
     PrismaModule,
+    AuthModule,
     MediaModule,
     WorkspacesModule,
     ...(redisEnabled
@@ -53,6 +58,10 @@ const redisEnabled = Boolean(process.env.REDIS_URL);
     { provide: REDIS_ENABLED, useValue: redisEnabled },
     ...(redisEnabled ? [PublishJobProcessor] : []),
   ],
-  exports: [PublishJobEnqueueService, LinkedInConnectionService, LinkedInProfileService],
+  exports: [
+    PublishJobEnqueueService,
+    LinkedInConnectionService,
+    LinkedInProfileService,
+  ],
 })
 export class LinkedInModule {}

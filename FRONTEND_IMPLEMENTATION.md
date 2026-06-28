@@ -15,12 +15,11 @@ Per-slice specs (when started): `FE-SLICE-NN-*.md` at repo root — same pattern
 | Marketing site | Built (landing, pricing, features, auth pages) |
 | App shell + sidebar | Built (`/app/*` routes exist) |
 | Clerk auth | Sign-in/up wired; `GET/PATCH /auth/me` integrated |
-| API integration | **FE-SLICE-01 through FE-SLICE-18 wired** — workspace context, posts, pipeline, approvals, calendar, generation, billing, clients, approval share links |
+| API integration | **FE-SLICE-01 through FE-SLICE-20 wired** — workspace context, posts, pipeline, approvals, calendar, generation, billing, clients, approval share links, notifications inbox |
 | Public approval page | `/approve/[token]` — no auth, preview + actions |
-| **Remaining mock UI** | Notifications API not built — topbar shows honest empty state |
-| **Automated frontend tests** | Vitest unit tests for plan gate, approval-share utils, query errors |
+| **Automated frontend tests** | Vitest unit tests for plan gate, approval-share utils, query errors, notification utils |
 
-**Integration gap:** Core workflow screens call the API. Polish gaps remain: mock notifications in shell, no E2E/unit tests, plan-gate edge cases on business features.
+**Integration gap:** Core workflow screens call the API. Polish gaps remain: plan-gate edge cases on business features, broader E2E coverage.
 
 ---
 
@@ -633,6 +632,59 @@ Mark `[x]` when slice is shipped (API wired, mocks removed for that screen, basi
 - Plan-gate: `approval_share_links` feature flag from billing
 
 **Out of scope:** Email delivery of links
+
+---
+
+### FE-SLICE-19 — Notifications UI + web push
+
+**Goal:** Topbar notifications dropdown, settings email/push toggles, Firebase FCM registration.
+
+**Depends on:** FE-SLICE-01
+
+**Backend APIs**
+
+| Method | Route |
+|--------|-------|
+| `GET` | `/v1/notifications`, `/v1/notifications/unread-count` |
+| `PATCH` | `/v1/notifications/:id/read` |
+| `POST` | `/v1/notifications/read-all` |
+| `POST/DELETE` | `/v1/notifications/devices` |
+
+**Maps to backend:** SLICE-21
+
+**Deliverables**
+
+- Topbar dropdown + unread badge (30s poll)
+- Settings email toggles + browser push toggle
+- FCM service worker + soft permission prompt
+
+**Spec:** [FE-SLICE-19-notifications.md](FE-SLICE-19-notifications.md)
+
+---
+
+### FE-SLICE-20 — Notifications inbox + integration polish
+
+**Goal:** Full inbox at `/app/notifications`, cursor pagination, cross-feature invalidation, logout push cleanup.
+
+**Depends on:** FE-SLICE-19
+
+**Backend APIs**
+
+Same as FE-SLICE-19 (no new endpoints).
+
+**Deliverables**
+
+- Shared `notification-utils` (icons, time, safe action paths) + Vitest
+- `useNotificationsInfinite`, `useInvalidateNotifications`, optimistic unread count
+- Invalidate notifications from generation job completion, approve/publish/schedule mutations
+- Inbox page: filter tabs (`?filter=all|unread`), load more, mark all read
+- Topbar: refetch on open, type icons, **View all notifications** link
+- Logout revokes FCM token (best-effort)
+- `apps/web/.env.example` documents Firebase vars
+
+**Spec:** [FE-SLICE-20-notifications-inbox.md](FE-SLICE-20-notifications-inbox.md)
+
+**Out of scope:** Sidebar nav entry, SSE/WebSocket, E2E Playwright
 
 ---
 

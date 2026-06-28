@@ -39,10 +39,7 @@ export class ContentProfilesController {
   @ApiOperation({ summary: 'List content profiles in a workspace' })
   @ApiParam({ name: 'workspaceId', format: 'uuid' })
   @ApiDataResponse(ContentProfileResponseDto, { isArray: true })
-  list(
-    @CurrentUser() user: User,
-    @Param('workspaceId') workspaceId: string,
-  ) {
+  list(@CurrentUser() user: User, @Param('workspaceId') workspaceId: string) {
     return this.contentProfilesService.list(workspaceId, user.id);
   }
 

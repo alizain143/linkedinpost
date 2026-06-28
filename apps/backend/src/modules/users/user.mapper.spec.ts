@@ -24,6 +24,8 @@ describe('user.mapper', () => {
         weeklyReminders: false,
         generationComplete: true,
         productUpdates: true,
+        publishAlerts: true,
+        pushEnabled: true,
       });
       expect(result.plan).toBe(UserPlan.starter);
     });

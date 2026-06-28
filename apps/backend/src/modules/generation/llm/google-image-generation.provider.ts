@@ -66,7 +66,28 @@ export class GoogleImageGenerationProvider implements ImageGenerationProvider {
   private buildPrompt(request: ImageGenerationRequest): string {
     const width = request.width ?? POST_MEDIA_DEFAULT_WIDTH;
     const height = request.height ?? POST_MEDIA_DEFAULT_HEIGHT;
+    const headline = request.headlineText?.trim();
+    const style = request.styleNotes?.trim();
+    const visual = request.prompt.trim();
 
-    return `${request.prompt}\n\nDimensions: ${width}x${height}px quote card for LinkedIn.`;
+    const lines = [
+      `LinkedIn quote card, ${width}x${height}px, landscape.`,
+    ];
+
+    if (headline) {
+      lines.push(`Headline (render exactly): "${headline}"`);
+    }
+
+    lines.push(`Visual: ${visual}`);
+
+    if (style) {
+      lines.push(`Style: ${style}`);
+    }
+
+    lines.push(
+      'Rules: high contrast readable text, professional, no logos, no watermarks, no stock photo clichés.',
+    );
+
+    return lines.join('\n');
   }
 }

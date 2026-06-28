@@ -39,4 +39,4 @@ export type GenerationJobStatus =
   | "completed"
   | "failed";
 
-export type GenerationJobType = "quick_draft" | "council" | "calendar";
+export type GenerationJobType = "quick_draft" | "council" | "calendar" | "media";

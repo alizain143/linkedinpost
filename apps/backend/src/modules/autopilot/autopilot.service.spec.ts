@@ -65,6 +65,10 @@ describe('AutopilotService', () => {
 
   it('upserts config and applies posting preset', async () => {
     prisma.autopilotConfig.findFirst.mockResolvedValue(null);
+    prisma.contentProfile.findFirst.mockResolvedValue({
+      id: 'profile-1',
+      pillars: [{ id: 'p1', name: 'Lessons', sortOrder: 0 }],
+    });
     prisma.autopilotConfig.upsert.mockResolvedValue({
       ...config,
       enabled: true,
@@ -89,6 +93,10 @@ describe('AutopilotService', () => {
 
   it('checks plan feature when enabling autopilot', async () => {
     prisma.autopilotConfig.findFirst.mockResolvedValue(config);
+    prisma.contentProfile.findFirst.mockResolvedValue({
+      id: 'profile-1',
+      pillars: [{ id: 'p1', name: 'Lessons', sortOrder: 0 }],
+    });
     prisma.autopilotConfig.upsert.mockResolvedValue({
       ...config,
       enabled: true,
@@ -104,5 +112,21 @@ describe('AutopilotService', () => {
       userId,
       'autopilot',
     );
+  });
+
+  it('rejects enable when content profile has no pillars', async () => {
+    prisma.autopilotConfig.findFirst.mockResolvedValue(config);
+    planFeatureService.assertAllows.mockResolvedValue(undefined);
+    prisma.contentProfile.findFirst.mockResolvedValue({
+      id: 'profile-1',
+      pillars: [],
+    });
+
+    await expect(
+      service.upsertConfig(workspaceId, userId, { enabled: true }),
+    ).rejects.toMatchObject({
+      response: { code: 'AUTOPILOT_NO_PILLARS' },
+    });
+    expect(prisma.autopilotConfig.upsert).not.toHaveBeenCalled();
   });
 });

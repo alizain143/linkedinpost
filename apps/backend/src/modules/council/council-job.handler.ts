@@ -7,6 +7,7 @@ import {
 } from '@prisma/client';
 import { CreditsService } from '../credits/credits.service';
 import { JobHandler } from '../job-queue/job-handler.interface';
+import { NotificationEventService } from '../notifications/notification-event.service';
 import { CouncilOrchestrator } from './council-orchestrator';
 import { PrismaService } from '../../prisma/prisma.service';
 
@@ -18,6 +19,7 @@ export class CouncilJobHandler implements JobHandler {
     private readonly prisma: PrismaService,
     private readonly councilOrchestrator: CouncilOrchestrator,
     private readonly creditsService: CreditsService,
+    private readonly notificationEvents: NotificationEventService,
   ) {}
 
   async handle(generationJobId: string): Promise<void> {
@@ -55,6 +57,24 @@ export class CouncilJobHandler implements JobHandler {
         status: GenerationJobStatus.completed,
         completedAt: new Date(),
       },
+    });
+
+    const completedJob = await this.prisma.generationJob.findUniqueOrThrow({
+      where: { id: generationJobId },
+    });
+
+    const completedPost = completedJob.postPackageId
+      ? await this.prisma.postPackage.findUnique({
+          where: { id: completedJob.postPackageId },
+        })
+      : null;
+
+    await this.notificationEvents.emitGenerationComplete({
+      userId: completedJob.userId,
+      workspaceId: completedJob.workspaceId,
+      generationJobId: completedJob.id,
+      postPackageId: completedPost?.id,
+      postHook: completedPost?.hook,
     });
   }
 }

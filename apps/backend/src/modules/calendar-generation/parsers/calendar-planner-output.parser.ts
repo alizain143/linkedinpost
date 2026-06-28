@@ -33,7 +33,9 @@ export class CalendarPlannerOutputParser {
 
     const obj = parsed as Record<string, unknown>;
     if (!Array.isArray(obj.slots)) {
-      throw generationParseError('Calendar planner output requires slots array');
+      throw generationParseError(
+        'Calendar planner output requires slots array',
+      );
     }
 
     if (obj.slots.length !== expectedDates.length) {

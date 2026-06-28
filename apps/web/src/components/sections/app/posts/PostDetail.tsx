@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { BackLink } from "@/components/app/back-link";
+import { useAppBack } from "@/hooks/use-app-back";
 import { useEffect, useState } from "react";
 import {
   StatusBadge,
@@ -17,15 +17,20 @@ import { MsIcon } from "@/components/ui/ms-icon";
 import { SelectField } from "@/components/ui/select";
 import { useContentProfiles } from "@/hooks/api/use-content-profiles-api";
 import { useCouncilHistory } from "@/hooks/api/use-council-api";
+import { useGenerationJob } from "@/hooks/api/use-generation-api";
 import {
   useDeletePost,
+  useGeneratePostMediaMutation,
   usePost,
   usePostVersions,
+  useApprovePostMutation,
   useTransitionPostStatus,
   useUpdatePost,
 } from "@/hooks/api/use-posts-api";
 import { useCancelScheduleMutation } from "@/hooks/api/use-scheduling-api";
+import { useCredits } from "@/hooks/api/use-credits-api";
 import { useWorkspace } from "@/hooks/use-workspace";
+import { MEDIA_GENERATION_CREDIT_COST } from "@/lib/credit-costs";
 import { getApiErrorMessage } from "@/lib/api-error-messages";
 import type { ApiPostPackage } from "@/lib/api/types/post";
 import type { PostType } from "@/lib/api/types/enums";
@@ -95,7 +100,7 @@ type PostDetailProps = {
 };
 
 export default function PostDetail({ postId }: PostDetailProps) {
-  const router = useRouter();
+  const goBack = useAppBack("/app/posts");
   const { activeWorkspaceId } = useWorkspace();
   const { confirmDeleteDraft, toastSaved, openSchedule, confirmPublishNow, askConfirm } =
     useAppUi();
@@ -126,11 +131,30 @@ export default function PostDetail({ postId }: PostDetailProps) {
   const updatePost = useUpdatePost(activeWorkspaceId, postId);
   const deletePost = useDeletePost(activeWorkspaceId);
   const transitionStatus = useTransitionPostStatus(activeWorkspaceId, postId);
+  const approvePostMutation = useApprovePostMutation(activeWorkspaceId);
+  const generatePostMedia = useGeneratePostMediaMutation(activeWorkspaceId);
   const cancelSchedule = useCancelScheduleMutation(activeWorkspaceId);
+  const { canAfford } = useCredits();
+
+  const [activeMediaJobId, setActiveMediaJobId] = useState<string | null>(null);
+
+  useGenerationJob(activeMediaJobId, {
+    poll: true,
+    workspaceId: activeWorkspaceId,
+    onCompleted: () => {
+      showToast("Quote card ready", "image");
+      setActiveMediaJobId(null);
+      void refetch();
+    },
+  });
 
   const [form, setForm] = useState<PostFormState | null>(null);
   const isDraft = post?.status === "draft";
-  const isEditable = isDraft;
+  const isMediaGenerating =
+    post?.status === "media_generating" ||
+    generatePostMedia.isPending ||
+    !!activeMediaJobId;
+  const isEditable = isDraft && !isMediaGenerating;
 
   useEffect(() => {
     if (post) setForm(postToForm(post));
@@ -166,13 +190,40 @@ export default function PostDetail({ postId }: PostDetailProps) {
     }
   };
 
+  const handleApprove = async () => {
+    try {
+      await approvePostMutation.mutateAsync({ postId });
+      showToast("Post approved", "check_circle");
+    } catch (err) {
+      showToast(getApiErrorMessage(err), "error");
+    }
+  };
+
+  const handleGenerateMedia = async () => {
+    if (!canAfford(MEDIA_GENERATION_CREDIT_COST)) {
+      showToast(
+        `You need ${MEDIA_GENERATION_CREDIT_COST} credits to generate a quote card.`,
+        "error",
+      );
+      return;
+    }
+
+    try {
+      const job = await generatePostMedia.mutateAsync(postId);
+      setActiveMediaJobId(job.id);
+      void refetch();
+    } catch (err) {
+      showToast(getApiErrorMessage(err), "error");
+    }
+  };
+
   const handleDelete = () => {
     if (!post) return;
     confirmDeleteDraft(post.hook, () => {
       void deletePost
         .mutateAsync(postId)
         .then(() => {
-          router.push("/app/posts");
+          goBack();
         })
         .catch((err) => {
           showToast(getApiErrorMessage(err), "error");
@@ -209,13 +260,7 @@ export default function PostDetail({ postId }: PostDetailProps) {
 
   return (
     <div>
-      <Link
-        href="/app/posts"
-        className="mb-5 inline-flex items-center gap-1 text-[13px] font-semibold text-[#4f46e5]"
-      >
-        <MsIcon name="arrow_back" size={16} />
-        Back to posts
-      </Link>
+      <BackLink fallbackHref="/app/posts" />
 
       <QueryState
         isLoading={isLoading}
@@ -264,6 +309,31 @@ export default function PostDetail({ postId }: PostDetailProps) {
                     >
                       Submit for approval
                     </Button>
+                    {post.media.length === 0 ? (
+                      <span
+                        className="inline-flex"
+                        title={
+                          isMediaGenerating
+                            ? "Quote card generation in progress"
+                            : !isDraft
+                              ? "Quote cards can only be generated while the post is a draft"
+                              : undefined
+                        }
+                      >
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          disabled={isMediaGenerating || !isDraft}
+                          onClick={() => void handleGenerateMedia()}
+                        >
+                        <MsIcon name="image" size={16} />
+                        {isMediaGenerating
+                          ? "Generating quote card…"
+                          : `Generate quote card (${MEDIA_GENERATION_CREDIT_COST} cr)`}
+                        </Button>
+                      </span>
+                    ) : null}
                     <Button
                       type="button"
                       variant="destructive"
@@ -272,6 +342,36 @@ export default function PostDetail({ postId }: PostDetailProps) {
                       onClick={handleDelete}
                     >
                       Delete draft
+                    </Button>
+                  </>
+                ) : null}
+                {post.status === "ready_for_approval" ? (
+                  <>
+                    <Button
+                      type="button"
+                      variant="success"
+                      size="sm"
+                      disabled={approvePostMutation.isPending}
+                      onClick={() => void handleApprove()}
+                    >
+                      <MsIcon name="check_circle" size={16} />
+                      {approvePostMutation.isPending ? "Approving…" : "Approve"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      disabled={transitionStatus.isPending}
+                      onClick={() =>
+                        void transitionStatus
+                          .mutateAsync({ status: "draft" })
+                          .then(() => showToast("Returned to draft", "draft"))
+                          .catch((err) =>
+                            showToast(getApiErrorMessage(err), "error"),
+                          )
+                      }
+                    >
+                      Back to draft
                     </Button>
                   </>
                 ) : null}

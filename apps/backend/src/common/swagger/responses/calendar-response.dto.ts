@@ -1,8 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import {
-  PostPackageStatus,
-  PostType,
-} from '@prisma/client';
+import { PostPackageStatus, PostType } from '@prisma/client';
 
 export class CalendarEventDto {
   @ApiProperty({ format: 'uuid' })

@@ -1,8 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import {
-  PostPackageStatus,
-  PostSource,
-} from '@prisma/client';
+import { PostPackageStatus, PostSource } from '@prisma/client';
 import { NOT_DELETED } from '../../common/constants/soft-delete.constants';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreditsService } from '../credits/credits.service';

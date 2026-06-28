@@ -1,5 +1,10 @@
 import { Controller, Get, Param, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiParam,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { User } from '@prisma/client';
 import { ApiDataResponse } from '../../common/swagger/api-data-response.decorator';
 import { DashboardStatsResponseDto } from '../../common/swagger/responses/dashboard-stats-response.dto';

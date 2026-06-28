@@ -1,5 +1,7 @@
 import { QUICK_DRAFT_V1_SYSTEM } from './quick-draft.v1.system';
 import { QUICK_DRAFT_V1_USER } from './quick-draft.v1.user';
+import { QUICK_DRAFT_SINGLE_V1_SYSTEM } from './quick-draft-single.v1.system';
+import { QUICK_DRAFT_SINGLE_V1_USER } from './quick-draft-single.v1.user';
 import { COUNCIL_WRITER_V1_SYSTEM } from './council-writer.v1.system';
 import { COUNCIL_WRITER_V1_USER } from './council-writer.v1.user';
 import { COUNCIL_REVIEWER_V1_SYSTEM } from './council-reviewer.v1.system';
@@ -26,6 +28,12 @@ export const PROMPT_REGISTRY: Record<string, PromptTemplate> = {
     version: 1,
     system: QUICK_DRAFT_V1_SYSTEM,
     user: QUICK_DRAFT_V1_USER,
+  },
+  'quick-draft-single': {
+    id: 'quick-draft-single',
+    version: 1,
+    system: QUICK_DRAFT_SINGLE_V1_SYSTEM,
+    user: QUICK_DRAFT_SINGLE_V1_USER,
   },
   'council-writer': {
     id: 'council-writer',
@@ -65,10 +73,7 @@ export const PROMPT_REGISTRY: Record<string, PromptTemplate> = {
   },
 };
 
-export function getPromptTemplate(
-  id: string,
-  version = 1,
-): PromptTemplate {
+export function getPromptTemplate(id: string, version = 1): PromptTemplate {
   const template = PROMPT_REGISTRY[id];
 
   if (!template || template.version !== version) {

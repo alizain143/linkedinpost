@@ -3,10 +3,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PrismaModule } from '../../prisma/prisma.module';
 import redisConfig from '../../config/redis.config';
-import {
-  GENERATION_JOBS_QUEUE,
-  REDIS_ENABLED,
-} from './job-queue.constants';
+import { GENERATION_JOBS_QUEUE, REDIS_ENABLED } from './job-queue.constants';
 import { GenerationJobEnqueueService } from './generation-job-enqueue.service';
 import { GenerationJobProcessor } from './generation-job.processor';
 import { JobHandlerRegistry } from './job-handler.registry';

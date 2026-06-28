@@ -1,9 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PostType } from '@prisma/client';
 import { generationParseError } from './generation.errors';
-import {
-  QuickDraftVariant,
-} from './generation.types';
+import { QuickDraftVariant } from './generation.types';
 
 const POST_TYPES = new Set<string>(Object.values(PostType));
 
@@ -39,9 +37,7 @@ export class QuickDraftOutputParser {
 
   private parseVariant(value: unknown, index: number): QuickDraftVariant {
     if (!value || typeof value !== 'object') {
-      throw generationParseError(
-        `Variant at index ${index} must be an object`,
-      );
+      throw generationParseError(`Variant at index ${index} must be an object`);
     }
 
     const variant = value as Record<string, unknown>;
@@ -75,9 +71,7 @@ export class QuickDraftOutputParser {
 
   private requirePostType(value: unknown, field: string): PostType {
     if (typeof value !== 'string' || !POST_TYPES.has(value)) {
-      throw generationParseError(
-        `${field} must be a valid post type`,
-      );
+      throw generationParseError(`${field} must be a valid post type`);
     }
 
     return value as PostType;
@@ -90,9 +84,7 @@ export class QuickDraftOutputParser {
 
     for (let i = 0; i < value.length; i++) {
       if (typeof value[i] !== 'string') {
-        throw generationParseError(
-          `${field}[${i}] must be a string`,
-        );
+        throw generationParseError(`${field}[${i}] must be a string`);
       }
     }
 

@@ -11,7 +11,8 @@ export class MockTextCompletionProvider implements TextCompletionProvider {
   async complete(
     request: TextCompletionRequest,
   ): Promise<TextCompletionResponse> {
-    const system = request.messages.find((m) => m.role === 'system')?.content ?? '';
+    const system =
+      request.messages.find((m) => m.role === 'system')?.content ?? '';
 
     if (system.includes('Writer agent')) {
       return {
@@ -30,7 +31,7 @@ export class MockTextCompletionProvider implements TextCompletionProvider {
     if (system.includes('Reviewer agent')) {
       const user =
         request.messages.find((m) => m.role === 'user')?.content ?? '';
-      const isRevisionReview = user.includes('"agentRole": "reviewer"');
+      const isRevisionReview = /"revisionAttempt":\s*[2-9]/.test(user);
       const passed = isRevisionReview;
       return {
         content: JSON.stringify({
@@ -69,7 +70,7 @@ export class MockTextCompletionProvider implements TextCompletionProvider {
           mediaType: 'quote_card',
           altText: 'Quote card featuring the post hook',
           imagePrompt:
-            'Minimal LinkedIn quote card, navy background, white bold headline text, clean sans-serif',
+            'Navy gradient background, bold white sans-serif typography, centered layout',
           width: 1200,
           height: 630,
           headlineText: 'Most founders skip this step.',
@@ -95,12 +96,11 @@ export class MockTextCompletionProvider implements TextCompletionProvider {
     if (system.includes('calendar planner')) {
       const user =
         request.messages.find((m) => m.role === 'user')?.content ?? '';
-      const dates: string[] = [];
-      const dateMatches = user.matchAll(/"date":\s*"(\d{4}-\d{2}-\d{2})"/g);
-
-      for (const match of dateMatches) {
-        dates.push(match[1]);
-      }
+      const compactDates = user.match(/dates:\s*([^\n]+)/)?.[1] ?? '';
+      const dates = compactDates
+        .split(',')
+        .map((date) => date.trim())
+        .filter(Boolean);
 
       const slots = dates.map((date, index) => ({
         date,
@@ -114,6 +114,22 @@ export class MockTextCompletionProvider implements TextCompletionProvider {
         content: JSON.stringify({ slots }),
         model: 'mock-text',
         usage: { inputTokens: 30, outputTokens: 80 },
+      };
+    }
+
+    if (system.includes('exactly 1 post')) {
+      return {
+        content: JSON.stringify({
+          hook: 'Most founders skip this step.',
+          body: 'I spent years posting without a system. Then I built one.',
+          cta: 'What is your content system?',
+          tags: ['founders', 'linkedin'],
+          postType: PostType.personal_story,
+          tone: 'Bold',
+          pillar: 'Founder lessons',
+        }),
+        model: 'mock-text',
+        usage: { inputTokens: 30, outputTokens: 50 },
       };
     }
 

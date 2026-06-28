@@ -11,7 +11,13 @@ export interface CalendarEvent {
 
 type CalendarPostRow = Pick<
   PostPackage,
-  'id' | 'hook' | 'pillar' | 'status' | 'postType' | 'scheduledAt' | 'publishedAt'
+  | 'id'
+  | 'hook'
+  | 'pillar'
+  | 'status'
+  | 'postType'
+  | 'scheduledAt'
+  | 'publishedAt'
 >;
 
 export function toCalendarEvent(post: CalendarPostRow): CalendarEvent {

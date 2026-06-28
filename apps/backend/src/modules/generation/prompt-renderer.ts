@@ -1,9 +1,28 @@
 import { Injectable } from '@nestjs/common';
+import { CouncilAgentRole } from '@prisma/client';
+import { GenerationContext, LlmMessage } from './generation.types';
+import {
+  projectPriorSteps,
+  serializePriorSteps,
+} from './prompts/prior-steps-projector';
+import {
+  PROMPT_FIELD_LIMITS,
+  truncateText,
+} from './prompts/prompt-text.util';
 import { getPromptTemplate } from './prompts/prompt-registry';
 import {
-  GenerationContext,
-  LlmMessage,
-} from './generation.types';
+  buildBriefBlock,
+  buildMediaProfileBlock,
+  buildMinimalProfileBlock,
+  buildPostBlock,
+  buildProfileBlock,
+  buildRequestBlock,
+} from './prompts/shared-profile-block';
+
+export interface RenderFlowOptions {
+  agentRole?: CouncilAgentRole;
+  passScore?: number;
+}
 
 @Injectable()
 export class PromptRenderer {
@@ -11,13 +30,19 @@ export class PromptRenderer {
     return this.renderFlow('quick-draft', 1, context);
   }
 
+  renderQuickDraftSingleV1(context: GenerationContext): LlmMessage[] {
+    return this.renderFlow('quick-draft-single', 1, context);
+  }
+
   renderFlow(
     flowId: string,
     version: number,
     context: GenerationContext,
+    options?: RenderFlowOptions,
   ): LlmMessage[] {
     const template = getPromptTemplate(flowId, version);
-    const values = this.buildPlaceholderValues(context);
+    const agentRole = options?.agentRole ?? context.promptAgentRole;
+    const values = this.buildPlaceholderValues(context, agentRole, options?.passScore);
 
     return [
       {
@@ -33,6 +58,8 @@ export class PromptRenderer {
 
   private buildPlaceholderValues(
     context: GenerationContext,
+    agentRole?: CouncilAgentRole,
+    passScore?: number,
   ): Record<string, string> {
     const user = context.user;
     const profile = context.contentProfile;
@@ -44,38 +71,135 @@ export class PromptRenderer {
       .join(' ')
       .trim();
 
+    const writingSample = truncateText(
+      profile?.writingSample ?? '',
+      PROMPT_FIELD_LIMITS.writingSample,
+    );
+    const avoidWords = truncateText(
+      profile?.avoidWords ?? '',
+      PROMPT_FIELD_LIMITS.avoidWords,
+    );
+    const offerDescription = truncateText(
+      profile?.offerDescription ?? '',
+      PROMPT_FIELD_LIMITS.offerDescription,
+    );
+    const additionalContext = truncateText(
+      input?.additionalContext ?? '',
+      PROMPT_FIELD_LIMITS.additionalContext,
+    );
+    const brief = truncateText(input?.brief ?? '', PROMPT_FIELD_LIMITS.brief);
+    const pillars =
+      profile?.pillars?.slice(0, PROMPT_FIELD_LIMITS.maxPillars).join(', ') ??
+      '';
+
+    const profileFields = {
+      name: profile?.name ?? '',
+      roleTitle: profile?.roleTitle ?? '',
+      industry: profile?.industry ?? '',
+      targetAudience: profile?.targetAudience ?? '',
+      contentGoal: profile?.contentGoal ?? '',
+      preferredTone: profile?.preferredTone ?? '',
+      offerDescription,
+      writingSample,
+      avoidWords,
+      pillars,
+    };
+
+    const priorSteps = agentRole
+      ? projectPriorSteps(agentRole, context.priorSteps ?? [])
+      : (context.priorSteps ?? []);
+
+    const priorStepsJson = serializePriorSteps(priorSteps);
+    const priorFeedbackBlock =
+      agentRole === CouncilAgentRole.writer && priorSteps.length > 0
+        ? `<prior_feedback>\n${priorStepsJson}\n</prior_feedback>`
+        : '';
+
+    const editorStep = priorSteps.find(
+      (step) => step.agentRole === CouncilAgentRole.editor,
+    );
+    const postBody = truncateText(
+      String(editorStep?.output.body ?? ''),
+      PROMPT_FIELD_LIMITS.postBodyPreview,
+    );
+
+    const documentsLine =
+      documents.length > 0
+        ? `documents: ${documents.map((doc) => doc.filename).join(', ')}`
+        : '';
+
+    const slotDates = input?.calendarSlotDates ?? [];
+
     return {
       'user.displayName': displayName || user?.email || '',
       'user.timezone': user?.timezone ?? '',
       'user.plan': user?.plan ?? '',
-      'contentProfile.name': profile?.name ?? '',
-      'contentProfile.roleTitle': profile?.roleTitle ?? '',
-      'contentProfile.industry': profile?.industry ?? '',
-      'contentProfile.targetAudience': profile?.targetAudience ?? '',
-      'contentProfile.contentGoal': profile?.contentGoal ?? '',
-      'contentProfile.preferredTone': profile?.preferredTone ?? '',
-      'contentProfile.offerDescription': profile?.offerDescription ?? '',
-      'contentProfile.writingSample': profile?.writingSample ?? '',
-      'contentProfile.avoidWords': profile?.avoidWords ?? '',
-      'contentProfile.pillars': profile?.pillars?.join(', ') ?? '',
+      'contentProfile.name': profileFields.name,
+      'contentProfile.roleTitle': profileFields.roleTitle,
+      'contentProfile.industry': profileFields.industry,
+      'contentProfile.targetAudience': profileFields.targetAudience,
+      'contentProfile.contentGoal': profileFields.contentGoal,
+      'contentProfile.preferredTone': profileFields.preferredTone,
+      'contentProfile.offerDescription': offerDescription,
+      'contentProfile.writingSample': writingSample,
+      'contentProfile.avoidWords': avoidWords,
+      'contentProfile.pillars': pillars,
       'input.topic': input?.topic ?? '',
       'input.postType': input?.postType ?? '',
       'input.tone': input?.tone ?? '',
       'input.pillar': input?.pillar ?? '',
-      'input.additionalContext': input?.additionalContext ?? '',
-      'input.brief': input?.brief ?? '',
+      'input.additionalContext': additionalContext,
+      'input.brief': brief,
       'calendar.slotCount': String(input?.calendarSlotCount ?? ''),
       'calendar.durationDays': String(input?.calendarDurationDays ?? ''),
       'calendar.slots.json': JSON.stringify(
-        (input?.calendarSlotDates ?? []).map((date) => ({ date })),
+        slotDates.map((date) => ({ date })),
         null,
         2,
       ),
+      'calendar.slots.compact': slotDates.join(','),
       'documents.summary':
         documents.length > 0
           ? documents.map((doc) => doc.filename).join(', ')
           : 'None',
-      'priorSteps.json': JSON.stringify(context.priorSteps ?? [], null, 2),
+      'documents.line': documentsLine,
+      'priorSteps.json': priorStepsJson,
+      'priorFeedback.block': priorFeedbackBlock,
+      'profile.block': buildProfileBlock(profileFields),
+      'profile.minimal': buildMinimalProfileBlock({
+        name: profileFields.name,
+        writingSample,
+        avoidWords,
+      }),
+      'profile.media': buildMediaProfileBlock({
+        preferredTone: profileFields.preferredTone,
+        industry: profileFields.industry,
+        avoidWords,
+      }),
+      'brief.block': buildBriefBlock({
+        topic: input?.topic ?? '',
+        postType: input?.postType ?? '',
+        tone: input?.tone ?? '',
+        pillar: input?.pillar ?? '',
+        brief,
+        additionalContext,
+      }),
+      'request.block': buildRequestBlock({
+        topic: input?.topic ?? '',
+        postType: input?.postType ?? '',
+        tone: input?.tone ?? '',
+        pillar: input?.pillar ?? '',
+        additionalContext,
+        documentsLine,
+      }),
+      'post.block': buildPostBlock({
+        hook: String(editorStep?.output.hook ?? ''),
+        body: postBody,
+        cta: String(editorStep?.output.cta ?? ''),
+      }),
+      'council.passScore': String(
+        passScore ?? context.councilPassScore ?? 75,
+      ),
     };
   }
 

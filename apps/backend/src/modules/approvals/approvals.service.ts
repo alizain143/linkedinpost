@@ -82,7 +82,9 @@ export class ApprovalsService {
 
     const entries = await Promise.all(
       APPROVAL_TABS.map(async (tab) => {
-        const count = await this.prisma.postPackage.count({ where: wheres[tab] });
+        const count = await this.prisma.postPackage.count({
+          where: wheres[tab],
+        });
         return [tab, count] as const;
       }),
     );

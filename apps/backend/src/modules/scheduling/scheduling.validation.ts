@@ -23,8 +23,7 @@ export function validateScheduledAt(
   const now = options?.now ?? new Date();
   const minLeadMs =
     (options?.minLeadMinutes ?? DEFAULT_MIN_LEAD_MINUTES) * 60 * 1000;
-  const maxMs =
-    (options?.maxDays ?? DEFAULT_MAX_DAYS) * 24 * 60 * 60 * 1000;
+  const maxMs = (options?.maxDays ?? DEFAULT_MAX_DAYS) * 24 * 60 * 60 * 1000;
   const scheduledMs = scheduledAt.getTime();
   const nowMs = now.getTime();
 

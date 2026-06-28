@@ -9,6 +9,7 @@ import type {
   GenerationJobProgress,
 } from "@/lib/api/types/generation";
 import { isCalendarJobResult } from "@/lib/calendar-generation-utils";
+import { buildCalendarHighlightUrl } from "@/lib/generation-session";
 import { formatCalendarEventTime } from "@/lib/calendar-utils";
 import { shouldPollJob } from "@/lib/council-utils";
 import { DEFAULT_TIMEZONE } from "@/lib/timezones";
@@ -95,12 +96,12 @@ export function CalendarJobProgressPanel({
             ))}
           </div>
           <Button
-            href="/app/calendar?filter=Needs%20Approval"
+            href={buildCalendarHighlightUrl(calendarResult.slots)}
             variant="success"
             size="sm"
           >
             <MsIcon name="event_available" size={16} />
-            Review on calendar
+            Show in calendar
           </Button>
         </div>
       ) : showActiveStep && !calendarResult ? (
@@ -123,7 +124,7 @@ export function CalendarJobProgressPanel({
             href="/app/calendar?filter=Needs%20Approval"
             className="font-semibold text-[#0891b2]"
           >
-            Review posts
+            Show in calendar
           </Link>
         </div>
       ) : null}

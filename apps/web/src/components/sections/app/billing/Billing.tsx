@@ -69,7 +69,7 @@ export default function Billing() {
     isLoading: creditsLoading,
     error: creditsError,
     refetch: refetchCredits,
-    percentUsed,
+    usage,
   } = useCredits();
 
   const checkoutMutation = useCheckoutMutation();
@@ -126,7 +126,7 @@ export default function Billing() {
     });
   };
 
-  const isLoading = billingLoading || creditsLoading || !billing || !balance;
+  const isLoading = billingLoading || creditsLoading || !billing || !balance || !usage;
   const queryError = billingError || creditsError;
 
   return (
@@ -139,7 +139,7 @@ export default function Billing() {
       }}
       skeleton={<BillingSkeleton />}
     >
-      {billing && balance ? (
+      {billing && balance && usage ? (
         <div className="space-y-5">
           {billingUnavailable ? (
             <div className="rounded-2xl border border-[#fde68a] bg-gradient-to-br from-[#fffbeb] to-[#fffdf5] px-5 py-4 text-[13px] text-[#92400e]">
@@ -165,10 +165,10 @@ export default function Billing() {
                 Credits used
               </div>
               <div className="mt-1 font-display text-2xl font-extrabold tracking-tight">
-                {balance.used} / {balance.limit}
+                {usage.used} / {usage.limit}
               </div>
               <div className="mt-1 text-xs text-[#94a3b8]">
-                {balance.percentUsed.toFixed(1)}% of monthly limit
+                {usage.usagePercentLabel}% of monthly limit
               </div>
             </div>
 
@@ -191,14 +191,14 @@ export default function Billing() {
                 Credit usage
               </span>
               <span className="font-display text-sm font-bold">
-                {balance.used} / {balance.limit}
+                {usage.used} / {usage.limit}
               </span>
             </div>
             <div className="h-2.5 overflow-hidden rounded-full bg-[#f1f3f8]">
               <div
                 className="h-full rounded-full bg-gradient-to-r from-[#4f46e5] to-[#7c3aed]"
                 style={{
-                  width: `${Math.min(100, Math.max(0, percentUsed))}%`,
+                  width: `${usage.usagePercent}%`,
                 }}
               />
             </div>

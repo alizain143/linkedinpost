@@ -1,7 +1,4 @@
-import {
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   ApprovalToken,
@@ -14,6 +11,7 @@ import { NOT_DELETED } from '../../common/constants/soft-delete.constants';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PlanFeatureService } from '../billing/plan-feature.service';
 import { MediaService } from '../media/media.service';
+import { NotificationEventService } from '../notifications/notification-event.service';
 import { WorkspacesService } from '../workspaces/workspaces.service';
 import {
   generateApprovalRawToken,
@@ -41,6 +39,7 @@ export class ApprovalShareService {
     private readonly workspacesService: WorkspacesService,
     private readonly planFeatureService: PlanFeatureService,
     private readonly mediaService: MediaService,
+    private readonly notificationEvents: NotificationEventService,
   ) {}
 
   private getFrontendUrl(): string {
@@ -233,7 +232,11 @@ export class ApprovalShareService {
     rawToken: string,
     feedback: string,
   ): Promise<PublicApprovalActionResponseDto> {
-    return this.applyPublicApprovalAction(rawToken, 'request-changes', feedback);
+    return this.applyPublicApprovalAction(
+      rawToken,
+      'request-changes',
+      feedback,
+    );
   }
 
   async reject(
@@ -287,6 +290,16 @@ export class ApprovalShareService {
         where: { id: post.id, ...NOT_DELETED },
       });
     });
+
+    if (action === 'approve' || action === 'request-changes') {
+      await this.notificationEvents.emitClientApprovalAction({
+        userId: token.createdById,
+        workspaceId: post.workspaceId,
+        postPackageId: updated.id,
+        postHook: updated.hook,
+        action: action === 'approve' ? 'approve' : 'request-changes',
+      });
+    }
 
     return { id: updated.id, status: updated.status };
   }

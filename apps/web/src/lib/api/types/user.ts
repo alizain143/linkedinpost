@@ -4,6 +4,8 @@ export type UserNotificationPrefs = {
   weeklyReminders: boolean;
   generationComplete: boolean;
   productUpdates: boolean;
+  publishAlerts: boolean;
+  pushEnabled: boolean;
 };
 
 export type ApiUser = {

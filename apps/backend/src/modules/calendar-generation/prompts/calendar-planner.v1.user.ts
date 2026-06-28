@@ -1,7 +1,8 @@
-export const CALENDAR_PLANNER_V1_USER = `Plan {{calendar.slotCount}} LinkedIn posts for these dates:
-{{calendar.slots.json}}
+export const CALENDAR_PLANNER_V1_USER = `Plan {{calendar.slotCount}} LinkedIn posts.
 
-Content profile pillars: {{contentProfile.pillars}}
-Preferred tone: {{contentProfile.preferredTone}}
-Target audience: {{contentProfile.targetAudience}}
-Additional context: {{input.additionalContext}}`;
+dates: {{calendar.slots.compact}}
+
+pillars: {{contentProfile.pillars}}
+tone: {{contentProfile.preferredTone}}
+audience: {{contentProfile.targetAudience}}
+context: {{input.additionalContext}}`;

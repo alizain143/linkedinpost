@@ -102,7 +102,10 @@ export class MediaService {
 
     return Promise.all(
       rows.map(async (row) =>
-        toPostMediaResponse(row, await this.resolveUrl(row.storageBucket, row.storageKey)),
+        toPostMediaResponse(
+          row,
+          await this.resolveUrl(row.storageBucket, row.storageKey),
+        ),
       ),
     );
   }

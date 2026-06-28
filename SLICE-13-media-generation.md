@@ -77,7 +77,7 @@ When `R2_PUBLIC_POST_MEDIA_URL` is empty, `url` is a presigned download link (15
 
 - Imagen 4 / photoreal tier — [SLICE-17](SLICE-17-nano-banana-image-generation.md)
 - Vision media reviewer
-- `POST /posts/:id/regenerate-media`
+- ~~`POST /posts/:id/regenerate-media`~~ — implemented as `POST /posts/:id/generate-media` (media-only job)
 - Manual media upload
 - `media[]` on list/calendar/pipeline
 - Frontend

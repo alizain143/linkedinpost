@@ -25,17 +25,26 @@ import type {
 import { getApiErrorMessage } from "@/lib/api-error-messages";
 import { clerkErrorMessage } from "@/lib/auth/clerk";
 import {
+  findLinkedInAccountForConnect,
+  findLinkedInExternalAccount,
+  getExternalVerificationRedirectUrl,
+  getLinkedInApprovedScopes,
+  listLinkedInExternalAccounts,
   LINKEDIN_CONNECT_CALLBACK,
   LINKEDIN_OAUTH_STRATEGY,
   LINKEDIN_PUBLISH_SCOPE,
+  redirectToExternalAccountVerification,
+  type LinkedInExternalAccount,
 } from "@/lib/auth/linkedin-clerk";
 import {
   getLinkedInConnectionState,
   type LinkedInConnectionState,
 } from "@/lib/linkedin-utils";
 import { DEFAULT_TIMEZONE } from "@/lib/timezones";
+import { revokeCurrentPushToken } from "@/lib/push-token-lifecycle";
 import { usePpToast } from "@/providers/pp-toast-provider";
-import { useClerk } from "@clerk/nextjs";
+import { useClerk, useReverification, useAuth } from "@clerk/nextjs";
+import { isReverificationCancelledError } from "@clerk/nextjs/errors";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { createContext, useContext } from "react";
@@ -88,6 +97,7 @@ const AppUiContext = createContext<AppUiContextValue | null>(null);
 export function AppUiProvider({ children }: { children: React.ReactNode }) {
   const { showToast } = usePpToast();
   const { signOut } = useClerk();
+  const { getToken } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
   const logoutMutation = useLogout();
@@ -103,6 +113,37 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
     useLinkedInClerk();
   const { data: connection } = useLinkedInConnection();
   const invalidateLinkedIn = useInvalidateLinkedIn();
+
+  const connectLinkedInExternalAccount = useReverification(
+    (params: {
+      strategy: typeof LINKEDIN_OAUTH_STRATEGY;
+      redirectUrl: string;
+      additionalScopes: string[];
+    }) => user!.createExternalAccount(params),
+  );
+
+  const reauthorizeLinkedInExternalAccount = useReverification(
+    (params: {
+      account: LinkedInExternalAccount & {
+        reauthorize: NonNullable<LinkedInExternalAccount["reauthorize"]>;
+      };
+      additionalScopes: string[];
+      redirectUrl: string;
+    }) =>
+      params.account.reauthorize({
+        additionalScopes: params.additionalScopes,
+        redirectUrl: params.redirectUrl,
+      }),
+  );
+
+  const destroyLinkedInExternalAccount = useReverification(
+    (account: LinkedInExternalAccount) => {
+      if (!account.destroy) {
+        throw new Error("LinkedIn account cannot be removed");
+      }
+      return account.destroy();
+    },
+  );
 
   const [showConnect, setShowConnect] = useState(false);
   const [connecting, setConnecting] = useState(false);
@@ -140,28 +181,83 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
     }
 
     setConnecting(true);
+    const linkedInAccount = findLinkedInAccountForConnect(user);
+    const isVerified = linkedInAccount?.verification?.status === "verified";
+    const hasPublish =
+      linkedInAccount &&
+      getLinkedInApprovedScopes(linkedInAccount).includes(
+        LINKEDIN_PUBLISH_SCOPE,
+      );
+    const flow =
+      linkedInAccount && (!isVerified || !hasPublish)
+        ? "reauthorize"
+        : "createExternalAccount";
     try {
-      if (externalAccount && linkedinConnected && !linkedinPublishReady) {
-        await externalAccount.reauthorize({
-          additionalScopes: [LINKEDIN_PUBLISH_SCOPE],
-          redirectUrl: LINKEDIN_CONNECT_CALLBACK,
-        });
+      if (linkedInAccount && isVerified && hasPublish) {
+        setConnecting(false);
+        closeConnect();
+        showToast("LinkedIn is already connected", "link");
         return;
       }
 
-      await user.createExternalAccount({
+      if (flow === "reauthorize") {
+        if (!linkedInAccount?.reauthorize) {
+          setConnecting(false);
+          showToast("Could not start LinkedIn authorization", "link_off");
+          return;
+        }
+
+        let oauthAccount = (await reauthorizeLinkedInExternalAccount({
+          account: linkedInAccount as LinkedInExternalAccount & {
+            reauthorize: NonNullable<LinkedInExternalAccount["reauthorize"]>;
+          },
+          additionalScopes: [LINKEDIN_PUBLISH_SCOPE],
+          redirectUrl: LINKEDIN_CONNECT_CALLBACK,
+        })) as Awaited<ReturnType<typeof user.createExternalAccount>>;
+
+        if (!getExternalVerificationRedirectUrl(oauthAccount)) {
+          if (linkedInAccount?.destroy) {
+            await destroyLinkedInExternalAccount(linkedInAccount);
+          }
+          await user.reload();
+          oauthAccount = await connectLinkedInExternalAccount({
+            strategy: LINKEDIN_OAUTH_STRATEGY,
+            redirectUrl: LINKEDIN_CONNECT_CALLBACK,
+            additionalScopes: [LINKEDIN_PUBLISH_SCOPE],
+          });
+        }
+
+        if (!redirectToExternalAccountVerification(oauthAccount)) {
+          setConnecting(false);
+          showToast("Could not start LinkedIn authorization", "link_off");
+        }
+        return;
+      }
+
+      const oauthAccount = await connectLinkedInExternalAccount({
         strategy: LINKEDIN_OAUTH_STRATEGY,
         redirectUrl: LINKEDIN_CONNECT_CALLBACK,
         additionalScopes: [LINKEDIN_PUBLISH_SCOPE],
       });
+      if (!redirectToExternalAccountVerification(oauthAccount)) {
+        setConnecting(false);
+        showToast("Could not start LinkedIn authorization", "link_off");
+      }
     } catch (err) {
       setConnecting(false);
+      if (isReverificationCancelledError(err)) {
+        showToast("Verification cancelled", "link_off");
+        return;
+      }
       showToast(clerkErrorMessage(err), "link_off");
     }
   }, [
-    externalAccount,
+    closeConnect,
+    connectLinkedInExternalAccount,
     linkedinConnected,
     linkedinPublishReady,
+    destroyLinkedInExternalAccount,
+    reauthorizeLinkedInExternalAccount,
     showToast,
     user,
   ]);
@@ -174,22 +270,40 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
       body: "Scheduled posts won't publish until you reconnect. Your drafts and calendar stay saved.",
       confirmLabel: "Disconnect",
       onConfirm: () => {
-        if (!externalAccount) {
+        const accounts = listLinkedInExternalAccounts(user).filter(
+          (account) =>
+            account.verification?.status === "verified" && account.destroy,
+        );
+        const account =
+          findLinkedInExternalAccount(user) ?? externalAccount ?? accounts[0];
+
+        if (!account?.destroy) {
           showToast("LinkedIn is not connected", "link_off");
           return;
         }
 
-        void externalAccount
-          .destroy()
+        void destroyLinkedInExternalAccount(account)
           .then(async () => {
             await user?.reload();
             invalidateLinkedIn();
             showToast("LinkedIn disconnected", "link_off");
           })
-          .catch((err) => showToast(clerkErrorMessage(err), "link_off"));
+          .catch((err) => {
+            if (isReverificationCancelledError(err)) {
+              showToast("Verification cancelled", "link_off");
+              return;
+            }
+            showToast(clerkErrorMessage(err), "link_off");
+          });
       },
     });
-  }, [externalAccount, invalidateLinkedIn, showToast, user]);
+  }, [
+    destroyLinkedInExternalAccount,
+    externalAccount,
+    invalidateLinkedIn,
+    showToast,
+    user,
+  ]);
 
   const askConfirmInternal = useCallback((cfg: ConfirmConfig) => {
     setConfirm(cfg);
@@ -317,6 +431,12 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
       confirmLabel: "Log out",
       onConfirm: async () => {
         try {
+          await revokeCurrentPushToken(() => getToken());
+        } catch {
+          // Best-effort push cleanup should not block logout.
+        }
+
+        try {
           await logoutMutation.mutateAsync();
         } catch {
           showToast("Signed out locally — server session may still be active", "logout");
@@ -331,7 +451,7 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
         }
       },
     });
-  }, [askConfirmInternal, logoutMutation, queryClient, router, showToast, signOut]);
+  }, [askConfirmInternal, getToken, logoutMutation, queryClient, router, showToast, signOut]);
 
   const confirmDeleteAccount = useCallback(() => {
     askConfirmInternal({

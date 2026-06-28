@@ -9,6 +9,9 @@ export const PLAN_FEATURES = {
 
 export type PlanFeature = keyof typeof PLAN_FEATURES;
 
-export function planAllowsFeature(plan: UserPlan, feature: PlanFeature): boolean {
+export function planAllowsFeature(
+  plan: UserPlan,
+  feature: PlanFeature,
+): boolean {
   return (PLAN_FEATURES[feature] as readonly UserPlan[]).includes(plan);
 }

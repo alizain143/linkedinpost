@@ -5,7 +5,10 @@ export const ALLOWED_TRANSITIONS: Record<
   PostPackageStatus,
   PostPackageStatus[]
 > = {
-  [PostPackageStatus.draft]: [PostPackageStatus.ready_for_approval],
+  [PostPackageStatus.draft]: [
+    PostPackageStatus.ready_for_approval,
+    PostPackageStatus.approved,
+  ],
   [PostPackageStatus.text_generating]: [],
   [PostPackageStatus.text_reviewing]: [],
   [PostPackageStatus.media_generating]: [],
@@ -13,7 +16,10 @@ export const ALLOWED_TRANSITIONS: Record<
     PostPackageStatus.approved,
     PostPackageStatus.draft,
   ],
-  [PostPackageStatus.approved]: [],
+  [PostPackageStatus.approved]: [
+    PostPackageStatus.ready_for_approval,
+    PostPackageStatus.draft,
+  ],
   [PostPackageStatus.scheduled]: [
     PostPackageStatus.approved,
     PostPackageStatus.draft,

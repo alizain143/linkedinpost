@@ -1,8 +1,7 @@
-export const COUNCIL_EDITOR_V1_USER = `Edit the draft into final LinkedIn copy.
+export const COUNCIL_EDITOR_V1_USER = `<profile>
+{{contentProfile.preferredTone}}|{{contentProfile.avoidWords}}
+</profile>
 
-Creator: {{contentProfile.name}}
-Tone: {{contentProfile.preferredTone}}
-Avoid: {{contentProfile.avoidWords}}
-
-Prior council steps:
-{{priorSteps.json}}`;
+<draft_and_review>
+{{priorSteps.json}}
+</draft_and_review>`;

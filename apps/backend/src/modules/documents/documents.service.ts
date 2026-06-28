@@ -70,7 +70,8 @@ export class DocumentsService {
 
     if (pendingCount >= 10) {
       throw new BadRequestException({
-        error: 'Too many pending uploads. Complete or cancel existing uploads first.',
+        error:
+          'Too many pending uploads. Complete or cancel existing uploads first.',
         code: 'PENDING_UPLOAD_LIMIT',
       });
     }
@@ -208,7 +209,17 @@ export class DocumentsService {
       return null;
     }
 
-    return this.r2BucketService.getPublicProfileUrl(document.storageKey);
+    const publicUrl = this.r2BucketService.getPublicProfileUrl(
+      document.storageKey,
+    );
+    if (publicUrl) {
+      return publicUrl;
+    }
+
+    return this.r2Storage.createDownloadUrl(
+      document.storageBucket,
+      document.storageKey,
+    );
   }
 
   async removeDocument(documentId: string, userId: string): Promise<void> {

@@ -10,6 +10,8 @@ import openaiConfig from './config/openai.config';
 import r2Config from './config/r2.config';
 import linkedinConfig from './config/linkedin.config';
 import mediaConfig from './config/media.config';
+import resendConfig from './config/resend.config';
+import firebaseConfig from './config/firebase.config';
 import schedulingConfig from './config/scheduling.config';
 import redisConfig from './config/redis.config';
 import { PrismaModule } from './prisma/prisma.module';
@@ -31,13 +33,29 @@ import { SchedulingModule } from './modules/scheduling/scheduling.module';
 import { LinkedInModule } from './modules/linkedin/linkedin.module';
 import { WorkspacesModule } from './modules/workspaces/workspaces.module';
 import { ApprovalShareModule } from './modules/approval-share/approval-share.module';
+import { MediaGenerationModule } from './modules/media-generation/media-generation.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 import { HealthController } from './health.controller';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [clerkConfig, r2Config, openaiConfig, googleConfig, appConfig, stripeConfig, redisConfig, councilConfig, schedulingConfig, linkedinConfig, mediaConfig],
+      load: [
+        clerkConfig,
+        r2Config,
+        openaiConfig,
+        googleConfig,
+        appConfig,
+        stripeConfig,
+        redisConfig,
+        councilConfig,
+        schedulingConfig,
+        linkedinConfig,
+        mediaConfig,
+        resendConfig,
+        firebaseConfig,
+      ],
     }),
     ScheduleModule.forRoot(),
     PrismaModule,
@@ -56,9 +74,11 @@ import { HealthController } from './health.controller';
     GenerationModule,
     CalendarGenerationModule,
     CouncilModule,
+    MediaGenerationModule,
     AutopilotModule,
     BillingModule,
     ApprovalShareModule,
+    NotificationsModule,
   ],
   controllers: [HealthController],
 })

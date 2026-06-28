@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
 import { MsIcon } from "@/components/ui/ms-icon";
 import type { GenerationJobStatus } from "@/lib/api/types/enums";
 import type {
@@ -17,6 +18,7 @@ type CouncilTimelineProps = {
   progress?: GenerationJobProgress | null;
   status?: GenerationJobStatus;
   errorMessage?: string | null;
+  postPackageId?: string | null;
 };
 
 function eventStatusIcon(status: string) {
@@ -38,6 +40,7 @@ export function CouncilTimeline({
   progress,
   status,
   errorMessage,
+  postPackageId,
 }: CouncilTimelineProps) {
   const showActiveStep =
     !!progress &&
@@ -131,6 +134,19 @@ export function CouncilTimeline({
           <p className="text-[14px] font-semibold text-[#475569]">
             Council agents are starting…
           </p>
+        </div>
+      ) : null}
+
+      {status === "completed" && postPackageId ? (
+        <div className="rounded-2xl border border-[#eceef4] bg-white p-[18px]">
+          <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-[#16a34a]">
+            <MsIcon name="check_circle" size={19} />
+            Council review complete
+          </div>
+          <Button href={`/app/posts/${postPackageId}`} variant="success" size="sm">
+            <MsIcon name="open_in_new" size={16} />
+            View post
+          </Button>
         </div>
       ) : null}
     </div>

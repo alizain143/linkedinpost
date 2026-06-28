@@ -96,7 +96,7 @@ Update this section as features land. Tell the agent to mark items `[x]` when do
 
 ### Frontend screens (track separately)
 
-See [FRONTEND_IMPLEMENTATION.md](FRONTEND_IMPLEMENTATION.md) for slice order and dependencies (`FE-SLICE-01`–`18`).
+See [FRONTEND_IMPLEMENTATION.md](FRONTEND_IMPLEMENTATION.md) for slice order and dependencies (`FE-SLICE-01`–`20`).
 
 - [x] Marketing pages (static)
 - [x] App shell + sidebar (UI only)
@@ -119,6 +119,8 @@ See [FRONTEND_IMPLEMENTATION.md](FRONTEND_IMPLEMENTATION.md) for slice order and
 - [x] Clients / agency (FE-SLICE-17)
 - [x] Billing — API wired (FE-SLICE-16)
 - [x] Approval share links (FE-SLICE-18)
+- [x] Notifications topbar + push (FE-SLICE-19)
+- [x] Notifications inbox + polish (FE-SLICE-20)
 
 ---
 
@@ -152,7 +154,7 @@ Core promise: generate authentic LinkedIn posts, plan a content calendar, run an
 
 - Sidebar nav: Dashboard, Generate, Autopilot, Pipeline, Calendar, Approvals, Clients, Profile, Billing, Settings
 - Workspace switcher (personal vs agency clients)
-- Notifications dropdown
+- Notifications dropdown (topbar) + full inbox at `/app/notifications` (via **View all**)
 - Global search (“Search posts, drafts…”)
 - Credits meter in sidebar
 
@@ -173,6 +175,7 @@ Core promise: generate authentic LinkedIn posts, plan a content calendar, run an
 | **Clients** | Agency client workspaces | Workspace multi-tenancy |
 | **Billing** | Plan, credits, usage breakdown, history | Stripe + credit ledger |
 | **Settings** | Account, LinkedIn connection, publishing defaults, notifications | OAuth tokens, user prefs |
+| **Notifications** | Full inbox, unread filter, mark read | User-scoped notification API |
 
 ### Modals / flows (cross-cutting)
 
@@ -248,7 +251,7 @@ Unit that moves through the pipeline.
 | **autopilot** | Config + cron generation | Not started |
 | **credits** | Ledger, deduct, monthly reset | Ledger stub + guard done |
 | **billing** | Stripe subscriptions | Complete (Slice 18) |
-| **notifications** | In-app + email prefs | Email prefs on `User` (store only) |
+| **notifications** | In-app + email + web push | Done (Slice 21) |
 | **dashboard** | Read-only aggregations | Done |
 | **search** | Full-text search posts/drafts | Not started |
 
@@ -483,7 +486,7 @@ Beyond current `User` / `Document`:
 - `/autopilot`
 - `/linkedin/connect`, `/callback`, `/disconnect`
 - `/billing`, `/billing/portal`, `/billing/webhooks/stripe`
-- `/credits`, `/notifications`, `/search`
+- `/credits`, `/search`
 
 ---
 

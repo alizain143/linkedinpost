@@ -10,9 +10,23 @@ async function bootstrap() {
 
   app.setGlobalPrefix('v1');
 
+  const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:3000';
+  const corsOrigins =
+    process.env.NODE_ENV === 'production'
+      ? frontendUrl
+      : Array.from(
+          new Set([
+            frontendUrl,
+            'http://localhost:3000',
+            'http://127.0.0.1:3000',
+          ]),
+        );
+
   app.enableCors({
-    origin: process.env.FRONTEND_URL ?? 'http://localhost:3000',
+    origin: corsOrigins,
     credentials: true,
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Authorization', 'Content-Type', 'Accept'],
   });
 
   app.useGlobalPipes(globalValidationPipe);

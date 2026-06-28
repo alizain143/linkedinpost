@@ -53,6 +53,33 @@ describe('post-status.transitions', () => {
       ).not.toThrow();
     });
 
+    it('allows draft to approved', () => {
+      expect(() =>
+        assertValidTransition(
+          PostPackageStatus.draft,
+          PostPackageStatus.approved,
+        ),
+      ).not.toThrow();
+    });
+
+    it('allows approved to ready_for_approval', () => {
+      expect(() =>
+        assertValidTransition(
+          PostPackageStatus.approved,
+          PostPackageStatus.ready_for_approval,
+        ),
+      ).not.toThrow();
+    });
+
+    it('allows approved to draft', () => {
+      expect(() =>
+        assertValidTransition(
+          PostPackageStatus.approved,
+          PostPackageStatus.draft,
+        ),
+      ).not.toThrow();
+    });
+
     it('rejects approved to scheduled via user API', () => {
       expect(() =>
         assertValidTransition(

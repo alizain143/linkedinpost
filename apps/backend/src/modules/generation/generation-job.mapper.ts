@@ -49,14 +49,14 @@ export function toGenerationJobResponse(
 ): GenerationJobResponseDto {
   const progress = job.progress as GenerationJobProgress | null;
 
-  let result: QuickDraftJobResultDto | CouncilJobResultDto | CalendarJobResultDto | null =
+  let result:
+    QuickDraftJobResultDto | CouncilJobResultDto | CalendarJobResultDto | null =
     null;
 
   if (job.type === GenerationJobType.quick_draft && job.result) {
     result = {
-      variants: (
-        job.result as unknown as { variants: QuickDraftVariant[] }
-      ).variants,
+      variants: (job.result as unknown as { variants: QuickDraftVariant[] })
+        .variants,
     };
   }
 
@@ -66,6 +66,10 @@ export function toGenerationJobResponse(
 
   if (job.type === GenerationJobType.calendar && job.result) {
     result = job.result as unknown as CalendarJobResultDto;
+  }
+
+  if (job.type === GenerationJobType.media && job.result) {
+    result = job.result as unknown as CouncilJobResultDto;
   }
 
   return {

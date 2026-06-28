@@ -41,7 +41,9 @@ export class MediaCreatorOutputParser {
     const mediaType = String(obj.mediaType ?? 'quote_card');
 
     if (mediaType !== 'quote_card') {
-      throw generationParseError('Media creator only supports quote_card in v1');
+      throw generationParseError(
+        'Media creator only supports quote_card in v1',
+      );
     }
 
     return {

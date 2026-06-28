@@ -3,10 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import {
-  PostPackage,
-  PostPackageStatus,
-} from '@prisma/client';
+import { PostPackage, PostPackageStatus } from '@prisma/client';
 import { NOT_DELETED } from '../../common/constants/soft-delete.constants';
 import { PrismaService } from '../../prisma/prisma.service';
 import { WorkspacesService } from '../workspaces/workspaces.service';
@@ -161,7 +158,11 @@ export class PostsService {
       approvalFeedback?: string | null;
     } = {
       status: to,
-      ...this.applyApprovalFieldUpdates(existing, to, options?.approvalFeedback),
+      ...this.applyApprovalFieldUpdates(
+        existing,
+        to,
+        options?.approvalFeedback,
+      ),
     };
 
     if (to === PostPackageStatus.scheduled) {
@@ -202,11 +203,7 @@ export class PostsService {
     return toPostPackageResponse(post);
   }
 
-  async list(
-    workspaceId: string,
-    userId: string,
-    query: ListPostsQueryDto,
-  ) {
+  async list(workspaceId: string, userId: string, query: ListPostsQueryDto) {
     await this.workspacesService.assertMember(userId, workspaceId);
 
     const status = query.status ?? [PostPackageStatus.draft];
@@ -442,8 +439,7 @@ export class PostsService {
     assertValidTransition(post.status, to);
 
     return this.updatePostStatus(post, to, {
-      approvalFeedback:
-        action === 'approve' ? undefined : feedback ?? null,
+      approvalFeedback: action === 'approve' ? undefined : (feedback ?? null),
     });
   }
 

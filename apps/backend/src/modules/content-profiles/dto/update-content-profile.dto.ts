@@ -16,7 +16,10 @@ export class UpdateContentProfileDto {
   @MaxLength(200)
   name?: string;
 
-  @ApiPropertyOptional({ example: 'Co-founder & CEO, Northbeam', maxLength: 200 })
+  @ApiPropertyOptional({
+    example: 'Co-founder & CEO, Northbeam',
+    maxLength: 200,
+  })
   @IsOptional()
   @IsString()
   @MaxLength(200)

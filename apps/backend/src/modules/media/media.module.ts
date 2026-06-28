@@ -6,11 +6,7 @@ import { StorageModule } from '../storage/storage.module';
 import { MediaService } from './media.service';
 
 @Module({
-  imports: [
-    ConfigModule.forFeature(mediaConfig),
-    PrismaModule,
-    StorageModule,
-  ],
+  imports: [ConfigModule.forFeature(mediaConfig), PrismaModule, StorageModule],
   providers: [MediaService],
   exports: [MediaService],
 })

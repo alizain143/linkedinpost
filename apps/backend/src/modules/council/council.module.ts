@@ -1,8 +1,9 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import councilConfig from '../../config/council.config';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { CreditsModule } from '../credits/credits.module';
+import { AuthModule } from '../auth/auth.module';
 import { GenerationModule } from '../generation/generation.module';
 import { MediaModule } from '../media/media.module';
 import { PostsModule } from '../posts/posts.module';
@@ -24,10 +25,11 @@ import { WriterOutputParser } from './parsers/writer-output.parser';
   imports: [
     ConfigModule.forFeature(councilConfig),
     PrismaModule,
+    AuthModule,
     WorkspacesModule,
     CreditsModule,
-    PostsModule,
-    GenerationModule,
+    forwardRef(() => PostsModule),
+    forwardRef(() => GenerationModule),
     MediaModule,
   ],
   controllers: [CouncilController],
@@ -44,6 +46,12 @@ import { WriterOutputParser } from './parsers/writer-output.parser';
     MediaCreatorOutputParser,
     MediaReviewerOutputParser,
   ],
-  exports: [CouncilJobService, CouncilJobHandler],
+  exports: [
+    CouncilJobService,
+    CouncilJobHandler,
+    CouncilAgentService,
+    CouncilEventService,
+    CouncilOrchestrator,
+  ],
 })
 export class CouncilModule {}

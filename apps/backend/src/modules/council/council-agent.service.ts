@@ -1,7 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { CouncilAgentRole } from '@prisma/client';
 import { ContextAssembler } from '../generation/context/context-assembler';
-import { CouncilInput, CouncilPriorStep, GenerationContext } from '../generation/generation.types';
+import {
+  CouncilInput,
+  CouncilPriorStep,
+  GenerationContext,
+} from '../generation/generation.types';
 import { MODEL_ROUTER } from '../generation/llm/model-capability.types';
 import type { ModelRouter } from '../generation/llm/model-capability.types';
 import { PromptRenderer } from '../generation/prompt-renderer';
@@ -19,6 +23,10 @@ const FLOW_BY_ROLE: Record<CouncilAgentRole, CouncilFlowId> = {
   media_creator: 'council-media-creator',
   media_reviewer: 'council-media-reviewer',
 };
+
+export interface AgentRunOptions {
+  passScore?: number;
+}
 
 export interface AgentRunResult<T> {
   output: T;
@@ -40,18 +48,26 @@ export class CouncilAgentService {
     private readonly mediaReviewerParser: MediaReviewerOutputParser,
   ) {}
 
-  async runWriter(
-    input: CouncilInput,
-    priorSteps: CouncilPriorStep[],
-  ) {
+  async runWriter(input: CouncilInput, priorSteps: CouncilPriorStep[]) {
     return this.runAgent(input, priorSteps, 'writer', (content) =>
       this.writerParser.parse(content),
     );
   }
 
-  async runReviewer(input: CouncilInput, priorSteps: CouncilPriorStep[]) {
-    return this.runAgent(input, priorSteps, 'reviewer', (content) =>
-      this.reviewerParser.parse(content),
+  async runReviewer(
+    input: CouncilInput,
+    priorSteps: CouncilPriorStep[],
+    options?: AgentRunOptions,
+  ) {
+    return this.runAgent(
+      input,
+      priorSteps,
+      'reviewer',
+      (content) =>
+        this.reviewerParser.parse(content, {
+          passScore: options?.passScore,
+        }),
+      options,
     );
   }
 
@@ -61,19 +77,13 @@ export class CouncilAgentService {
     );
   }
 
-  async runMediaCreator(
-    input: CouncilInput,
-    priorSteps: CouncilPriorStep[],
-  ) {
+  async runMediaCreator(input: CouncilInput, priorSteps: CouncilPriorStep[]) {
     return this.runAgent(input, priorSteps, 'media_creator', (content) =>
       this.mediaCreatorParser.parse(content),
     );
   }
 
-  async runMediaReviewer(
-    input: CouncilInput,
-    priorSteps: CouncilPriorStep[],
-  ) {
+  async runMediaReviewer(input: CouncilInput, priorSteps: CouncilPriorStep[]) {
     return this.runAgent(input, priorSteps, 'media_reviewer', (content) =>
       this.mediaReviewerParser.parse(content),
     );
@@ -84,11 +94,20 @@ export class CouncilAgentService {
     priorSteps: CouncilPriorStep[],
     role: CouncilAgentRole,
     parse: (content: string) => T,
+    options?: AgentRunOptions,
   ): Promise<AgentRunResult<T>> {
     const baseContext = await this.contextAssembler.assemble(input);
-    const context: GenerationContext = { ...baseContext, priorSteps };
+    const context: GenerationContext = {
+      ...baseContext,
+      priorSteps,
+      promptAgentRole: role,
+      councilPassScore: options?.passScore,
+    };
     const flowId = FLOW_BY_ROLE[role];
-    const messages = this.promptRenderer.renderFlow(flowId, 1, context);
+    const messages = this.promptRenderer.renderFlow(flowId, 1, context, {
+      agentRole: role,
+      passScore: options?.passScore,
+    });
     const completion = await this.modelRouter
       .text()
       .complete({ messages, responseFormat: 'json' });

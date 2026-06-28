@@ -1,4 +1,8 @@
-import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
 import { SubscriptionStatus, UserPlan } from '@prisma/client';
 import Stripe from 'stripe';
 import {
@@ -23,11 +27,11 @@ export class BillingSyncService {
     private readonly stripeClient: StripeClientService,
   ) {}
 
-  async syncFromCheckoutSession(session: Stripe.Checkout.Session): Promise<void> {
+  async syncFromCheckoutSession(
+    session: Stripe.Checkout.Session,
+  ): Promise<void> {
     const userId =
-      session.client_reference_id ??
-      session.metadata?.userId ??
-      null;
+      session.client_reference_id ?? session.metadata?.userId ?? null;
 
     if (!userId) {
       this.logger.warn(
@@ -141,7 +145,9 @@ export class BillingSyncService {
     ]);
   }
 
-  async handleSubscriptionDeleted(subscription: Stripe.Subscription): Promise<void> {
+  async handleSubscriptionDeleted(
+    subscription: Stripe.Subscription,
+  ): Promise<void> {
     const stripeCustomerId =
       typeof subscription.customer === 'string'
         ? subscription.customer

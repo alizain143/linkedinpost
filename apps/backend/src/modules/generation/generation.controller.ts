@@ -1,4 +1,12 @@
-import { Body, Controller, HttpCode, HttpStatus, Param, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -41,11 +49,7 @@ export class GenerationController {
     @Param('workspaceId') workspaceId: string,
     @Body() dto: QuickDraftRequestDto,
   ) {
-    return this.quickDraftJobService.runQuickDraft(
-      workspaceId,
-      user.id,
-      dto,
-    );
+    return this.quickDraftJobService.runQuickDraft(workspaceId, user.id, dto);
   }
 
   @Post('council')
@@ -61,6 +65,26 @@ export class GenerationController {
     @Body() dto: CouncilRequestDto,
   ) {
     return this.councilJobService.enqueueCouncil(workspaceId, user.id, dto);
+  }
+
+  @Post('council-premium')
+  @HttpCode(HttpStatus.ACCEPTED)
+  @UseGuards(CreditsGuard)
+  @CreditsCost(10)
+  @ApiOperation({
+    summary:
+      'Start premium AI council generation with bundled media revision (async)',
+  })
+  @ApiParam({ name: 'workspaceId', format: 'uuid' })
+  @ApiDataResponse(GenerationJobResponseDto, { status: 202 })
+  councilPremium(
+    @CurrentUser() user: User,
+    @Param('workspaceId') workspaceId: string,
+    @Body() dto: CouncilRequestDto,
+  ) {
+    return this.councilJobService.enqueueCouncil(workspaceId, user.id, dto, {
+      creditCost: 10,
+    });
   }
 
   @Post('calendar')

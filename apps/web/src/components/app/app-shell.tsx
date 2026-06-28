@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { AppSidebar } from "@/components/app/app-sidebar";
 import { AppTopbar } from "@/components/app/app-topbar";
+import { cn } from "@/lib/utils";
 
 const PAGE_TITLES: Record<string, string> = {
   "/app/dashboard": "Dashboard",
@@ -17,6 +18,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/app/profile": "Content Profile",
   "/app/billing": "Billing",
   "/app/settings": "Settings",
+  "/app/notifications": "Notifications",
 };
 
 function getPageTitle(pathname: string): string {
@@ -49,7 +51,14 @@ export function AppShell({ children, pathname }: AppShellProps) {
           title={title}
           onMenuClick={() => setMobileOpen(true)}
         />
-        <div className="pp-appmain">{children}</div>
+        <div
+          className={cn(
+            "pp-appmain",
+            pathname === "/app/pipeline" && "pp-appmain--wide",
+          )}
+        >
+          {children}
+        </div>
       </div>
     </div>
   );

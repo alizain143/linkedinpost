@@ -55,14 +55,63 @@ describe('autopilot-schedule.util', () => {
       ).toBe(false);
     });
 
-    it('returns true on posting day at matching hour', () => {
+    it('returns true on posting day at or after posting time', () => {
       const now = new Date('2026-06-26T13:00:00.000Z');
       expect(isDueNow(baseConfig, timezone, now)).toBe(true);
     });
 
-    it('returns false on wrong hour', () => {
-      const now = new Date('2026-06-26T14:00:00.000Z');
+    it('returns false before posting time today', () => {
+      const now = new Date('2026-06-26T12:30:00.000Z');
       expect(isDueNow(baseConfig, timezone, now)).toBe(false);
+    });
+
+    it('returns false after posting time when already ran today', () => {
+      const now = new Date('2026-06-26T14:00:00.000Z');
+      expect(
+        isDueNow(
+          { ...baseConfig, lastRunDateKey: '2026-06-26' },
+          timezone,
+          now,
+        ),
+      ).toBe(false);
+    });
+  });
+
+  describe('minute-precision scheduling', () => {
+    const karachi = 'Asia/Karachi';
+    const dailyConfig = {
+      enabled: true,
+      postingDays: [1, 2, 3, 4, 5, 6, 7],
+      postingTime: '10:07',
+      lastRunDateKey: null as string | null,
+    };
+
+    it('schedules today when posting time is later the same morning', () => {
+      const now = new Date('2026-06-28T05:06:00.000Z'); // 10:06 PKT
+      const next = computeNextRunAt(
+        dailyConfig.postingDays,
+        dailyConfig.postingTime,
+        karachi,
+        now,
+      );
+      expect(next?.toISOString()).toBe('2026-06-28T05:07:00.000Z');
+      expect(isDueNow(dailyConfig, karachi, now)).toBe(false);
+    });
+
+    it('is due once posting minute has passed', () => {
+      const now = new Date('2026-06-28T05:07:00.000Z'); // 10:07 PKT
+      expect(isDueNow(dailyConfig, karachi, now)).toBe(true);
+    });
+
+    it('schedules later today when posting hour is still ahead', () => {
+      const now = new Date('2026-06-28T05:06:00.000Z'); // 10:06 PKT
+      const next = computeNextRunAt(
+        dailyConfig.postingDays,
+        '11:00',
+        karachi,
+        now,
+      );
+      expect(next?.toISOString()).toBe('2026-06-28T06:00:00.000Z');
     });
   });
 

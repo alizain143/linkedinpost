@@ -32,6 +32,13 @@ import {
 import { isCreditsExhaustedError } from "@/lib/credits-errors";
 import { DEFAULT_TIMEZONE, timezoneLabel } from "@/lib/timezones";
 import { useAppUi } from "@/providers/app-ui-provider";
+import {
+  addGenerationHistoryEntry,
+  loadGenerationSession,
+  saveGenerationSession,
+  type GenerationHistoryEntry,
+} from "@/lib/generation-session";
+import { GenerationHistoryPanel } from "@/components/sections/app/generate/GenerationHistoryPanel";
 
 type CalendarFormState = {
   durationDays: 7 | 30;
@@ -72,15 +79,29 @@ export default function CalendarGenerate() {
     null,
   );
   const [generateError, setGenerateError] = useState<string | null>(null);
+  const [history, setHistory] = useState<GenerationHistoryEntry[]>([]);
+
+  const calendarCompletedRef = useRef<string | null>(null);
 
   const initializedWorkspaceRef = useRef<string | null>(null);
 
   const calendarJob = useGenerationJob(activeCalendarJobId, {
     poll: true,
     workspaceId: activeWorkspaceId,
-    onCompleted: () => {
+    onCompleted: (job) => {
       showToast("Calendar generated", "event_available");
-      router.push("/app/calendar?filter=Needs%20Approval");
+      if (!activeWorkspaceId || calendarCompletedRef.current === job.id) return;
+      calendarCompletedRef.current = job.id;
+      const result =
+        job.result && "slotCount" in job.result ? job.result : null;
+      addGenerationHistoryEntry(activeWorkspaceId, {
+        kind: "calendar",
+        label: result ? `${result.slotCount} posts` : "Calendar",
+        topic: `${form.durationDays}-day calendar`,
+        calendarJobId: job.id,
+        calendarSlotCount: result?.slotCount,
+      });
+      setHistory(loadGenerationSession(activeWorkspaceId).history);
     },
   });
 
@@ -98,7 +119,9 @@ export default function CalendarGenerate() {
 
     if (initializedWorkspaceRef.current !== activeWorkspaceId) {
       initializedWorkspaceRef.current = activeWorkspaceId;
-      setActiveCalendarJobId(null);
+      const session = loadGenerationSession(activeWorkspaceId);
+      setHistory(session.history);
+      setActiveCalendarJobId(session.activeCalendarJobId);
       setGenerateError(null);
 
       if (profiles.length === 0) {
@@ -117,6 +140,26 @@ export default function CalendarGenerate() {
       }));
     }
   }, [activeWorkspaceId, profiles]);
+
+  useEffect(() => {
+    if (!activeWorkspaceId) return;
+    saveGenerationSession(activeWorkspaceId, { activeCalendarJobId });
+  }, [activeCalendarJobId, activeWorkspaceId]);
+
+  const handleRestoreHistory = (entry: GenerationHistoryEntry) => {
+    if (entry.kind === "calendar" && entry.calendarJobId) {
+      setActiveCalendarJobId(entry.calendarJobId);
+      if (activeWorkspaceId) {
+        saveGenerationSession(activeWorkspaceId, {
+          activeCalendarJobId: entry.calendarJobId,
+        });
+      }
+      return;
+    }
+    if (entry.kind === "quick_draft" || entry.kind === "council") {
+      router.push("/app/generate");
+    }
+  };
 
   const creditCost = getCalendarCreditCost(form.durationDays);
   const canAffordCalendar = canAfford(creditCost);
@@ -198,6 +241,10 @@ export default function CalendarGenerate() {
     try {
       const job = await calendarMutation.mutateAsync(buildRequestBody());
       setActiveCalendarJobId(job.id);
+      calendarCompletedRef.current = null;
+      if (activeWorkspaceId) {
+        saveGenerationSession(activeWorkspaceId, { activeCalendarJobId: job.id });
+      }
     } catch (err) {
       const message = getApiErrorMessage(
         err,
@@ -395,6 +442,11 @@ export default function CalendarGenerate() {
           onRetry={() => void refetchProfiles()}
         >
           {formPanel}
+          <GenerationHistoryPanel
+            history={history}
+            onRestore={handleRestoreHistory}
+            emptyMessage="Recent calendar generations will appear here."
+          />
         </QueryState>
       </div>
 

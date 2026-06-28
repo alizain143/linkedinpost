@@ -3,7 +3,6 @@ import { PrismaModule } from '../../prisma/prisma.module';
 import { BillingModule } from '../billing/billing.module';
 import { CreditsModule } from '../credits/credits.module';
 import { GenerationModule } from '../generation/generation.module';
-import { JobQueueModule } from '../job-queue/job-queue.module';
 import { WorkspacesModule } from '../workspaces/workspaces.module';
 import { CalendarJobHandler } from './calendar-job.handler';
 import { CalendarJobHandlerRegistrar } from './calendar-job-handler.registrar';
@@ -19,7 +18,6 @@ import { CalendarPlannerOutputParser } from './parsers/calendar-planner-output.p
     BillingModule,
     WorkspacesModule,
     CreditsModule,
-    JobQueueModule,
     forwardRef(() => GenerationModule),
   ],
   providers: [

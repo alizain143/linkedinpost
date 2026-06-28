@@ -130,7 +130,11 @@ export function getMonthGrid(
   };
 
   const leadingDays = weekdayIndex[firstWeekday] ?? 0;
-  const gridStartKey = addDaysToLocalDateKey(firstOfMonthKey, -leadingDays, timezone);
+  const gridStartKey = addDaysToLocalDateKey(
+    firstOfMonthKey,
+    -leadingDays,
+    timezone,
+  );
 
   const cells: CalendarCellDate[] = [];
   let cursorKey = gridStartKey;
@@ -203,7 +207,12 @@ export function getListRange(
   const [startYear, startMonth, startDay] = startKey.split('-').map(Number);
   const [endYear, endMonth, endDay] = endKey.split('-').map(Number);
 
-  const rangeStart = localStartOfDayUtc(startYear, startMonth, startDay, timezone);
+  const rangeStart = localStartOfDayUtc(
+    startYear,
+    startMonth,
+    startDay,
+    timezone,
+  );
   const rangeEnd = localEndOfDayUtc(endYear, endMonth, endDay, timezone);
 
   return { rangeStart, rangeEnd };

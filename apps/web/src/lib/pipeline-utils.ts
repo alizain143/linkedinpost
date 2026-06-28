@@ -2,11 +2,37 @@ import type {
   ApiPipelineColumn,
   ApiPostPackageSummary,
 } from "@/lib/api/types/pipeline";
+import type { PostPackageStatus } from "@/lib/api/types/enums";
 import {
   formatRelativeTime,
   formatScheduledDateTime,
 } from "@/lib/format-relative-time";
 import { getPostTypeLabel } from "@/lib/post-types";
+
+/** Manual status moves allowed via pipeline kanban / list (mirrors backend ALLOWED_TRANSITIONS). */
+export const MANUAL_STATUS_TRANSITIONS: Partial<
+  Record<PostPackageStatus, PostPackageStatus[]>
+> = {
+  draft: ["ready_for_approval", "approved"],
+  ready_for_approval: ["approved", "draft"],
+  approved: ["ready_for_approval", "draft"],
+  scheduled: ["approved", "draft"],
+  failed: ["draft"],
+};
+
+export function getManualStatusTransitions(
+  fromStatus: PostPackageStatus,
+): PostPackageStatus[] {
+  return MANUAL_STATUS_TRANSITIONS[fromStatus] ?? [];
+}
+
+export function canTransitionPostStatus(
+  fromStatus: PostPackageStatus,
+  toStatus: PostPackageStatus,
+): boolean {
+  if (fromStatus === toStatus) return false;
+  return getManualStatusTransitions(fromStatus).includes(toStatus);
+}
 
 export function columnHasMore(column: ApiPipelineColumn): boolean {
   return column.count > column.posts.length;

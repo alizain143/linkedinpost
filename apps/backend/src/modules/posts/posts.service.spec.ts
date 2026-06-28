@@ -165,6 +165,32 @@ describe('PostsService', () => {
       expect(result.status).toBe(PostPackageStatus.draft);
     });
 
+    it('transitions ready_for_approval to draft', async () => {
+      const pending = buildPost({
+        status: PostPackageStatus.ready_for_approval,
+        submittedForApprovalAt: new Date('2026-06-27T10:00:00.000Z'),
+      });
+      prisma.postPackage.findFirst.mockResolvedValue(pending);
+      prisma.approvalToken.updateMany.mockResolvedValue({ count: 0 });
+      prisma.postPackage.update.mockResolvedValue({
+        ...pending,
+        status: PostPackageStatus.draft,
+        submittedForApprovalAt: null,
+        approvalFeedback: null,
+        _count: { versions: 1 },
+      });
+
+      const result = await service.transitionStatus(
+        workspaceId,
+        postId,
+        userId,
+        { status: PostPackageStatus.draft },
+      );
+
+      expect(result.status).toBe(PostPackageStatus.draft);
+      expect(prisma.approvalToken.updateMany).toHaveBeenCalled();
+    });
+
     it('rejects invalid transition', async () => {
       prisma.postPackage.findFirst.mockResolvedValue(buildPost());
 

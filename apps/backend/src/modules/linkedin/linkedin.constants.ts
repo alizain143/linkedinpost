@@ -9,4 +9,6 @@ export const LINKEDIN_CONNECT_SCOPES = [
   'r_most_recent_education',
 ] as const;
 
-export const LINKEDIN_PROFILE_SCOPE_SET = new Set<string>(LINKEDIN_CONNECT_SCOPES);
+export const LINKEDIN_PROFILE_SCOPE_SET = new Set<string>(
+  LINKEDIN_CONNECT_SCOPES,
+);

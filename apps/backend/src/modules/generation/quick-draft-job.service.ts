@@ -74,7 +74,9 @@ export class QuickDraftJobService {
         data: {
           status: GenerationJobStatus.completed,
           model: result.model,
-          result: { variants: result.variants } as unknown as Prisma.InputJsonValue,
+          result: {
+            variants: result.variants,
+          } as unknown as Prisma.InputJsonValue,
           inputTokens: result.usage?.inputTokens ?? null,
           outputTokens: result.usage?.outputTokens ?? null,
           creditCharged: true,

@@ -60,7 +60,9 @@ export class LinkedInApiClient {
     return response.json() as Promise<Record<string, unknown>>;
   }
 
-  async fetchIdentityMe(accessToken: string): Promise<Record<string, unknown> | null> {
+  async fetchIdentityMe(
+    accessToken: string,
+  ): Promise<Record<string, unknown> | null> {
     if (this.isMock()) {
       return {
         basicInfo: {
@@ -123,7 +125,7 @@ export class LinkedInApiClient {
                 : null,
             startedOn:
               typeof currentPosition.startedOn === 'object'
-                ? (currentPosition.startedOn as LinkedInPositionSummary['startedOn'])
+                ? currentPosition.startedOn
                 : null,
             isCurrent: true,
           },
@@ -156,10 +158,13 @@ export class LinkedInApiClient {
       lastName:
         typeof userinfo.family_name === 'string' ? userinfo.family_name : null,
       email: typeof userinfo.email === 'string' ? userinfo.email : null,
-      pictureUrl: typeof userinfo.picture === 'string' ? userinfo.picture : null,
+      pictureUrl:
+        typeof userinfo.picture === 'string' ? userinfo.picture : null,
       headline: null,
       summary: null,
-      currentTitle: currentPosition ? pickLocalized(currentPosition.title) : null,
+      currentTitle: currentPosition
+        ? pickLocalized(currentPosition.title)
+        : null,
       currentCompany: currentPosition
         ? pickLocalized(currentPosition.companyName)
         : null,
@@ -305,7 +310,9 @@ export class LinkedInApiClient {
 
     if (!response.ok) {
       const responseBody = await response.text();
-      throw new Error(`LinkedIn publish failed (${response.status}): ${responseBody}`);
+      throw new Error(
+        `LinkedIn publish failed (${response.status}): ${responseBody}`,
+      );
     }
 
     const linkedInPostId =

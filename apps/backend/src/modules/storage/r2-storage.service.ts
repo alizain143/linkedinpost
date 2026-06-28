@@ -23,9 +23,8 @@ export class R2StorageService {
 
     const accountId = this.configService.get<string>('r2.accountId');
     const accessKeyId = this.configService.get<string>('r2.accessKeyId');
-    const secretAccessKey = this.configService.get<string>(
-      'r2.secretAccessKey',
-    );
+    const secretAccessKey =
+      this.configService.get<string>('r2.secretAccessKey');
 
     if (!accountId || !accessKeyId || !secretAccessKey) {
       throw new Error('R2 storage is not configured');

@@ -140,6 +140,14 @@ export default function Autopilot() {
     [profiles],
   );
 
+  const selectedProfile = useMemo(
+    () => profiles?.find((profile) => profile.id === form.contentProfileId),
+    [profiles, form.contentProfileId],
+  );
+
+  const profileMissingPillars =
+    !selectedProfile || selectedProfile.pillars.length === 0;
+
   const activePreset = useMemo(
     () => derivePostingPreset(form.postingDays),
     [form.postingDays],
@@ -159,6 +167,14 @@ export default function Autopilot() {
           },
         );
       });
+      return;
+    }
+
+    if (profileMissingPillars) {
+      showToast(
+        "Add at least one content pillar to your profile before turning on autopilot.",
+        "error",
+      );
       return;
     }
 
@@ -182,6 +198,7 @@ export default function Autopilot() {
     autopilotAllowed,
     config,
     confirmPauseAutopilot,
+    profileMissingPillars,
     showToast,
     upsertMutation,
   ]);
@@ -218,6 +235,13 @@ export default function Autopilot() {
 
     if (!/^\d{2}:\d{2}$/.test(form.postingTime)) {
       setSaveError("Posting time must be in HH:mm format.");
+      return;
+    }
+
+    if (profileMissingPillars) {
+      setSaveError(
+        "Add at least one content pillar to your content profile first.",
+      );
       return;
     }
 
@@ -299,6 +323,24 @@ export default function Autopilot() {
                 className="shrink-0 rounded-[10px]"
               >
                 View plans
+              </Button>
+            </div>
+          ) : null}
+          {profileMissingPillars ? (
+            <div className="mb-5 rounded-2xl border border-[#fde68a] bg-[#fffbeb] px-5 py-4">
+              <p className="text-[13px] text-[#92400e]">
+                Autopilot needs at least one{" "}
+                <strong>content pillar</strong> on your profile to pick topics.
+                Edit your content profile and add pillars (e.g. &quot;Founder
+                lessons&quot;), then save your schedule again.
+              </p>
+              <Button
+                href="/app/settings"
+                variant="secondary"
+                size="sm"
+                className="mt-3"
+              >
+                Content profiles
               </Button>
             </div>
           ) : null}

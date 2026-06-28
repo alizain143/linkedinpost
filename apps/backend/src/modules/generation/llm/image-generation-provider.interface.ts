@@ -2,6 +2,8 @@ export interface ImageGenerationRequest {
   prompt: string;
   width?: number;
   height?: number;
+  headlineText?: string;
+  styleNotes?: string;
 }
 
 export interface ImageGenerationResponse {
@@ -11,7 +13,5 @@ export interface ImageGenerationResponse {
 }
 
 export interface ImageGenerationProvider {
-  generate(
-    request: ImageGenerationRequest,
-  ): Promise<ImageGenerationResponse>;
+  generate(request: ImageGenerationRequest): Promise<ImageGenerationResponse>;
 }

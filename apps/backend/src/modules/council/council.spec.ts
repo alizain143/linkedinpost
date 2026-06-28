@@ -44,6 +44,22 @@ describe('ReviewerOutputParser', () => {
     expect(result.overall).toBe(81);
     expect(result.passed).toBe(true);
   });
+
+  it('uses custom pass score when passed is omitted', () => {
+    const result = parser.parse(
+      JSON.stringify({
+        overall: 88,
+        hook: 80,
+        voice: 90,
+        clarity: 85,
+        feedback: 'Strong',
+        revisionHints: [],
+      }),
+      { passScore: 90 },
+    );
+
+    expect(result.passed).toBe(false);
+  });
 });
 
 describe('MediaCreatorOutputParser', () => {

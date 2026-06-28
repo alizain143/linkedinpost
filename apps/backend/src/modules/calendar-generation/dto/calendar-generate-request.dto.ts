@@ -24,7 +24,10 @@ export class CalendarGenerateRequestDto {
   @IsUUID()
   contentProfileId?: string;
 
-  @ApiPropertyOptional({ example: '2026-07-01', description: 'ISO date YYYY-MM-DD' })
+  @ApiPropertyOptional({
+    example: '2026-07-01',
+    description: 'ISO date YYYY-MM-DD',
+  })
   @IsOptional()
   @IsString()
   @Matches(/^\d{4}-\d{2}-\d{2}$/)
@@ -49,7 +52,9 @@ export class CalendarGenerateRequestDto {
   @Max(7, { each: true })
   postingDays?: number[];
 
-  @ApiPropertyOptional({ example: 'Focus on founder lessons and shipping weekly' })
+  @ApiPropertyOptional({
+    example: 'Focus on founder lessons and shipping weekly',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(2000)

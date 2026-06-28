@@ -5,6 +5,7 @@ import mediaConfig from '../../config/media.config';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { CalendarGenerationModule } from '../calendar-generation/calendar-generation.module';
 import { CreditsModule } from '../credits/credits.module';
+import { AuthModule } from '../auth/auth.module';
 import { CouncilModule } from '../council/council.module';
 import { WorkspacesModule } from '../workspaces/workspaces.module';
 import { ContextAssembler } from './context/context-assembler';
@@ -20,6 +21,7 @@ import { GenerationController } from './generation.controller';
 import { GenerationJobsController } from './generation-jobs.controller';
 import { GenerationJobsQueryService } from './generation-jobs-query.service';
 import { QuickDraftGenerator } from './flows/quick-draft.generator';
+import { CalendarSlotGenerator } from './flows/calendar-slot.generator';
 import { MODEL_ROUTER } from './llm/model-capability.types';
 import { ConfigModelRouter } from './llm/config-model-router';
 import { GoogleGenAIClientFactory } from './llm/google-genai.client';
@@ -29,6 +31,7 @@ import { MockImageGenerationProvider } from './llm/mock-image-generation.provide
 import { OpenAiTextCompletionProvider } from './llm/openai-text-completion.provider';
 import { PromptRenderer } from './prompt-renderer';
 import { QuickDraftOutputParser } from './quick-draft-output.parser';
+import { QuickDraftSingleOutputParser } from './quick-draft-single-output.parser';
 import { QuickDraftJobService } from './quick-draft-job.service';
 
 @Module({
@@ -36,6 +39,7 @@ import { QuickDraftJobService } from './quick-draft-job.service';
     ConfigModule.forFeature(googleConfig),
     ConfigModule.forFeature(mediaConfig),
     PrismaModule,
+    AuthModule,
     WorkspacesModule,
     CreditsModule,
     forwardRef(() => CouncilModule),
@@ -50,6 +54,7 @@ import { QuickDraftJobService } from './quick-draft-job.service';
     ContextAssembler,
     PromptRenderer,
     QuickDraftOutputParser,
+    QuickDraftSingleOutputParser,
     MockTextCompletionProvider,
     MockImageGenerationProvider,
     GoogleGenAIClientFactory,
@@ -65,11 +70,13 @@ import { QuickDraftJobService } from './quick-draft-job.service';
       useClass: ConfigModelRouter,
     },
     QuickDraftGenerator,
+    CalendarSlotGenerator,
     QuickDraftJobService,
     GenerationJobsQueryService,
   ],
   exports: [
     QuickDraftGenerator,
+    CalendarSlotGenerator,
     QuickDraftJobService,
     ContextAssembler,
     PromptRenderer,

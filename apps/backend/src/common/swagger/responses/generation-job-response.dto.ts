@@ -1,5 +1,9 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { GenerationJobStatus, GenerationJobType, PostType } from '@prisma/client';
+import {
+  GenerationJobStatus,
+  GenerationJobType,
+  PostType,
+} from '@prisma/client';
 
 export class QuickDraftVariantDto {
   @ApiProperty()
@@ -170,7 +174,8 @@ export class GenerationJobResponseDto {
   events!: CouncilEventDto[] | null;
 
   @ApiPropertyOptional()
-  result!: QuickDraftJobResultDto | CouncilJobResultDto | CalendarJobResultDto | null;
+  result!:
+    QuickDraftJobResultDto | CouncilJobResultDto | CalendarJobResultDto | null;
 
   @ApiProperty({ type: String, format: 'date-time' })
   createdAt!: Date;

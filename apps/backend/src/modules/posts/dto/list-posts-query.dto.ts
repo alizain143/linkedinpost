@@ -1,14 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { PostPackageStatus, PostType } from '@prisma/client';
 import { Transform, Type } from 'class-transformer';
-import {
-  IsArray,
-  IsEnum,
-  IsInt,
-  IsOptional,
-  Max,
-  Min,
-} from 'class-validator';
+import { IsArray, IsEnum, IsInt, IsOptional, Max, Min } from 'class-validator';
 
 export class ListPostsQueryDto {
   @ApiPropertyOptional({

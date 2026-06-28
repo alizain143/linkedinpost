@@ -1,5 +1,10 @@
 import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiParam,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { User } from '@prisma/client';
 import { ApiDataResponse } from '../../common/swagger/api-data-response.decorator';
 import { PipelineResponseDto } from '../../common/swagger/responses/pipeline-response.dto';
@@ -16,7 +21,9 @@ export class PipelineController {
   constructor(private readonly postsService: PostsService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Get pipeline kanban columns grouped by post status' })
+  @ApiOperation({
+    summary: 'Get pipeline kanban columns grouped by post status',
+  })
   @ApiParam({ name: 'workspaceId', format: 'uuid' })
   @ApiDataResponse(PipelineResponseDto)
   getPipeline(

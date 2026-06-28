@@ -1,5 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { PostPackageStatus, PostSource, PostType, Prisma } from '@prisma/client';
+import {
+  PostPackageStatus,
+  PostSource,
+  PostType,
+  Prisma,
+} from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   CalendarInput,
@@ -47,9 +52,8 @@ export class CalendarOrchestrator {
         ? {
             slots: input.slotDates.map((date, index) => ({
               date,
-              topic:
-                existingResult!.slots[index]?.topic ?? `Topic ${index + 1}`,
-              pillar: existingResult!.slots[index]?.pillar ?? '',
+              topic: existingResult.slots[index]?.topic ?? `Topic ${index + 1}`,
+              pillar: existingResult.slots[index]?.pillar ?? '',
               postType: PostType.personal_story,
               tone: '',
             })),
@@ -174,7 +178,7 @@ export class CalendarOrchestrator {
             completedSteps: totalSteps,
             totalSteps,
             percentComplete: 100,
-          } as unknown as Prisma.InputJsonValue,
+          },
         },
       });
     } catch (err) {

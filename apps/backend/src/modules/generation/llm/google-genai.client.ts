@@ -8,7 +8,9 @@ export class GoogleGenAIClientFactory {
 
   isConfigured(): boolean {
     const apiKey = this.configService.get<string>('google.apiKey')?.trim();
-    const project = this.configService.get<string>('google.cloudProject')?.trim();
+    const project = this.configService
+      .get<string>('google.cloudProject')
+      ?.trim();
     return Boolean(apiKey) || Boolean(project);
   }
 
@@ -18,7 +20,9 @@ export class GoogleGenAIClientFactory {
       return new GoogleGenAI({ apiKey });
     }
 
-    const project = this.configService.get<string>('google.cloudProject')?.trim();
+    const project = this.configService
+      .get<string>('google.cloudProject')
+      ?.trim();
     if (project) {
       return new GoogleGenAI({
         vertexai: true,

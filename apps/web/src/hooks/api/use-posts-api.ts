@@ -10,13 +10,16 @@ import {
   fetchPost,
   fetchPosts,
   fetchPostVersions,
+  generatePostMedia,
   rejectPost,
   requestChangesPost,
   transitionPostStatus,
   updatePost,
 } from "@/lib/api/posts";
 import { queryKeys } from "@/lib/api/query-keys";
+import { invalidateNotificationQueries } from "@/lib/notification-query-invalidation";
 import { invalidatePostQueries } from "@/lib/post-query-invalidation";
+import type { ApiGenerationJob } from "@/lib/api/types/generation";
 import type {
   ApiPostPackage,
   ApiPostVersion,
@@ -76,8 +79,12 @@ export function usePost(
       return fetchPost(token, workspaceId, postId);
     },
     refetchInterval: pollWhileAwaitingApproval
-      ? (query) =>
-          query.state.data?.status === "ready_for_approval" ? 15_000 : false
+      ? (query) => {
+          const status = query.state.data?.status;
+          if (status === "ready_for_approval") return 15_000;
+          if (status === "media_generating") return 2_500;
+          return false;
+        }
       : false,
   });
 }
@@ -111,6 +118,25 @@ export function useCreatePost(workspaceId: string | null | undefined) {
     },
     onSuccess: () => {
       if (workspaceId) invalidatePostQueries(queryClient, workspaceId);
+    },
+  });
+}
+
+export function useGeneratePostMediaMutation(
+  workspaceId: string | null | undefined,
+) {
+  const { getToken } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation<ApiGenerationJob, Error, string>({
+    mutationFn: async (postId) => {
+      const token = await getToken();
+      if (!token || !workspaceId) throw new Error("Not authenticated");
+      return generatePostMedia(token, workspaceId, postId);
+    },
+    onSuccess: (job) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.credits });
+      void queryClient.setQueryData(queryKeys.jobs.detail(job.id), job);
     },
   });
 }
@@ -185,6 +211,7 @@ export function useApprovePostMutation(workspaceId: string | null | undefined) {
     },
     onSuccess: (_data, { postId }) => {
       if (workspaceId) invalidatePostQueries(queryClient, workspaceId, postId);
+      invalidateNotificationQueries(queryClient);
     },
   });
 }
@@ -201,6 +228,7 @@ export function useRejectPostMutation(workspaceId: string | null | undefined) {
     },
     onSuccess: (_data, { postId }) => {
       if (workspaceId) invalidatePostQueries(queryClient, workspaceId, postId);
+      invalidateNotificationQueries(queryClient);
     },
   });
 }
@@ -222,6 +250,7 @@ export function useRequestChangesPostMutation(
     },
     onSuccess: (_data, { postId }) => {
       if (workspaceId) invalidatePostQueries(queryClient, workspaceId, postId);
+      invalidateNotificationQueries(queryClient);
     },
   });
 }
@@ -243,6 +272,7 @@ export function useApprovePost(
       if (workspaceId && postId) {
         invalidatePostQueries(queryClient, workspaceId, postId);
       }
+      invalidateNotificationQueries(queryClient);
     },
   });
 }
@@ -264,6 +294,7 @@ export function useRejectPost(
       if (workspaceId && postId) {
         invalidatePostQueries(queryClient, workspaceId, postId);
       }
+      invalidateNotificationQueries(queryClient);
     },
   });
 }
@@ -285,6 +316,7 @@ export function useRequestChangesPost(
       if (workspaceId && postId) {
         invalidatePostQueries(queryClient, workspaceId, postId);
       }
+      invalidateNotificationQueries(queryClient);
     },
   });
 }

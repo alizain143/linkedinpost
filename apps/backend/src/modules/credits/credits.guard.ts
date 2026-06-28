@@ -18,7 +18,9 @@ export class CreditsGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest<Request & { user?: User }>();
+    const request = context
+      .switchToHttp()
+      .getRequest<Request & { user?: User }>();
     const user = request.user;
 
     if (!user) {

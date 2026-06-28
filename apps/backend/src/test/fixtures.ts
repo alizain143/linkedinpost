@@ -20,9 +20,7 @@ export const userId = '22222222-2222-2222-2222-222222222222';
 export const postId = '33333333-3333-3333-3333-333333333333';
 export const contentProfileId = '55555555-5555-5555-5555-555555555555';
 
-export function buildWorkspace(
-  overrides: Partial<Workspace> = {},
-): Workspace {
+export function buildWorkspace(overrides: Partial<Workspace> = {}): Workspace {
   return {
     id: workspaceId,
     name: 'Test Workspace',
@@ -48,6 +46,8 @@ export function buildUser(overrides: Partial<User> = {}): User {
     emailWeeklyReminders: true,
     emailGenerationComplete: true,
     emailProductUpdates: false,
+    emailPublishAlerts: true,
+    pushEnabled: true,
     plan: UserPlan.pro,
     linkedInMemberId: null,
     linkedInProfileSyncedAt: null,
@@ -59,9 +59,7 @@ export function buildUser(overrides: Partial<User> = {}): User {
   };
 }
 
-export function buildPost(
-  overrides: Partial<PostPackage> = {},
-): PostPackage {
+export function buildPost(overrides: Partial<PostPackage> = {}): PostPackage {
   return {
     id: postId,
     workspaceId,
@@ -90,7 +88,7 @@ export function buildPost(
     updatedAt: now,
     deletedAt: null,
     ...overrides,
-  } as PostPackage;
+  };
 }
 
 export function buildPostVersion(

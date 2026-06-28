@@ -8,7 +8,8 @@ export class AutopilotTickJob {
 
   constructor(private readonly tickService: AutopilotTickService) {}
 
-  @Cron('0 * * * *')
+  // TODO: revert to '0 * * * *' (hourly) after autopilot testing
+  @Cron('* * * * *')
   async runHourlyTick() {
     try {
       const dispatched = await this.tickService.processDueConfigs();

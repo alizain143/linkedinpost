@@ -4,10 +4,7 @@ import { ContextProvider } from './context-provider.interface';
 import { DocumentContextProvider } from './document-context.provider';
 import { GenerationInputContextProvider } from './generation-input-context.provider';
 import { UserContextProvider } from './user-context.provider';
-import {
-  GenerationContext,
-  QuickDraftInput,
-} from '../generation.types';
+import { GenerationContext, QuickDraftInput } from '../generation.types';
 
 @Injectable()
 export class ContextAssembler {
@@ -57,12 +54,9 @@ export class ContextAssembler {
       ...slice,
       user: slice.user ?? base.user,
       contentProfile: slice.contentProfile ?? base.contentProfile,
-      input: slice.input
-        ? { ...base.input, ...slice.input }
-        : base.input,
+      input: slice.input ? { ...base.input, ...slice.input } : base.input,
       documents: slice.documents ?? base.documents,
-      contentProfileId:
-        slice.contentProfileId ?? base.contentProfileId,
+      contentProfileId: slice.contentProfileId ?? base.contentProfileId,
     };
   }
 }

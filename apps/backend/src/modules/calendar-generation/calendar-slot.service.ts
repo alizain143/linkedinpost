@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { QuickDraftGenerator } from '../generation/flows/quick-draft.generator';
+import { CalendarSlotGenerator } from '../generation/flows/calendar-slot.generator';
 import {
   QuickDraftInput,
   QuickDraftVariant,
@@ -8,13 +8,13 @@ import { CalendarPlannerSlot } from './parsers/calendar-planner-output.parser';
 
 @Injectable()
 export class CalendarSlotService {
-  constructor(private readonly quickDraftGenerator: QuickDraftGenerator) {}
+  constructor(private readonly calendarSlotGenerator: CalendarSlotGenerator) {}
 
   async generateVariant(
     input: QuickDraftInput,
     slot: CalendarPlannerSlot,
   ): Promise<QuickDraftVariant> {
-    const result = await this.quickDraftGenerator.generate({
+    const result = await this.calendarSlotGenerator.generate({
       ...input,
       topic: slot.topic,
       postType: slot.postType,
@@ -22,10 +22,6 @@ export class CalendarSlotService {
       pillar: slot.pillar || input.pillar,
     });
 
-    if (!result.variants.length) {
-      throw new Error('Quick draft returned no variants for calendar slot');
-    }
-
-    return result.variants[0];
+    return result.variant;
   }
 }

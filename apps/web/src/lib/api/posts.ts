@@ -10,6 +10,7 @@ import type {
   TransitionPostStatusBody,
   UpdatePostBody,
 } from "@/lib/api/types/post";
+import type { ApiGenerationJob } from "@/lib/api/types/generation";
 import type { SchedulePostBody } from "@/lib/api/types/scheduling";
 
 function postsPath(workspaceId: string, postId?: string, suffix?: string): string {
@@ -119,6 +120,18 @@ export async function approvePost(
   return apiFetch<ApiPostPackage>(
     token,
     postsPath(workspaceId, postId, "approve"),
+    { method: "POST" },
+  );
+}
+
+export async function generatePostMedia(
+  token: string,
+  workspaceId: string,
+  postId: string,
+): Promise<ApiGenerationJob> {
+  return apiFetch<ApiGenerationJob>(
+    token,
+    postsPath(workspaceId, postId, "generate-media"),
     { method: "POST" },
   );
 }

@@ -10,6 +10,7 @@ import {
 } from "@/lib/api/posts";
 import type { ApiPostPackage } from "@/lib/api/types/post";
 import type { SchedulePostBody } from "@/lib/api/types/scheduling";
+import { invalidateNotificationQueries } from "@/lib/notification-query-invalidation";
 import { invalidatePostQueries } from "@/lib/post-query-invalidation";
 
 type ScheduleVariables = {
@@ -33,6 +34,7 @@ export function useSchedulePostMutation(workspaceId: string | null | undefined) 
     },
     onSuccess: (_data, { postId }) => {
       if (workspaceId) invalidatePostQueries(queryClient, workspaceId, postId);
+      invalidateNotificationQueries(queryClient);
     },
   });
 }
@@ -51,6 +53,7 @@ export function useReschedulePostMutation(
     },
     onSuccess: (_data, { postId }) => {
       if (workspaceId) invalidatePostQueries(queryClient, workspaceId, postId);
+      invalidateNotificationQueries(queryClient);
     },
   });
 }
@@ -67,6 +70,7 @@ export function useCancelScheduleMutation(workspaceId: string | null | undefined
     },
     onSuccess: (_data, { postId }) => {
       if (workspaceId) invalidatePostQueries(queryClient, workspaceId, postId);
+      invalidateNotificationQueries(queryClient);
     },
   });
 }
@@ -83,6 +87,7 @@ export function usePublishPostMutation(workspaceId: string | null | undefined) {
     },
     onSuccess: (_data, { postId }) => {
       if (workspaceId) invalidatePostQueries(queryClient, workspaceId, postId);
+      invalidateNotificationQueries(queryClient);
     },
   });
 }

@@ -41,6 +41,4 @@ export interface CalendarListResponse {
 }
 
 export type CalendarResponse =
-  | CalendarMonthResponse
-  | CalendarWeekResponse
-  | CalendarListResponse;
+  CalendarMonthResponse | CalendarWeekResponse | CalendarListResponse;

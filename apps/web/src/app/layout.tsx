@@ -13,6 +13,7 @@ import {
   SIGN_IN_ROUTE,
   SIGN_UP_ROUTE,
 } from "@/lib/auth/routes";
+import { clerkAppearance } from "@/lib/auth/clerk-appearance";
 import "./globals.css";
 
 const inter = Inter({
@@ -50,6 +51,7 @@ export default function RootLayout({
       signInFallbackRedirectUrl={DASHBOARD_ROUTE}
       signUpFallbackRedirectUrl={DASHBOARD_ROUTE}
       afterSignOutUrl={SIGN_IN_ROUTE}
+      appearance={clerkAppearance}
     >
       <html
         lang="en"

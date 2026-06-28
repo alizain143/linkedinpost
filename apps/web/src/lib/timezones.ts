@@ -18,6 +18,7 @@ export const TIMEZONE_OPTIONS: TimezoneOption[] = [
   { value: "Europe/Paris", label: "Paris" },
   { value: "Europe/Berlin", label: "Berlin" },
   { value: "Asia/Dubai", label: "Dubai" },
+  { value: "Asia/Karachi", label: "Karachi (Pakistan)" },
   { value: "Asia/Kolkata", label: "India" },
   { value: "Asia/Singapore", label: "Singapore" },
   { value: "Asia/Tokyo", label: "Tokyo" },

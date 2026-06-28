@@ -4,7 +4,10 @@ import { Type } from 'class-transformer';
 import { IsDate, IsEnum, IsOptional } from 'class-validator';
 
 export class TransitionPostStatusDto {
-  @ApiProperty({ enum: PostPackageStatus, example: PostPackageStatus.scheduled })
+  @ApiProperty({
+    enum: PostPackageStatus,
+    example: PostPackageStatus.scheduled,
+  })
   @IsEnum(PostPackageStatus)
   status!: PostPackageStatus;
 

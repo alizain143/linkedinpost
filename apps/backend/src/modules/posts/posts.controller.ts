@@ -3,6 +3,8 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   Patch,
   Post,
@@ -24,6 +26,10 @@ import {
 } from '../../common/swagger/responses/post-response.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ClerkAuthGuard } from '../../common/guards/clerk-auth.guard';
+import { CreditsCost } from '../credits/credits.decorator';
+import { CreditsGuard } from '../credits/credits.guard';
+import { GenerationJobResponseDto } from '../../common/swagger/responses/generation-job-response.dto';
+import { MediaJobService } from '../media-generation/media-job.service';
 import {
   RejectPostDto,
   RequestChangesDto,
@@ -39,7 +45,10 @@ import { PostsService } from './posts.service';
 @Controller('workspaces/:workspaceId/posts')
 @UseGuards(ClerkAuthGuard)
 export class PostsController {
-  constructor(private readonly postsService: PostsService) {}
+  constructor(
+    private readonly postsService: PostsService,
+    private readonly mediaJobService: MediaJobService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'List posts in a workspace' })
@@ -135,12 +144,7 @@ export class PostsController {
     @Param('id') id: string,
     @Body() dto: RejectPostDto,
   ) {
-    return this.postsService.rejectPost(
-      workspaceId,
-      id,
-      user.id,
-      dto.feedback,
-    );
+    return this.postsService.rejectPost(workspaceId, id, user.id, dto.feedback);
   }
 
   @Patch(':id')
@@ -168,6 +172,22 @@ export class PostsController {
     @Param('id') id: string,
   ) {
     return this.postsService.remove(workspaceId, id, user.id);
+  }
+
+  @Post(':id/generate-media')
+  @HttpCode(HttpStatus.ACCEPTED)
+  @UseGuards(CreditsGuard)
+  @CreditsCost(5)
+  @ApiOperation({ summary: 'Generate quote-card media for a draft post (async)' })
+  @ApiParam({ name: 'workspaceId', format: 'uuid' })
+  @ApiParam({ name: 'id', format: 'uuid' })
+  @ApiDataResponse(GenerationJobResponseDto, { status: 202 })
+  generateMedia(
+    @CurrentUser() user: User,
+    @Param('workspaceId') workspaceId: string,
+    @Param('id') id: string,
+  ) {
+    return this.mediaJobService.enqueueMedia(workspaceId, user.id, id);
   }
 
   @Get(':id/versions')

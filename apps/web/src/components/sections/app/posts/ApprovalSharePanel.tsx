@@ -154,9 +154,10 @@ export function ApprovalSharePanel({
     <div className={`${appCard} p-5`}>
       <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h3 className={appSectionTitle}>Share for approval</h3>
+          <h3 className={appSectionTitle}>Share for client approval</h3>
           <p className={`mt-1 ${appMutedSm}`}>
-            Send a single-use link so your client can approve without signing in.
+            Optional — you can approve this post yourself using the button above.
+            Use a share link when your client needs to review without signing in.
           </p>
         </div>
         {agencyAllowed && activeLink ? (

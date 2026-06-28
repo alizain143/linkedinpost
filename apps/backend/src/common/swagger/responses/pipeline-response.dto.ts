@@ -1,9 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import {
-  PostPackageStatus,
-  PostSource,
-  PostType,
-} from '@prisma/client';
+import { PostPackageStatus, PostSource, PostType } from '@prisma/client';
 
 export class PostPackageSummaryDto {
   @ApiProperty({ format: 'uuid' })

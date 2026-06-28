@@ -1,10 +1,4 @@
-import {
-  Controller,
-  Get,
-  Param,
-  Post,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -51,7 +45,8 @@ export class LinkedInController {
 
   @Post('linkedin/profile/sync')
   @ApiOperation({
-    summary: 'Sync LinkedIn profile from Clerk token (name, title, company, education)',
+    summary:
+      'Sync LinkedIn profile from Clerk token (name, title, company, education)',
   })
   syncProfile(@CurrentUser() user: User) {
     return this.linkedInProfileService.syncProfile(user.id);
@@ -71,7 +66,9 @@ export class LinkedInPostController {
   ) {}
 
   @Post(':id/publish')
-  @ApiOperation({ summary: 'Publish an approved, scheduled, or failed post to LinkedIn' })
+  @ApiOperation({
+    summary: 'Publish an approved, scheduled, or failed post to LinkedIn',
+  })
   @ApiParam({ name: 'workspaceId', format: 'uuid' })
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiDataResponse(PostPackageResponseDto)
@@ -101,6 +98,9 @@ export class LinkedInPostController {
       await this.publishJobEnqueueService.cancelPublish(post.id);
     }
 
-    return this.linkedInPublishService.publishPostForOwner(id, workspace.ownerId);
+    return this.linkedInPublishService.publishPostForOwner(
+      id,
+      workspace.ownerId,
+    );
   }
 }

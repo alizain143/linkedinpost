@@ -13,7 +13,7 @@ export interface ReviewerOutput {
 
 @Injectable()
 export class ReviewerOutputParser {
-  parse(content: string): ReviewerOutput {
+  parse(content: string, options?: { passScore?: number }): ReviewerOutput {
     let parsed: unknown;
 
     try {
@@ -42,7 +42,9 @@ export class ReviewerOutputParser {
       : [];
 
     const passed =
-      typeof obj.passed === 'boolean' ? obj.passed : overall >= 75;
+      typeof obj.passed === 'boolean'
+        ? obj.passed
+        : overall >= (options?.passScore ?? 75);
 
     return {
       overall,

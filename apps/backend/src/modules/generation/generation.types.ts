@@ -1,4 +1,9 @@
-import { ContentGoal, CouncilAgentRole, PostType, UserPlan } from '@prisma/client';
+import {
+  ContentGoal,
+  CouncilAgentRole,
+  PostType,
+  UserPlan,
+} from '@prisma/client';
 
 export interface QuickDraftInput {
   workspaceId: string;
@@ -84,6 +89,10 @@ export interface GenerationContext {
   input?: GenerationInputContext;
   documents?: GenerationDocumentContext[];
   priorSteps?: CouncilPriorStep[];
+  /** When set, priorSteps are projected for this council agent before render. */
+  promptAgentRole?: CouncilAgentRole;
+  /** Reviewer pass threshold injected from orchestrator config. */
+  councilPassScore?: number;
 }
 
 export interface GenerationJobProgress {

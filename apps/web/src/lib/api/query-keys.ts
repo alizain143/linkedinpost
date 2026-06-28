@@ -61,4 +61,9 @@ export const queryKeys = {
   publicApproval: {
     preview: (token: string) => ["publicApproval", token] as const,
   },
+  notifications: {
+    list: (params?: object) => ["notifications", params] as const,
+    infinite: (params?: object) => ["notifications", "infinite", params] as const,
+    unreadCount: ["notifications", "unreadCount"] as const,
+  },
 };

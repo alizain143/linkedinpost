@@ -5,7 +5,7 @@ export const COUNCIL_STATUS_TRANSITIONS: Record<
   PostPackageStatus,
   PostPackageStatus[]
 > = {
-  [PostPackageStatus.draft]: [],
+  [PostPackageStatus.draft]: [PostPackageStatus.media_generating],
   [PostPackageStatus.text_generating]: [
     PostPackageStatus.text_reviewing,
     PostPackageStatus.failed,
@@ -17,6 +17,7 @@ export const COUNCIL_STATUS_TRANSITIONS: Record<
   ],
   [PostPackageStatus.media_generating]: [
     PostPackageStatus.ready_for_approval,
+    PostPackageStatus.draft,
     PostPackageStatus.failed,
   ],
   [PostPackageStatus.ready_for_approval]: [],

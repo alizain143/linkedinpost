@@ -50,7 +50,7 @@ export class CouncilJobService {
     const maxCreditExposure =
       creditCost + maxMediaRegens * MEDIA_REGEN_CREDIT_COST;
 
-    await this.creditsService.assertHasCredits(userId, maxCreditExposure);
+    await this.creditsService.assertHasCredits(userId, creditCost);
 
     const input: CouncilInput = {
       workspaceId,
@@ -102,11 +102,7 @@ export class CouncilJobService {
     return toGenerationJobResponse(fullJob);
   }
 
-  async getCouncilHistory(
-    workspaceId: string,
-    postId: string,
-    userId: string,
-  ) {
+  async getCouncilHistory(workspaceId: string, postId: string, userId: string) {
     await this.workspacesService.assertMember(userId, workspaceId);
 
     const post = await this.prisma.postPackage.findFirst({

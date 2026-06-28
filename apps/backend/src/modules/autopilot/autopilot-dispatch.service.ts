@@ -3,7 +3,10 @@ import { AutopilotConfig, PostSource } from '@prisma/client';
 import { NOT_DELETED } from '../../common/constants/soft-delete.constants';
 import { PlanFeatureService } from '../billing/plan-feature.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import { DEFAULT_TIMEZONE, getTodayDateKey } from '../calendar/calendar-date.util';
+import {
+  DEFAULT_TIMEZONE,
+  getTodayDateKey,
+} from '../calendar/calendar-date.util';
 import { localDateTimeToUtc } from '../calendar-generation/calendar-schedule.util';
 import { CouncilJobService } from '../council/council-job.service';
 import { CreditsService } from '../credits/credits.service';

@@ -96,6 +96,14 @@ export default function Calendar() {
     ? searchParams.get("date")!
     : getTodayDateKey(userTimezone);
 
+  const highlightDates = useMemo(() => {
+    const raw = searchParams.get("highlight");
+    if (!raw) return new Set<string>();
+    return new Set(
+      raw.split(",").filter((value): value is string => isIsoDateKey(value)),
+    );
+  }, [searchParams]);
+
   const [view, setView] = useState<CalendarView>(initialView);
   const [filter, setFilter] = useState<CalendarFilter>(initialFilter);
   const [anchorDate, setAnchorDate] = useState(initialDate);
@@ -111,14 +119,24 @@ export default function Calendar() {
   }, [currentUser?.timezone, searchParams]);
 
   const syncUrl = useCallback(
-    (next: { view?: CalendarView; date?: string; filter?: CalendarFilter }) => {
+    (next: {
+      view?: CalendarView;
+      date?: string;
+      filter?: CalendarFilter;
+      highlight?: string | null;
+    }) => {
       const params = new URLSearchParams();
       params.set("view", next.view ?? view);
       params.set("date", next.date ?? anchorDate);
       params.set("filter", next.filter ?? filter);
+      const highlight =
+        next.highlight !== undefined
+          ? next.highlight
+          : searchParams.get("highlight");
+      if (highlight) params.set("highlight", highlight);
       router.replace(`/app/calendar?${params.toString()}`, { scroll: false });
     },
-    [anchorDate, filter, router, view],
+    [anchorDate, filter, router, searchParams, view],
   );
 
   const statusParam = useMemo(
@@ -308,15 +326,18 @@ export default function Calendar() {
             <div className="grid grid-cols-7">
               {data.cells.map((cell) => {
                 const posts = cell.posts;
+                const isHighlighted = highlightDates.has(cell.date);
                 return (
                   <div
                     key={cell.date}
                     className={`min-h-[104px] border-b border-r border-[#f1f3f8] p-2 last:border-r-0 ${
-                      cell.isToday
-                        ? "bg-[#fafbff]"
-                        : cell.inMonth
-                          ? ""
-                          : "bg-[#fbfbfc]"
+                      isHighlighted
+                        ? "bg-[#eef2ff] ring-2 ring-inset ring-[#4f46e5]"
+                        : cell.isToday
+                          ? "bg-[#fafbff]"
+                          : cell.inMonth
+                            ? ""
+                            : "bg-[#fbfbfc]"
                     }`}
                   >
                     <div
@@ -347,11 +368,16 @@ export default function Calendar() {
             <div className="grid grid-cols-7">
               {data.days.map((day) => {
                 const inAnchorMonth = isInAnchorMonth(day.date, anchorDate);
+                const isHighlighted = highlightDates.has(day.date);
                 return (
                   <div
                     key={day.date}
                     className={`border-r border-[#f1f3f8] p-3 last:border-r-0 ${
-                      !inAnchorMonth ? "bg-[#fbfbfc]" : ""
+                      isHighlighted
+                        ? "bg-[#eef2ff] ring-2 ring-inset ring-[#4f46e5]"
+                        : !inAnchorMonth
+                          ? "bg-[#fbfbfc]"
+                          : ""
                     }`}
                   >
                     <div className="mb-3 border-b border-[#f1f3f8] pb-3 text-center">

@@ -15,6 +15,7 @@ import { CouncilInput, CouncilPriorStep } from '../generation/generation.types';
 import { MODEL_ROUTER } from '../generation/llm/model-capability.types';
 import type { ModelRouter } from '../generation/llm/model-capability.types';
 import { MediaService } from '../media/media.service';
+import { NotificationEventService } from '../notifications/notification-event.service';
 import { CouncilAgentService } from './council-agent.service';
 import { CouncilEventService } from './council-event.service';
 import { councilTotalSteps } from './council-progress';
@@ -41,6 +42,7 @@ export class CouncilOrchestrator {
     private readonly postsService: PostsService,
     private readonly mediaService: MediaService,
     private readonly creditsService: CreditsService,
+    private readonly notificationEvents: NotificationEventService,
     @Inject(MODEL_ROUTER) private readonly modelRouter: ModelRouter,
   ) {}
 
@@ -55,7 +57,10 @@ export class CouncilOrchestrator {
     }
 
     const input = job.input as unknown as CouncilInput;
-    const passScore = this.configService.get<number>('council.passScore', 75);
+    const passScore =
+      job.creditCost >= 10
+        ? this.configService.get<number>('council.premiumPassScore', 90)
+        : this.configService.get<number>('council.passScore', 75);
     const maxTextRevisions = this.configService.get<number>(
       'council.maxTextRevisions',
       1,
@@ -112,10 +117,15 @@ export class CouncilOrchestrator {
         ++stepOrder,
         completedSteps,
         totalSteps,
+        passScore,
       );
       completedSteps++;
 
-      while (!review.passed && review.overall < passScore && revisionCount < maxTextRevisions) {
+      while (
+        !review.passed &&
+        review.overall < passScore &&
+        revisionCount < maxTextRevisions
+      ) {
         revisionCount++;
         writerAttempt++;
         reviewerAttempt++;
@@ -159,6 +169,7 @@ export class CouncilOrchestrator {
           ++stepOrder,
           completedSteps,
           totalSteps,
+          passScore,
         );
         completedSteps++;
       }
@@ -235,10 +246,14 @@ export class CouncilOrchestrator {
         mediaRegenCount++;
         mediaAttempt++;
 
-        await this.creditsService.assertHasCredits(
-          job.userId,
-          MEDIA_REGEN_CREDIT_COST,
-        );
+        const bundledMediaRegen = job.creditCost >= 10;
+
+        if (!bundledMediaRegen) {
+          await this.creditsService.assertHasCredits(
+            job.userId,
+            MEDIA_REGEN_CREDIT_COST,
+          );
+        }
 
         media = await this.executeMediaCreator(
           generationJobId,
@@ -252,12 +267,14 @@ export class CouncilOrchestrator {
         completedSteps++;
         lastMediaCreatorEventId = media.eventId;
 
-        await this.creditsService.consume(
-          job.userId,
-          MEDIA_REGEN_CREDIT_COST,
-          CreditTransactionType.media,
-          { generationJobId, reason: 'media regen' },
-        );
+        if (!bundledMediaRegen) {
+          await this.creditsService.consume(
+            job.userId,
+            MEDIA_REGEN_CREDIT_COST,
+            CreditTransactionType.media,
+            { generationJobId, reason: 'media regen' },
+          );
+        }
 
         mediaReview = await this.executeMediaReviewer(
           generationJobId,
@@ -292,7 +309,7 @@ export class CouncilOrchestrator {
             postMediaId: attachedMedia.id,
             url: attachedMedia.url,
             imageModel: media.imageModel,
-          } as unknown as Prisma.InputJsonValue,
+          },
         },
       });
 
@@ -300,6 +317,17 @@ export class CouncilOrchestrator {
         postPackageId,
         PostPackageStatus.ready_for_approval,
       );
+
+      const workspace = await this.prisma.workspace.findUniqueOrThrow({
+        where: { id: workspaceId },
+      });
+
+      await this.notificationEvents.emitPostReadyForApproval({
+        userId: workspace.ownerId,
+        workspaceId,
+        postPackageId,
+        postHook: job.postPackage.hook,
+      });
 
       await this.prisma.generationJob.update({
         where: { id: generationJobId },
@@ -311,7 +339,7 @@ export class CouncilOrchestrator {
             postPackageId,
             revisionCount,
             mediaRegenCount,
-          } as unknown as Prisma.InputJsonValue,
+          },
           model: job.model,
           progress: {
             currentStep: 'completed',
@@ -319,7 +347,7 @@ export class CouncilOrchestrator {
             completedSteps: totalSteps,
             totalSteps,
             percentComplete: 100,
-          } as unknown as Prisma.InputJsonValue,
+          },
         },
       });
     } catch (err) {
@@ -403,6 +431,7 @@ export class CouncilOrchestrator {
     stepOrder: number,
     completedSteps: number,
     totalSteps: number,
+    passScore: number,
   ): Promise<ReviewerOutput> {
     const started = await this.councilEventService.startEvent({
       generationJobId,
@@ -414,7 +443,11 @@ export class CouncilOrchestrator {
       totalSteps,
     });
 
-    const result = await this.councilAgentService.runReviewer(input, priorSteps);
+    const result = await this.councilAgentService.runReviewer(
+      input,
+      priorSteps,
+      { passScore },
+    );
 
     const scores = {
       overall: result.output.overall,
@@ -521,6 +554,8 @@ export class CouncilOrchestrator {
       prompt: result.output.imagePrompt,
       width: result.output.width,
       height: result.output.height,
+      headlineText: result.output.headlineText,
+      styleNotes: result.output.styleNotes,
     });
 
     const eventOutput = {
@@ -533,7 +568,7 @@ export class CouncilOrchestrator {
       priorSteps.push({
         agentRole: CouncilAgentRole.media_creator,
         revisionAttempt: attempt,
-        output: eventOutput as unknown as Record<string, unknown>,
+        output: eventOutput,
       });
     } else {
       const idx = priorSteps.findIndex(
@@ -543,7 +578,7 @@ export class CouncilOrchestrator {
         priorSteps[idx] = {
           agentRole: CouncilAgentRole.media_creator,
           revisionAttempt: attempt,
-          output: eventOutput as unknown as Record<string, unknown>,
+          output: eventOutput,
         };
       }
     }
@@ -554,7 +589,7 @@ export class CouncilOrchestrator {
       label: 'Media Creator generated quote card',
       completedSteps: completedSteps + 1,
       totalSteps,
-      output: eventOutput as unknown as Record<string, unknown>,
+      output: eventOutput,
       model: result.model,
       inputTokens: result.inputTokens,
       outputTokens: result.outputTokens,

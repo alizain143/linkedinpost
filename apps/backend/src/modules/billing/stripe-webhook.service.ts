@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-  Logger,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { StripeWebhookEventStatus } from '@prisma/client';
 import Stripe from 'stripe';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -41,7 +37,9 @@ export class StripeWebhookService {
     try {
       event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
     } catch (error) {
-      this.logger.warn(`Stripe webhook signature verification failed: ${error}`);
+      this.logger.warn(
+        `Stripe webhook signature verification failed: ${error}`,
+      );
       throw new BadRequestException({
         error: 'Invalid webhook signature',
         code: 'WEBHOOK_INVALID',
@@ -98,30 +96,20 @@ export class StripeWebhookService {
   private async dispatchEvent(event: Stripe.Event): Promise<void> {
     switch (event.type) {
       case 'checkout.session.completed':
-        await this.billingSync.syncFromCheckoutSession(
-          event.data.object as Stripe.Checkout.Session,
-        );
+        await this.billingSync.syncFromCheckoutSession(event.data.object);
         break;
       case 'customer.subscription.created':
       case 'customer.subscription.updated':
-        await this.billingSync.syncFromStripeSubscription(
-          event.data.object as Stripe.Subscription,
-        );
+        await this.billingSync.syncFromStripeSubscription(event.data.object);
         break;
       case 'customer.subscription.deleted':
-        await this.billingSync.handleSubscriptionDeleted(
-          event.data.object as Stripe.Subscription,
-        );
+        await this.billingSync.handleSubscriptionDeleted(event.data.object);
         break;
       case 'invoice.payment_failed':
-        await this.billingSync.handlePaymentFailed(
-          event.data.object as Stripe.Invoice,
-        );
+        await this.billingSync.handlePaymentFailed(event.data.object);
         break;
       case 'invoice.payment_succeeded':
-        await this.billingSync.syncFromInvoicePayment(
-          event.data.object as Stripe.Invoice,
-        );
+        await this.billingSync.syncFromInvoicePayment(event.data.object);
         break;
       default:
         this.logger.debug(`Unhandled Stripe event type: ${event.type}`);

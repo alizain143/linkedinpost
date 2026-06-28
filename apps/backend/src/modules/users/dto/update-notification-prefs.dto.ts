@@ -16,4 +16,14 @@ export class UpdateNotificationPrefsDto {
   @IsOptional()
   @IsBoolean()
   productUpdates?: boolean;
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  publishAlerts?: boolean;
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  pushEnabled?: boolean;
 }

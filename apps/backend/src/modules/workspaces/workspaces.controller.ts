@@ -50,10 +50,7 @@ export class WorkspacesController {
   @Get(':workspaceId')
   @ApiOperation({ summary: 'Get a workspace with stats' })
   @ApiDataResponse(WorkspaceDetailResponseDto)
-  getOne(
-    @CurrentUser() user: User,
-    @Param('workspaceId') workspaceId: string,
-  ) {
+  getOne(@CurrentUser() user: User, @Param('workspaceId') workspaceId: string) {
     return this.workspacesService.getById(workspaceId, user.id);
   }
 
@@ -77,10 +74,7 @@ export class WorkspacesController {
     summary: 'Soft-delete a client workspace and cascade to its content',
   })
   @ApiDataResponse(Object, { description: '{ deleted: true }' })
-  remove(
-    @CurrentUser() user: User,
-    @Param('workspaceId') workspaceId: string,
-  ) {
+  remove(@CurrentUser() user: User, @Param('workspaceId') workspaceId: string) {
     return this.workspacesService.softDeleteClientWorkspace(
       workspaceId,
       user.id,

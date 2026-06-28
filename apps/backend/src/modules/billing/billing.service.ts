@@ -72,9 +72,8 @@ export class BillingService {
     }
 
     const stripe = this.stripeClient.getClient()!;
-    const customerId = await this.stripeCustomerService.getOrCreateStripeCustomer(
-      user,
-    );
+    const customerId =
+      await this.stripeCustomerService.getOrCreateStripeCustomer(user);
     const frontendUrl = this.stripeClient.getFrontendUrl();
 
     const session = await stripe.checkout.sessions.create({

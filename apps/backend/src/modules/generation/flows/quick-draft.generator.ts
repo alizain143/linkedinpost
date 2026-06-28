@@ -5,15 +5,13 @@ import { MODEL_ROUTER } from '../llm/model-capability.types';
 import type { ModelRouter } from '../llm/model-capability.types';
 import { PromptRenderer } from '../prompt-renderer';
 import { QuickDraftOutputParser } from '../quick-draft-output.parser';
-import {
-  QuickDraftInput,
-  QuickDraftResult,
-} from '../generation.types';
+import { QuickDraftInput, QuickDraftResult } from '../generation.types';
 
 @Injectable()
-export class QuickDraftGenerator
-  implements GenerationFlow<QuickDraftInput, QuickDraftResult>
-{
+export class QuickDraftGenerator implements GenerationFlow<
+  QuickDraftInput,
+  QuickDraftResult
+> {
   constructor(
     private readonly contextAssembler: ContextAssembler,
     private readonly promptRenderer: PromptRenderer,

@@ -33,7 +33,7 @@ AI LinkedIn content engine: generate posts → AI Council pipeline → human app
 
 ---
 
-## Backend modules (21)
+## Backend modules (22)
 
 | Module | Responsibility |
 |--------|----------------|
@@ -58,6 +58,7 @@ AI LinkedIn content engine: generate posts → AI Council pipeline → human app
 | autopilot | Cron config + dispatch to council |
 | media | Quote card generation + R2 attach |
 | dashboard | Aggregated stats |
+| notifications | In-app feed, Resend email, FCM web push |
 
 ---
 
@@ -72,6 +73,8 @@ User
  ├── ownedWorkspaces[]
  ├── workspaceMemberships[] (WorkspaceMember with WorkspaceMemberRole)
  └── ApprovalToken[] (created)
+ └── Notification[] (in-app feed)
+ └── PushDeviceToken[] (FCM web)
 
 Workspace (personal | client)
  ├── ContentProfile[] → ContentPillar[]
@@ -90,8 +93,9 @@ StripeWebhookEvent (idempotency)
 
 - `CalendarEntry` — uses `PostPackage.scheduledAt`
 - `LinkedInConnection` — dropped; LinkedIn data stored on `User` JSON
-- `Notification` — only email prefs on `User`
 - Full-text search — not built
+
+**Notifications:** `Notification`, `PushDeviceToken`, `NotificationDelivery` tables. Email via Resend; push via Firebase FCM (web). See [apps/backend/NOTIFICATIONS.md](apps/backend/NOTIFICATIONS.md).
 
 ---
 
@@ -135,7 +139,7 @@ StripeWebhookEvent (idempotency)
 | PostType | personal_story, list_post, how_to, … | |
 | CreditTransactionType | generation, council, media, calendar, autopilot, adjustment | All types used |
 | GenerationJobStatus | pending, running, completed, failed | Council lifecycle uses this |
-| GenerationJobType | quick_draft, council, calendar | |
+| GenerationJobType | quick_draft, council, calendar, media | `media` = quote card on existing draft |
 | PostMediaType | quote_card | Single value only |
 | CouncilAgentRole | writer, reviewer, editor, media_creator, media_reviewer | |
 | CouncilEventStatus | running, completed, failed | No `skipped` |
@@ -202,10 +206,11 @@ Council agent pipeline: writer → reviewer → editor → media_creator → med
 | Pipeline | `GET .../pipeline` |
 | Calendar | `GET .../calendar` |
 | Approvals | `GET .../approvals` |
-| Generate | `POST .../generate/quick`, `council`, `calendar` |
+| Generate | `POST .../generate/quick`, `council`, `council-premium`, `calendar`; `POST .../posts/:id/generate-media` |
 | Jobs | `GET /v1/jobs/:id` |
 | Council | `GET .../posts/:postId/council` |
 | Credits | `GET /v1/credits` |
+| Notifications | `GET /v1/notifications`, unread count, mark read, device tokens |
 | Billing | `GET /v1/billing`, checkout, portal, Stripe webhook |
 | Scheduling | schedule/unschedule/reschedule on posts |
 | LinkedIn | connection, profile sync, publish |
@@ -224,6 +229,8 @@ Council agent pipeline: writer → reviewer → editor → media_creator → med
 | R2 | Profile images, post media (quote cards) |
 | OpenAI | Text generation (GPT-5.4 default) |
 | Google Gemini | Quote card images (Nano Banana 2) |
+| Resend | Transactional notification email |
+| Firebase FCM | Web push notifications |
 | Redis | BullMQ job queue |
 
 ---

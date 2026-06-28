@@ -1,9 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import {
-  PostPackageStatus,
-  PostSource,
-  PostType,
-} from '@prisma/client';
+import { PostPackageStatus, PostSource, PostType } from '@prisma/client';
 import { ApprovalTab } from '../../../modules/approvals/approvals.constants';
 
 export class ApprovalQueueItemDto {

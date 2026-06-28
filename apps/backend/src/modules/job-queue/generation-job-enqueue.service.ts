@@ -8,10 +8,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { GenerationJobStatus, GenerationJobType, Prisma } from '@prisma/client';
 import { Queue } from 'bullmq';
 import { PrismaService } from '../../prisma/prisma.service';
-import {
-  GENERATION_JOBS_QUEUE,
-  REDIS_ENABLED,
-} from './job-queue.constants';
+import { GENERATION_JOBS_QUEUE, REDIS_ENABLED } from './job-queue.constants';
 
 export interface EnqueueGenerationJobInput {
   workspaceId: string;

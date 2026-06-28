@@ -67,13 +67,25 @@ function SidebarUserFooter() {
   const initials = getUserInitials(user);
   const email = user?.email ?? "";
   const planLabel = (balance?.plan ?? user?.plan ?? "free").toUpperCase();
+  const profileImageUrl = user?.profileImageUrl;
 
   return (
     <>
       <CreditsMeter />
       <div className="flex items-center gap-2.5 px-0.5 py-1">
-        <div className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#fb7185] to-[#f43f5e] font-display text-[13px] font-bold text-white">
-          {initials}
+        <div className="relative h-[34px] w-[34px] shrink-0 overflow-hidden rounded-full bg-gradient-to-br from-[#fb7185] to-[#f43f5e]">
+          {profileImageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={profileImageUrl}
+              alt=""
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center font-display text-[13px] font-bold text-white">
+              {initials}
+            </div>
+          )}
         </div>
         <div className="min-w-0 flex-1">
           <div className="truncate text-[13px] font-semibold text-[#1e293b]">

@@ -206,7 +206,10 @@ export class UsersService {
         });
 
         if (previousDocumentId && previousDocumentId !== profileDocumentId) {
-          await this.documentsService.removeDocument(previousDocumentId, userId);
+          await this.documentsService.removeDocument(
+            previousDocumentId,
+            userId,
+          );
         }
       }
 
@@ -220,6 +223,12 @@ export class UsersService {
               : {}),
             ...(notifications.productUpdates !== undefined
               ? { emailProductUpdates: notifications.productUpdates }
+              : {}),
+            ...(notifications.publishAlerts !== undefined
+              ? { emailPublishAlerts: notifications.publishAlerts }
+              : {}),
+            ...(notifications.pushEnabled !== undefined
+              ? { pushEnabled: notifications.pushEnabled }
               : {}),
           }
         : {};
@@ -246,11 +255,7 @@ export class UsersService {
       this.workspacesService.findPersonalWorkspace(user.id),
     ]);
 
-    return toUserResponse(
-      user,
-      profileImageUrl,
-      personalWorkspace?.id ?? null,
-    );
+    return toUserResponse(user, profileImageUrl, personalWorkspace?.id ?? null);
   }
 
   async softDelete(clerkId: string): Promise<void> {

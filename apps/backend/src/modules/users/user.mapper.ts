@@ -4,6 +4,8 @@ export interface UserNotificationPrefs {
   weeklyReminders: boolean;
   generationComplete: boolean;
   productUpdates: boolean;
+  publishAlerts: boolean;
+  pushEnabled: boolean;
 }
 
 export interface UserResponse {
@@ -38,6 +40,8 @@ export function toUserResponse(
       weeklyReminders: user.emailWeeklyReminders,
       generationComplete: user.emailGenerationComplete,
       productUpdates: user.emailProductUpdates,
+      publishAlerts: user.emailPublishAlerts,
+      pushEnabled: user.pushEnabled,
     },
     plan: user.plan,
     defaultWorkspaceId,

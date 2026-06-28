@@ -20,7 +20,6 @@ import { getApiErrorMessage } from "@/lib/api-error-messages";
 import { DocumentPurpose, getProfileImageAccept } from "@/lib/documents/constants";
 import { uploadDocument } from "@/lib/documents/upload-document";
 import { validateFileForPurpose } from "@/lib/documents/validate-file";
-import { PUBLISHING_SETTING_FIELDS } from "@/lib/form-options";
 import { queryKeys } from "@/lib/api/query-keys";
 import {
   joinFullName,
@@ -40,6 +39,7 @@ import {
   getLinkedInStatusLabel,
 } from "@/lib/linkedin-utils";
 import { useAppUi } from "@/providers/app-ui-provider";
+import { usePushNotifications } from "@/hooks/use-push-notifications";
 
 type NotificationKey = keyof ApiUser["notifications"];
 
@@ -57,6 +57,11 @@ const NOTIFICATION_TOGGLES: Array<{
     key: "generationComplete",
     label: "Generation complete",
     desc: "Email me when my posts are ready.",
+  },
+  {
+    key: "publishAlerts",
+    label: "Publish alerts",
+    desc: "Email me when posts publish or fail.",
   },
   {
     key: "productUpdates",
@@ -99,6 +104,8 @@ export default function Settings() {
   } = useAppUi();
   const { data: linkedInProfile } = useLinkedInProfile();
   const syncLinkedInProfile = useSyncLinkedInProfile();
+  const { enablePush, disablePush, permission, isConfigured } =
+    usePushNotifications();
   const linkedInProfileSubtitle = getLinkedInProfileSubtitle(linkedInProfile);
 
   const [fullName, setFullName] = useState("");
@@ -398,37 +405,6 @@ export default function Settings() {
         </div>
 
         <div className="rounded-2xl border border-[#eceef4] bg-white p-6">
-          <h2 className="font-display text-lg font-bold">LinkedIn publishing</h2>
-          {linkedinConnectionState === "disconnected" ? (
-            <div className="mt-3 flex items-center gap-2 rounded-[11px] border border-[#fde68a] bg-[#fffbeb] px-3 py-2.5 text-[13px] text-[#92400e]">
-              <MsIcon name="warning" size={18} />
-              Connect LinkedIn to enable publishing and scheduling.
-            </div>
-          ) : null}
-          {linkedinConnectionState === "needsPublishScope" ? (
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-[11px] border border-[#fde68a] bg-[#fffbeb] px-3 py-2.5 text-[13px] text-[#92400e]">
-              <div className="flex items-center gap-2">
-                <MsIcon name="warning" size={18} />
-                Publish permission is required before posts can go live.
-              </div>
-              <Button type="button" variant="primary" size="xs" onClick={openConnect}>
-                Finish setup
-              </Button>
-            </div>
-          ) : null}
-          <div className="mt-4 space-y-3">
-            {PUBLISHING_SETTING_FIELDS.map((field) => (
-              <SelectField
-                key={field.label}
-                label={field.label}
-                options={field.options}
-                defaultValue={field.default}
-              />
-            ))}
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-[#eceef4] bg-white p-6">
           <h2 className="font-display text-lg font-bold">Notifications</h2>
           <div className="mt-4 space-y-4">
             {NOTIFICATION_TOGGLES.map(({ key, label, desc }) => {
@@ -459,6 +435,57 @@ export default function Settings() {
                 </div>
               );
             })}
+          </div>
+
+          <div className="mt-6 border-t border-[#f1f3f8] pt-5">
+            <h3 className="text-sm font-semibold text-[#1e293b]">
+              Browser notifications
+            </h3>
+            <p className="mt-1 text-xs text-[#94a3b8]">
+              Get real-time alerts in your browser when you are signed in.
+            </p>
+            {!isConfigured ? (
+              <p className="mt-3 text-xs text-[#94a3b8]">
+                Push is not configured for this environment.
+              </p>
+            ) : permission === "denied" ? (
+              <p className="mt-3 text-xs text-[#d97706]">
+                Notifications are blocked in your browser. Enable them in site
+                settings to receive push alerts.
+              </p>
+            ) : (
+              <div className="mt-4 flex items-center justify-between gap-4">
+                <div>
+                  <div className="text-sm font-semibold">Push notifications</div>
+                  <div className="text-xs text-[#94a3b8]">
+                    Approvals, generation, and publish updates.
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={apiUser?.notifications.pushEnabled ?? false}
+                  disabled={accountDisabled || !apiUser}
+                  onClick={() => {
+                    const enabled = apiUser?.notifications.pushEnabled ?? false;
+                    void (enabled ? disablePush() : enablePush());
+                  }}
+                  className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+                    apiUser?.notifications.pushEnabled
+                      ? "bg-[#4f46e5]"
+                      : "bg-[#cbd5e1]"
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                      apiUser?.notifications.pushEnabled
+                        ? "left-[22px]"
+                        : "left-0.5"
+                    }`}
+                  />
+                </button>
+              </div>
+            )}
           </div>
         </div>
 

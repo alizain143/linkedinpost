@@ -1,9 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import {
-  CouncilAgentRole,
-  CouncilEventStatus,
-  Prisma,
-} from '@prisma/client';
+import { CouncilAgentRole, CouncilEventStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { GenerationJobProgress } from '../generation/generation.types';
 import { computeCouncilProgress } from './council-progress';

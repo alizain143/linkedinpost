@@ -14,9 +14,10 @@ import { useCredits } from "@/hooks/api/use-credits-api";
 import {
   useCouncilMutation,
   useGenerationJob,
+  usePremiumCouncilMutation,
   useQuickDraftMutation,
 } from "@/hooks/api/use-generation-api";
-import { useCreatePost } from "@/hooks/api/use-posts-api";
+import { useCreatePost, useGeneratePostMediaMutation } from "@/hooks/api/use-posts-api";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { getApiErrorMessage } from "@/lib/api-error-messages";
 import { approvePost, fetchPost, transitionPostStatus } from "@/lib/api/posts";
@@ -24,6 +25,8 @@ import type { QuickDraftVariant } from "@/lib/api/types/generation";
 import type { PostType } from "@/lib/api/types/enums";
 import {
   COUNCIL_CREDIT_COST,
+  MEDIA_GENERATION_CREDIT_COST,
+  PREMIUM_COUNCIL_CREDIT_COST,
   QUICK_DRAFT_CREDIT_COST,
   getGenerationModeCost,
 } from "@/lib/credit-costs";
@@ -36,8 +39,16 @@ import {
   variantToCreatePostBody,
 } from "@/lib/generation-utils";
 import { CouncilTimeline } from "@/components/sections/app/generate/CouncilTimeline";
+import { GenerationHistoryPanel } from "@/components/sections/app/generate/GenerationHistoryPanel";
 import { useAppUi } from "@/providers/app-ui-provider";
 import { useAuth } from "@clerk/nextjs";
+import {
+  addGenerationHistoryEntry,
+  loadGenerationSession,
+  saveGenerationSession,
+  type GenerationHistoryEntry,
+  type StoredQuickDraftSession,
+} from "@/lib/generation-session";
 
 type GenModeId = "quick" | "council" | "media";
 
@@ -53,14 +64,13 @@ const GEN_MODES: Array<{
     id: "council",
     label: "AI Council",
     icon: "groups",
-    desc: "3 credits · reviewed",
+    desc: "3 credits · reviewed + quote card",
   },
   {
     id: "media",
     label: "Post + Media",
     icon: "auto_awesome_motion",
-    desc: "10 credits · full",
-    disabled: true,
+    desc: "10 credits · publish-ready",
   },
 ];
 
@@ -94,6 +104,8 @@ export default function Generate() {
 
   const quickDraft = useQuickDraftMutation(activeWorkspaceId);
   const councilMutation = useCouncilMutation(activeWorkspaceId);
+  const premiumCouncilMutation = usePremiumCouncilMutation(activeWorkspaceId);
+  const generatePostMedia = useGeneratePostMediaMutation(activeWorkspaceId);
   const createPost = useCreatePost(activeWorkspaceId);
 
   const [mode, setMode] = useState<GenModeId>("quick");
@@ -113,21 +125,75 @@ export default function Generate() {
   const [generated, setGenerated] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [savedPostIds, setSavedPostIds] = useState<Record<number, string>>({});
+  const [dismissedVariantIndices, setDismissedVariantIndices] = useState<number[]>(
+    [],
+  );
+  const [variantPostStatuses, setVariantPostStatuses] = useState<
+    Record<number, string>
+  >({});
   const [savingVariantIndex, setSavingVariantIndex] = useState<number | null>(
     null,
   );
   const [actionVariantIndex, setActionVariantIndex] = useState<number | null>(
     null,
   );
+  const [reviewVariantIndex, setReviewVariantIndex] = useState<number | null>(
+    null,
+  );
+  const [mediaVariantIndex, setMediaVariantIndex] = useState<number | null>(
+    null,
+  );
+  const [activeMediaJobId, setActiveMediaJobId] = useState<string | null>(null);
+  const [variantMediaUrls, setVariantMediaUrls] = useState<Record<number, string>>(
+    {},
+  );
+  const [history, setHistory] = useState<GenerationHistoryEntry[]>([]);
+
+  const councilCompletedRef = useRef<string | null>(null);
+  const mediaCompletedRef = useRef<string | null>(null);
 
   const councilJob = useGenerationJob(activeCouncilJobId, {
     poll: true,
     workspaceId: activeWorkspaceId,
     onCompleted: (job) => {
       showToast("Council review complete", "check_circle");
-      if (job.postPackageId) {
-        router.push(`/app/posts/${job.postPackageId}`);
+      if (!activeWorkspaceId || councilCompletedRef.current === job.id) return;
+      councilCompletedRef.current = job.id;
+      addGenerationHistoryEntry(activeWorkspaceId, {
+        kind: "council",
+        label: form.topic.trim() || "AI Council",
+        topic: form.topic.trim(),
+        councilJobId: job.id,
+        councilPostId: job.postPackageId ?? undefined,
+      });
+      setHistory(loadGenerationSession(activeWorkspaceId).history);
+    },
+  });
+
+  const mediaJob = useGenerationJob(activeMediaJobId, {
+    poll: true,
+    workspaceId: activeWorkspaceId,
+    onCompleted: async (job) => {
+      if (!activeWorkspaceId || mediaCompletedRef.current === job.id) return;
+      mediaCompletedRef.current = job.id;
+      showToast("Quote card ready", "image");
+
+      if (job.postPackageId && mediaVariantIndex !== null) {
+        const token = await getToken();
+        if (token) {
+          const post = await fetchPost(token, activeWorkspaceId, job.postPackageId);
+          const url = post.media[0]?.url;
+          if (url) {
+            setVariantMediaUrls((current) => ({
+              ...current,
+              [mediaVariantIndex]: url,
+            }));
+          }
+        }
       }
+
+      setActiveMediaJobId(null);
+      setMediaVariantIndex(null);
     },
   });
 
@@ -158,32 +224,137 @@ export default function Generate() {
     ];
   }, [selectedProfile]);
 
+  const restoreQuickDraft = useCallback((snapshot: StoredQuickDraftSession) => {
+    setVariants(snapshot.variants);
+    setGenerated(snapshot.variants.length > 0);
+    setSavedPostIds(snapshot.savedPostIds);
+    setDismissedVariantIndices(snapshot.dismissedVariantIndices ?? []);
+    setForm((current) => ({
+      ...current,
+      topic: snapshot.topic,
+      contentProfileId: snapshot.contentProfileId,
+      postType: snapshot.postType as PostType,
+      tone: snapshot.tone,
+      pillar: snapshot.pillar,
+    }));
+    setMode("quick");
+    setGenerateError(null);
+  }, []);
+
   useEffect(() => {
     if (!activeWorkspaceId || !profiles) return;
 
     if (initializedWorkspaceRef.current !== activeWorkspaceId) {
       initializedWorkspaceRef.current = activeWorkspaceId;
-      setVariants([]);
-      setGenerated(false);
+      const session = loadGenerationSession(activeWorkspaceId);
+      setHistory(session.history);
+      setActiveCouncilJobId(session.activeCouncilJobId);
+      setMode(session.mode);
+
+      if (session.quickDraft) {
+        restoreQuickDraft(session.quickDraft);
+      } else {
+        setVariants([]);
+        setGenerated(false);
+        setSavedPostIds({});
+        setDismissedVariantIndices([]);
+        setVariantPostStatuses({});
+      }
+
       setGenerateError(null);
-      setSavedPostIds({});
-      setActiveCouncilJobId(null);
 
       if (profiles.length === 0) {
         setForm((current) => ({ ...current, contentProfileId: "", pillar: "" }));
         return;
       }
 
-      const defaultProfile =
-        profiles.find((profile) => profile.isDefault) ?? profiles[0];
-      setForm((current) => ({
-        ...current,
-        contentProfileId: defaultProfile.id,
-        tone: defaultProfile.preferredTone ?? TONE_OPTIONS[0],
-        pillar: "",
-      }));
+      if (!session.quickDraft) {
+        const defaultProfile =
+          profiles.find((profile) => profile.isDefault) ?? profiles[0];
+        setForm((current) => ({
+          ...current,
+          contentProfileId: defaultProfile.id,
+          tone: defaultProfile.preferredTone ?? TONE_OPTIONS[0],
+          pillar: "",
+        }));
+      }
     }
-  }, [activeWorkspaceId, profiles]);
+  }, [activeWorkspaceId, profiles, restoreQuickDraft]);
+
+  useEffect(() => {
+    if (!activeWorkspaceId) return;
+
+    const entries = Object.entries(savedPostIds).filter(
+      ([index]) => !dismissedVariantIndices.includes(Number(index)),
+    );
+    if (entries.length === 0) return;
+
+    let cancelled = false;
+
+    void (async () => {
+      const token = await getToken();
+      if (!token || cancelled) return;
+
+      const statuses: Record<number, string> = {};
+      await Promise.all(
+        entries.map(async ([index, postId]) => {
+          try {
+            const post = await fetchPost(token, activeWorkspaceId, postId);
+            statuses[Number(index)] = post.status;
+          } catch {
+            // ignore fetch errors for status hints
+          }
+        }),
+      );
+
+      if (!cancelled) {
+        setVariantPostStatuses((current) => ({ ...current, ...statuses }));
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeWorkspaceId, dismissedVariantIndices, getToken, savedPostIds]);
+
+  useEffect(() => {
+    if (!activeWorkspaceId) return;
+
+    const quickDraft: StoredQuickDraftSession | null =
+      generated && variants.length > 0
+        ? {
+            variants,
+            savedPostIds,
+            dismissedVariantIndices,
+            topic: form.topic,
+            contentProfileId: form.contentProfileId,
+            postType: form.postType,
+            tone: form.tone,
+            pillar: form.pillar,
+            createdAt: new Date().toISOString(),
+          }
+        : loadGenerationSession(activeWorkspaceId).quickDraft;
+
+    saveGenerationSession(activeWorkspaceId, {
+      quickDraft,
+      activeCouncilJobId,
+      mode:
+        mode === "council" ? "council" : mode === "media" ? "media" : "quick",
+    });
+  }, [
+    activeWorkspaceId,
+    activeCouncilJobId,
+    form.contentProfileId,
+    form.pillar,
+    form.postType,
+    form.tone,
+    form.topic,
+    generated,
+    mode,
+    savedPostIds,
+    dismissedVariantIndices,
+    variants,
+  ]);
 
   const handleProfileChange = (contentProfileId: string) => {
     const profile = profiles?.find((item) => item.id === contentProfileId);
@@ -199,14 +370,22 @@ export default function Generate() {
   const canAffordMode = canAfford(modeCost);
   const selectedMode = GEN_MODES.find((item) => item.id === mode) ?? GEN_MODES[0];
   const quickGenerating = quickDraft.isPending;
-  const councilEnqueueing = councilMutation.isPending;
+  const councilEnqueueing =
+    councilMutation.isPending || premiumCouncilMutation.isPending;
   const councilJobActive =
     !!activeCouncilJobId &&
     !!councilJob.data &&
     shouldPollJob(councilJob.data.status);
+  const mediaJobActive =
+    !!activeMediaJobId &&
+    !!mediaJob.data &&
+    shouldPollJob(mediaJob.data.status);
   const isCouncilRunning = councilEnqueueing || councilJobActive;
-  const generating = mode === "quick" ? quickGenerating : councilEnqueueing;
-  const formDisabled = isCouncilRunning;
+  const isMediaJobRunning =
+    generatePostMedia.isPending || mediaJobActive;
+  const generating =
+    mode === "quick" ? quickGenerating : councilEnqueueing;
+  const formDisabled = isCouncilRunning || isMediaJobRunning;
 
   const canSubmitGenerate =
     form.topic.trim().length > 0 &&
@@ -214,6 +393,7 @@ export default function Generate() {
     canAffordMode &&
     !generating &&
     !isCouncilRunning &&
+    !isMediaJobRunning &&
     (profiles?.length ?? 0) > 0;
 
   const buildRequestBody = useCallback(() => {
@@ -261,6 +441,9 @@ export default function Generate() {
     if (mode === "quick") {
       setGenerated(false);
       setSavedPostIds({});
+      setDismissedVariantIndices([]);
+      setVariantPostStatuses({});
+      setVariantMediaUrls({});
 
       try {
         const job = await quickDraft.mutateAsync(buildQuickDraftBody());
@@ -268,6 +451,28 @@ export default function Generate() {
           job.result && "variants" in job.result ? job.result.variants : [];
         setVariants(nextVariants);
         setGenerated(nextVariants.length > 0);
+        if (nextVariants.length > 0 && activeWorkspaceId) {
+          const snapshot: StoredQuickDraftSession = {
+            variants: nextVariants,
+            savedPostIds: {},
+            dismissedVariantIndices: [],
+            topic: form.topic.trim(),
+            contentProfileId: form.contentProfileId,
+            postType: form.postType,
+            tone: form.tone,
+            pillar: form.pillar,
+            createdAt: new Date().toISOString(),
+          };
+          saveGenerationSession(activeWorkspaceId, { quickDraft: snapshot });
+          addGenerationHistoryEntry(activeWorkspaceId, {
+            kind: "quick_draft",
+            label: `${nextVariants.length} variants`,
+            topic: form.topic.trim(),
+            variantCount: nextVariants.length,
+            quickDraftSnapshot: snapshot,
+          });
+          setHistory(loadGenerationSession(activeWorkspaceId).history);
+        }
         if (nextVariants.length === 0) {
           showToast("Generation finished but returned no variants.", "error");
         }
@@ -282,12 +487,33 @@ export default function Generate() {
       return;
     }
 
-    if (mode === "council") {
+    if (mode === "council" || mode === "media") {
       setActiveCouncilJobId(null);
 
       try {
-        const job = await councilMutation.mutateAsync(buildCouncilBody());
+        const body = buildCouncilBody();
+        const job =
+          mode === "media"
+            ? await premiumCouncilMutation.mutateAsync(body)
+            : await councilMutation.mutateAsync(body);
         setActiveCouncilJobId(job.id);
+        councilCompletedRef.current = null;
+        if (activeWorkspaceId) {
+          saveGenerationSession(activeWorkspaceId, {
+            activeCouncilJobId: job.id,
+            mode,
+          });
+          if (mode === "media") {
+            addGenerationHistoryEntry(activeWorkspaceId, {
+              kind: "council",
+              label: "Post + Media",
+              topic: form.topic.trim(),
+              councilJobId: job.id,
+              councilPostId: job.postPackageId ?? undefined,
+            });
+            setHistory(loadGenerationSession(activeWorkspaceId).history);
+          }
+        }
       } catch (err) {
         const message = getApiErrorMessage(err);
         setGenerateError(message);
@@ -307,10 +533,51 @@ export default function Generate() {
     }
     setMode(nextMode);
     setGenerateError(null);
-    setVariants([]);
-    setGenerated(false);
-    setSavedPostIds({});
-    setActiveCouncilJobId(null);
+    if (nextMode === "quick" && activeWorkspaceId) {
+      const session = loadGenerationSession(activeWorkspaceId);
+      if (session.quickDraft) {
+        restoreQuickDraft(session.quickDraft);
+      }
+    }
+    if (activeWorkspaceId) {
+      saveGenerationSession(activeWorkspaceId, {
+        mode:
+          nextMode === "council"
+            ? "council"
+            : nextMode === "media"
+              ? "media"
+              : "quick",
+      });
+    }
+  };
+
+  const handleRestoreHistory = (entry: GenerationHistoryEntry) => {
+    if (entry.kind === "quick_draft" && entry.quickDraftSnapshot) {
+      restoreQuickDraft(entry.quickDraftSnapshot);
+      if (activeWorkspaceId) {
+        saveGenerationSession(activeWorkspaceId, { quickDraft: entry.quickDraftSnapshot });
+      }
+      return;
+    }
+    if (entry.kind === "council") {
+      setMode(entry.label === "Post + Media" ? "media" : "council");
+      if (entry.councilJobId) {
+        setActiveCouncilJobId(entry.councilJobId);
+        if (activeWorkspaceId) {
+          saveGenerationSession(activeWorkspaceId, {
+            activeCouncilJobId: entry.councilJobId,
+            mode: entry.label === "Post + Media" ? "media" : "council",
+          });
+        }
+      }
+      if (entry.councilPostId) {
+        router.push(`/app/posts/${entry.councilPostId}`);
+      }
+      return;
+    }
+    if (entry.kind === "calendar") {
+      router.push("/app/generate/calendar");
+    }
   };
 
   const getFormContext = () => ({
@@ -364,6 +631,26 @@ export default function Generate() {
     return { postId, hook: variant.hook };
   };
 
+  const dismissVariant = (variantIndex: number) => {
+    setDismissedVariantIndices((current) =>
+      current.includes(variantIndex) ? current : [...current, variantIndex],
+    );
+  };
+
+  const getGenerateMediaDisabledReason = (
+    variantIndex: number,
+    hasMediaPreview: boolean,
+  ): string | null => {
+    if (hasMediaPreview) {
+      return "This post already has a quote card.";
+    }
+    const status = variantPostStatuses[variantIndex];
+    if (status && status !== "draft") {
+      return "Quote cards can only be generated while the post is a draft.";
+    }
+    return null;
+  };
+
   const handleSaveDraft = async (variantIndex: number) => {
     const variant = variants[variantIndex];
     if (!variant) return;
@@ -374,12 +661,95 @@ export default function Generate() {
         variantToCreatePostBody(variant, getFormContext()),
       );
       setSavedPostIds((current) => ({ ...current, [variantIndex]: post.id }));
+      dismissVariant(variantIndex);
       showToast("Saved to drafts", "bookmark_added");
       router.push(`/app/posts/${post.id}`);
     } catch (err) {
       showToast(getApiErrorMessage(err), "error");
     } finally {
       setSavingVariantIndex(null);
+    }
+  };
+
+  const ensureSavedPost = async (variantIndex: number): Promise<string> => {
+    const variant = variants[variantIndex];
+    if (!variant) throw new Error("Variant not found");
+    if (!activeWorkspaceId) throw new Error("No active workspace");
+
+    let postId = savedPostIds[variantIndex];
+    if (!postId) {
+      const post = await createPost.mutateAsync(
+        variantToCreatePostBody(variant, getFormContext()),
+      );
+      postId = post.id;
+      setSavedPostIds((current) => ({ ...current, [variantIndex]: postId }));
+    }
+    return postId;
+  };
+
+  const handleSendToReview = async (variantIndex: number) => {
+    const token = await getToken();
+    if (!token || !activeWorkspaceId) {
+      showToast("Not authenticated", "error");
+      return;
+    }
+
+    setReviewVariantIndex(variantIndex);
+    try {
+      const postId = await ensureSavedPost(variantIndex);
+      let post = await fetchPost(token, activeWorkspaceId, postId);
+
+      if (post.status === "draft") {
+        post = await transitionPostStatus(token, activeWorkspaceId, postId, {
+          status: "ready_for_approval",
+        });
+      }
+
+      showToast("Sent for review", "rate_review");
+      dismissVariant(variantIndex);
+      setVariantPostStatuses((current) => ({
+        ...current,
+        [variantIndex]: "ready_for_approval",
+      }));
+      router.push(`/app/posts/${post.id}`);
+    } catch (err) {
+      showToast(getApiErrorMessage(err), "error");
+    } finally {
+      setReviewVariantIndex(null);
+    }
+  };
+
+  const handleGenerateMedia = async (variantIndex: number) => {
+    if (!canAfford(MEDIA_GENERATION_CREDIT_COST)) {
+      showToast(
+        `You need ${MEDIA_GENERATION_CREDIT_COST} credits to generate media.`,
+        "error",
+      );
+      router.push("/app/billing");
+      return;
+    }
+
+    setMediaVariantIndex(variantIndex);
+    try {
+      const postId = await ensureSavedPost(variantIndex);
+      // #region agent log
+      fetch('http://127.0.0.1:7936/ingest/839fd5aa-975f-4d2f-afc3-4e50b695a8d5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'c1f975'},body:JSON.stringify({sessionId:'c1f975',location:'Generate.tsx:handleGenerateMedia:before',message:'calling generatePostMedia',data:{variantIndex,postId,status:variantPostStatuses[variantIndex]??'unsaved'},timestamp:Date.now(),hypothesisId:'C,D'})}).catch(()=>{});
+      // #endregion
+      mediaCompletedRef.current = null;
+      const job = await generatePostMedia.mutateAsync(postId);
+      // #region agent log
+      fetch('http://127.0.0.1:7936/ingest/839fd5aa-975f-4d2f-afc3-4e50b695a8d5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'c1f975'},body:JSON.stringify({sessionId:'c1f975',location:'Generate.tsx:handleGenerateMedia:success',message:'generatePostMedia succeeded',data:{jobId:job.id,postId},timestamp:Date.now(),hypothesisId:'A,D'})}).catch(()=>{});
+      // #endregion
+      setActiveMediaJobId(job.id);
+    } catch (err) {
+      // #region agent log
+      fetch('http://127.0.0.1:7936/ingest/839fd5aa-975f-4d2f-afc3-4e50b695a8d5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'c1f975'},body:JSON.stringify({sessionId:'c1f975',location:'Generate.tsx:handleGenerateMedia:error',message:'generatePostMedia failed',data:{variantIndex,code:err instanceof Error && 'code' in err ? (err as {code?:string}).code : 'unknown',errorMessage:err instanceof Error ? err.message : String(err)},timestamp:Date.now(),hypothesisId:'A,B,C,D,E'})}).catch(()=>{});
+      // #endregion
+      showToast(getApiErrorMessage(err), "error");
+      setMediaVariantIndex(null);
+      if (isCreditsExhaustedError(err)) {
+        router.push("/app/billing");
+      }
     }
   };
 
@@ -408,6 +778,14 @@ export default function Generate() {
   };
 
   const pillVariant = (active: boolean) => toggleVariant(active);
+
+  const visibleVariants = useMemo(
+    () =>
+      variants
+        .map((variant, index) => ({ variant, index }))
+        .filter(({ index }) => !dismissedVariantIndices.includes(index)),
+    [dismissedVariantIndices, variants],
+  );
 
   const formPanel = (
     <>
@@ -536,7 +914,7 @@ export default function Generate() {
         disabled={formDisabled}
       />
 
-      {mode === "council" ? (
+      {(mode === "council" || mode === "media") ? (
         <TextareaField
           label="Brief"
           hint="(optional)"
@@ -562,10 +940,14 @@ export default function Generate() {
       >
         <MsIcon name="auto_awesome" size={19} />
         {isCouncilRunning
-          ? "Council running…"
-          : generating
-            ? "Starting…"
-            : `Generate with ${selectedMode.label}`}
+          ? mode === "media"
+            ? "Post + Media running…"
+            : "Council running…"
+          : isMediaJobRunning
+            ? "Generating quote card…"
+            : generating
+              ? "Starting…"
+              : `Generate with ${selectedMode.label}`}
       </Button>
     </>
   );
@@ -581,8 +963,10 @@ export default function Generate() {
             <h2 className="font-display text-[17px] font-bold">Post generator</h2>
             <p className="text-[12.5px] text-[#94a3b8]">
               {mode === "council"
-                ? "Run the AI Council for a reviewed post with media."
-                : "Pick a mode, then generate polished drafts."}
+                ? "Run the AI Council for a reviewed post with quote card."
+                : mode === "media"
+                  ? "Premium pipeline with stricter review and media revision included."
+                  : "Pick a mode, then generate polished drafts."}
             </p>
           </div>
         </div>
@@ -608,6 +992,10 @@ export default function Generate() {
           onRetry={() => void refetchProfiles()}
         >
           {formPanel}
+          <GenerationHistoryPanel
+            history={history}
+            onRestore={handleRestoreHistory}
+          />
         </QueryState>
       </div>
 
@@ -618,7 +1006,7 @@ export default function Generate() {
           </div>
         ) : null}
 
-        {mode === "council" ? (
+        {(mode === "council" || mode === "media") ? (
           isCouncilRunning && !councilJob.data ? (
             <div className="flex flex-col gap-4">
               <div className="flex items-center gap-2.5 text-sm font-semibold text-[#4f46e5]">
@@ -637,6 +1025,7 @@ export default function Generate() {
               progress={councilJob.data.progress}
               status={councilJob.data.status}
               errorMessage={councilJob.data.errorMessage}
+              postPackageId={councilJob.data.postPackageId}
             />
           ) : (
             <div className="flex flex-col items-center rounded-[18px] border border-dashed border-[#d8dce8] bg-white px-8 py-14 text-center">
@@ -644,11 +1033,14 @@ export default function Generate() {
                 <MsIcon name="groups" size={34} className="text-[#4f46e5]" />
               </div>
               <h3 className="mb-2 font-display text-[19px] font-bold">
-                AI Council progress will appear here
+                {mode === "media"
+                  ? "Post + Media progress will appear here"
+                  : "AI Council progress will appear here"}
               </h3>
               <p className="mb-[22px] max-w-[360px] text-[14.5px] leading-relaxed text-[#64748b]">
-                Five agents will write, review, edit, and generate media — with
-                live progress as each step completes.
+                {mode === "media"
+                  ? "Premium pipeline: write, review, edit, and generate a quote card with media revision included."
+                  : "Five agents will write, review, edit, and generate media — with live progress as each step completes."}
               </p>
               <Button
                 type="button"
@@ -657,8 +1049,10 @@ export default function Generate() {
                 onClick={() => void runGenerate()}
                 disabled={!canSubmitGenerate}
               >
-                <MsIcon name="groups" size={18} />
-                Run AI Council ({COUNCIL_CREDIT_COST} credits)
+                <MsIcon name={mode === "media" ? "auto_awesome_motion" : "groups"} size={18} />
+                {mode === "media"
+                  ? `Run Post + Media (${PREMIUM_COUNCIL_CREDIT_COST} credits)`
+                  : `Run AI Council (${COUNCIL_CREDIT_COST} credits)`}
               </Button>
             </div>
           )
@@ -681,12 +1075,35 @@ export default function Generate() {
               </div>
             ))}
           </div>
-        ) : generated && variants.length > 0 ? (
+        ) : generated && variants.length > 0 && visibleVariants.length === 0 ? (
+          <div className="flex flex-col items-center rounded-[18px] border border-dashed border-[#d8dce8] bg-white px-8 py-14 text-center">
+            <div className="mb-[18px] flex h-16 w-16 items-center justify-center rounded-[18px] bg-gradient-to-br from-[#eef2ff] to-[#ecfeff]">
+              <MsIcon name="check_circle" size={34} className="text-[#16a34a]" />
+            </div>
+            <h3 className="mb-2 font-display text-[19px] font-bold">
+              All variants saved
+            </h3>
+            <p className="mb-[22px] max-w-[340px] text-[14.5px] leading-relaxed text-[#64748b]">
+              Every draft from this run has been saved or sent for review. Generate
+              again to create new options.
+            </p>
+            <Button
+              type="button"
+              variant="primary"
+              size="md"
+              onClick={() => void runGenerate()}
+              disabled={!canSubmitGenerate}
+            >
+              <MsIcon name="auto_awesome" size={18} />
+              Regenerate ({QUICK_DRAFT_CREDIT_COST} credit)
+            </Button>
+          </div>
+        ) : generated && visibleVariants.length > 0 ? (
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-sm font-semibold text-[#16a34a]">
                 <MsIcon name="check_circle" size={19} />
-                {variants.length} posts ready
+                {visibleVariants.length} posts ready
               </div>
               <Button
                 type="button"
@@ -699,10 +1116,25 @@ export default function Generate() {
                 Regenerate ({QUICK_DRAFT_CREDIT_COST} credit)
               </Button>
             </div>
-            {variants.map((variant, i) => {
+            {visibleVariants.map(({ variant, index: i }) => {
               const wordCount = countWords(variant.hook, variant.body, variant.cta);
               const isSaving = savingVariantIndex === i;
               const isActing = actionVariantIndex === i;
+              const isSendingToReview = reviewVariantIndex === i;
+              const isGeneratingMedia =
+                mediaVariantIndex === i &&
+                (generatePostMedia.isPending || mediaJobActive);
+              const mediaPreviewUrl = variantMediaUrls[i];
+              const generateMediaDisabledReason = getGenerateMediaDisabledReason(
+                i,
+                !!mediaPreviewUrl,
+              );
+              const generateMediaDisabled =
+                isSaving ||
+                isActing ||
+                isGeneratingMedia ||
+                !!generateMediaDisabledReason ||
+                createPost.isPending;
 
               return (
                 <div
@@ -760,6 +1192,21 @@ export default function Generate() {
                         </span>
                       ))}
                     </div>
+                    {mediaPreviewUrl ? (
+                      <div className="mb-4 overflow-hidden rounded-xl border border-[#eceef4]">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={mediaPreviewUrl}
+                          alt="Generated quote card"
+                          className="h-40 w-full object-cover"
+                        />
+                      </div>
+                    ) : isGeneratingMedia ? (
+                      <div className="mb-4 flex items-center gap-2 rounded-xl border border-dashed border-[#d8dce8] bg-[#fbfbfd] px-4 py-6 text-[13px] font-semibold text-[#0891b2]">
+                        <MsIcon name="progress_activity" size={18} className="animate-ppspin" />
+                        Generating quote card…
+                      </div>
+                    ) : null}
                     <div className="flex flex-wrap gap-2">
                       <Button
                         type="button"
@@ -775,15 +1222,31 @@ export default function Generate() {
                         type="button"
                         variant="secondary"
                         size="sm"
-                        disabled
+                        disabled={
+                          isSaving || isActing || isSendingToReview || createPost.isPending
+                        }
+                        onClick={() => void handleSendToReview(i)}
                       >
                         <MsIcon name="rate_review" size={16} style={{ color: "#0891b2" }} />
-                        Send to Review
+                        {isSendingToReview ? "Sending…" : "Send to Review"}
                       </Button>
-                      <Button type="button" variant="secondary" size="sm" disabled>
-                        <MsIcon name="image" size={16} style={{ color: "#c026d3" }} />
-                        Generate Media
-                      </Button>
+                      <span
+                        className="inline-flex"
+                        title={generateMediaDisabledReason ?? undefined}
+                      >
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          disabled={generateMediaDisabled}
+                          onClick={() => void handleGenerateMedia(i)}
+                        >
+                          <MsIcon name="image" size={16} style={{ color: "#c026d3" }} />
+                          {isGeneratingMedia
+                            ? "Generating…"
+                            : `Generate Media (${MEDIA_GENERATION_CREDIT_COST} cr)`}
+                        </Button>
+                      </span>
                       <Button
                         type="button"
                         variant="success"

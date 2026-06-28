@@ -1,5 +1,6 @@
 import type { ApiCreditsBalance } from "@/lib/api/types/credits";
 import type { ApiDashboardStats } from "@/lib/api/types/dashboard";
+import { getCreditUsageDisplay } from "@/lib/credit-usage";
 import { formatScheduledDateTime } from "@/lib/format-relative-time";
 import { getPlanLabel } from "@/lib/plan-labels";
 
@@ -15,9 +16,13 @@ export function buildDashboardMetrics(
   stats: ApiDashboardStats,
   credits: ApiCreditsBalance | undefined,
 ): DashboardMetricTile[] {
-  const used = credits?.used ?? stats.credits.used;
-  const limit = credits?.limit ?? stats.credits.limit;
-  const percentUsed = credits?.percentUsed ?? stats.credits.percentUsed;
+  const usage = credits
+    ? getCreditUsageDisplay(credits)
+    : getCreditUsageDisplay({
+        used: stats.credits.used,
+        limit: stats.credits.limit,
+        remaining: Math.max(0, stats.credits.limit - stats.credits.used),
+      });
 
   const scheduledSub = stats.nextScheduled
     ? `Next: ${formatScheduledDateTime(stats.nextScheduled.scheduledAt)}`
@@ -32,9 +37,9 @@ export function buildDashboardMetrics(
     },
     {
       label: "Credits Used",
-      value: String(used),
-      unit: `/ ${limit}`,
-      sub: `${percentUsed}% of monthly limit`,
+      value: String(usage.used),
+      unit: `/ ${usage.limit}`,
+      sub: `${usage.usagePercentLabel}% of monthly limit`,
       icon: "bolt",
     },
     {

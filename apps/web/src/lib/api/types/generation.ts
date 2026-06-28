@@ -84,6 +84,12 @@ export type CalendarGenerateRequestBody = {
   additionalContext?: string;
 };
 
+export type MediaJobResult = {
+  postPackageId: string;
+  postMediaId: string;
+  mediaType: string;
+};
+
 export type ApiGenerationJob = {
   id: string;
   workspaceId: string;
@@ -99,7 +105,7 @@ export type ApiGenerationJob = {
   postPackageId: string | null;
   progress: GenerationJobProgress | null;
   events: CouncilEvent[] | null;
-  result: QuickDraftJobResult | CouncilJobResult | CalendarJobResult | null;
+  result: QuickDraftJobResult | CouncilJobResult | CalendarJobResult | MediaJobResult | null;
   createdAt: string;
   updatedAt: string;
   completedAt: string | null;

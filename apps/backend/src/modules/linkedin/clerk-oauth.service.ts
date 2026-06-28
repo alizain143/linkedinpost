@@ -32,9 +32,16 @@ export class ClerkOAuthService {
 
   async getLinkedInExternalAccount(clerkId: string) {
     const clerkUser = await this.getClerkClient().users.getUser(clerkId);
-    const account = clerkUser.externalAccounts.find((item) =>
+    const linkedInCandidates = clerkUser.externalAccounts.filter((item) =>
       LINKEDIN_PROVIDER_ALIASES.has(item.provider),
     );
+    const verifiedCandidates = linkedInCandidates.filter(
+      (item) => item.verification?.status === 'verified',
+    );
+    const account =
+      verifiedCandidates.find((item) =>
+        this.hasPublishScope(this.getApprovedScopes(item)),
+      ) ?? verifiedCandidates[0];
 
     if (!account || account.verification?.status !== 'verified') {
       return null;

@@ -21,9 +21,9 @@ export class StripeClientService {
   isCheckoutConfigured(): boolean {
     return Boolean(
       this.client &&
-        this.config.priceStarter &&
-        this.config.pricePro &&
-        this.config.priceAgency,
+      this.config.priceStarter &&
+      this.config.pricePro &&
+      this.config.priceAgency,
     );
   }
 

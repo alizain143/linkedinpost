@@ -3,10 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import {
-  PostPackageStatus,
-  PostSource,
-} from '@prisma/client';
+import { PostPackageStatus, PostSource } from '@prisma/client';
 import { NOT_DELETED } from '../../common/constants/soft-delete.constants';
 import { PlanFeatureService } from '../billing/plan-feature.service';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -76,9 +73,14 @@ export class AutopilotService {
       });
     }
 
-    if (dto.enabled === true) {
+    const willBeEnabled = dto.enabled ?? existing?.enabled ?? false;
+    const contentProfileId =
+      dto.contentProfileId ?? existing?.contentProfileId ?? null;
+
+    if (willBeEnabled) {
       const { ownerId } = await this.loadWorkspaceOwnerTimezone(workspaceId);
       await this.planFeatureService.assertAllows(ownerId, 'autopilot');
+      await this.assertContentProfileHasPillars(workspaceId, contentProfileId);
     }
 
     const config = await this.prisma.autopilotConfig.upsert({
@@ -95,7 +97,9 @@ export class AutopilotService {
         ...(dto.postingDays !== undefined || dto.postingPreset !== undefined
           ? { postingDays }
           : {}),
-        ...(dto.postingTime !== undefined ? { postingTime: dto.postingTime } : {}),
+        ...(dto.postingTime !== undefined
+          ? { postingTime: dto.postingTime }
+          : {}),
         ...(dto.contentProfileId !== undefined
           ? { contentProfileId: dto.contentProfileId }
           : {}),
@@ -168,5 +172,40 @@ export class AutopilotService {
       timezone: workspace.owner.timezone || DEFAULT_TIMEZONE,
       ownerId: workspace.ownerId,
     };
+  }
+
+  private async assertContentProfileHasPillars(
+    workspaceId: string,
+    contentProfileId: string | null,
+  ): Promise<void> {
+    const profile = contentProfileId
+      ? await this.prisma.contentProfile.findFirst({
+          where: { id: contentProfileId, workspaceId, ...NOT_DELETED },
+          include: { pillars: true },
+        })
+      : await this.prisma.contentProfile.findFirst({
+          where: { workspaceId, isDefault: true, ...NOT_DELETED },
+          include: { pillars: true },
+        }) ??
+        (await this.prisma.contentProfile.findFirst({
+          where: { workspaceId, ...NOT_DELETED },
+          include: { pillars: true },
+          orderBy: { createdAt: 'asc' },
+        }));
+
+    if (!profile) {
+      throw new BadRequestException({
+        error: 'Add a content profile before enabling autopilot',
+        code: 'AUTOPILOT_NO_CONTENT_PROFILE',
+      });
+    }
+
+    if (profile.pillars.length === 0) {
+      throw new BadRequestException({
+        error:
+          'Add at least one content pillar to your profile before enabling autopilot',
+        code: 'AUTOPILOT_NO_PILLARS',
+      });
+    }
   }
 }

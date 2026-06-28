@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import appConfig from '../../config/app.config';
 import { PrismaModule } from '../../prisma/prisma.module';
+import { AuthModule } from '../auth/auth.module';
 import { BillingModule } from '../billing/billing.module';
 import { MediaModule } from '../media/media.module';
 import { WorkspacesModule } from '../workspaces/workspaces.module';
@@ -13,6 +14,7 @@ import { PublicApprovalController } from './public-approval.controller';
   imports: [
     ConfigModule.forFeature(appConfig),
     PrismaModule,
+    AuthModule,
     MediaModule,
     WorkspacesModule,
     BillingModule,

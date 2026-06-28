@@ -6,6 +6,17 @@ import { useEffect, useRef, useState } from "react";
 import { MsIcon } from "@/components/ui/ms-icon";
 import { QUICK_DRAFT_CREDIT_COST } from "@/lib/credit-costs";
 import { useCredits } from "@/hooks/api/use-credits-api";
+import {
+  useMarkAllNotificationsRead,
+  useMarkNotificationRead,
+  useNotifications,
+  useUnreadNotificationCount,
+} from "@/hooks/api/use-notifications-api";
+import {
+  formatNotificationTime,
+  getNotificationIcon,
+  parseNotificationActionPath,
+} from "@/lib/notification-utils";
 import { useAppUi } from "@/providers/app-ui-provider";
 
 type AppTopbarProps = {
@@ -22,6 +33,17 @@ export function AppTopbar({ title, onMenuClick }: AppTopbarProps) {
   const [genOpen, setGenOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
   const genRef = useRef<HTMLDivElement>(null);
+  const { data: unreadData } = useUnreadNotificationCount();
+  const {
+    data: notificationsData,
+    isLoading: notificationsLoading,
+    refetch: refetchNotifications,
+  } = useNotifications({ limit: 10 });
+  const markRead = useMarkNotificationRead();
+  const markAllRead = useMarkAllNotificationsRead();
+
+  const unreadCount = unreadData?.count ?? 0;
+  const notifications = notificationsData?.items ?? [];
 
   const blockGenerate = (event?: { preventDefault: () => void }) => {
     event?.preventDefault();
@@ -42,6 +64,31 @@ export function AppTopbar({ title, onMenuClick }: AppTopbarProps) {
       blockGenerate(event);
     } else {
       setGenOpen(false);
+    }
+  };
+
+  const handleNotificationToggle = () => {
+    setNotifOpen((open) => {
+      const next = !open;
+      if (next) {
+        void refetchNotifications();
+      }
+      return next;
+    });
+  };
+
+  const handleNotificationClick = async (
+    notificationId: string,
+    actionUrl: string | null,
+    readAt: string | null,
+  ) => {
+    if (!readAt) {
+      await markRead.mutateAsync(notificationId);
+    }
+    setNotifOpen(false);
+    const path = parseNotificationActionPath(actionUrl);
+    if (path) {
+      router.push(path);
     }
   };
 
@@ -105,30 +152,101 @@ export function AppTopbar({ title, onMenuClick }: AppTopbarProps) {
         <div className="relative" ref={notifRef}>
           <button
             type="button"
-            onClick={() => setNotifOpen((v) => !v)}
+            onClick={handleNotificationToggle}
             className="relative flex h-[38px] w-[38px] items-center justify-center rounded-[10px] border border-[#e7e9f2] bg-white hover:bg-[#f6f7fb]"
             aria-label="Notifications"
             aria-expanded={notifOpen}
           >
             <MsIcon name="notifications" size={20} className="text-[#475569]" />
+            {unreadCount > 0 ? (
+              <span className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#ef4444] px-1 text-[10px] font-bold text-white">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            ) : null}
           </button>
           {notifOpen ? (
             <div className="animate-ppfade absolute right-0 top-[calc(100%+8px)] z-50 w-80 overflow-hidden rounded-[14px] border border-[#eceef3] bg-white shadow-[0_18px_40px_-14px_rgba(24,28,64,0.3)]">
-              <div className="border-b border-[#f1f3f8] px-4 py-3">
+              <div className="flex items-center justify-between border-b border-[#f1f3f8] px-4 py-3">
                 <span className="font-display text-sm font-bold">Notifications</span>
+                {unreadCount > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => void markAllRead.mutateAsync()}
+                    className="text-[12px] font-semibold text-[#4f46e5] hover:underline"
+                  >
+                    Mark all read
+                  </button>
+                ) : null}
               </div>
-              <div className="px-4 py-8 text-center">
-                <MsIcon
-                  name="notifications_none"
-                  size={28}
-                  className="mx-auto mb-2 text-[#cbd5e1]"
-                />
-                <p className="text-[13px] font-semibold text-[#64748b]">
-                  No notifications yet
-                </p>
-                <p className="mt-1 text-[12px] text-[#94a3b8]">
-                  Approval updates and publish alerts will appear here.
-                </p>
+              {notificationsLoading ? (
+                <div className="px-4 py-8 text-center text-[13px] text-[#94a3b8]">
+                  Loading…
+                </div>
+              ) : notifications.length === 0 ? (
+                <div className="px-4 py-8 text-center">
+                  <MsIcon
+                    name="notifications_none"
+                    size={28}
+                    className="mx-auto mb-2 text-[#cbd5e1]"
+                  />
+                  <p className="text-[13px] font-semibold text-[#64748b]">
+                    No notifications yet
+                  </p>
+                  <p className="mt-1 text-[12px] text-[#94a3b8]">
+                    Approval updates and publish alerts will appear here.
+                  </p>
+                </div>
+              ) : (
+                <ul className="max-h-80 overflow-y-auto py-1">
+                  {notifications.map((notification) => (
+                    <li key={notification.id}>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          void handleNotificationClick(
+                            notification.id,
+                            notification.actionUrl,
+                            notification.readAt,
+                          )
+                        }
+                        className="flex w-full gap-3 px-4 py-3 text-left hover:bg-[#f6f7fb]"
+                      >
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#eef2ff]">
+                          <MsIcon
+                            name={getNotificationIcon(notification.type)}
+                            size={16}
+                            className="text-[#4f46e5]"
+                          />
+                        </div>
+                        <span className="min-w-0 flex-1">
+                          <span className="flex items-start gap-2">
+                            <span className="block flex-1 text-[13px] font-semibold text-[#1e293b]">
+                              {notification.title}
+                            </span>
+                            {!notification.readAt ? (
+                              <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[#4f46e5]" />
+                            ) : null}
+                          </span>
+                          <span className="mt-0.5 block text-[12px] text-[#64748b]">
+                            {notification.body}
+                          </span>
+                          <span className="mt-1 block text-[11px] text-[#94a3b8]">
+                            {formatNotificationTime(notification.createdAt)}
+                          </span>
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div className="border-t border-[#f1f3f8] px-4 py-2.5">
+                <Link
+                  href="/app/notifications"
+                  onClick={() => setNotifOpen(false)}
+                  className="block text-center text-[12px] font-semibold text-[#4f46e5] hover:underline"
+                >
+                  View all notifications
+                </Link>
               </div>
             </div>
           ) : null}

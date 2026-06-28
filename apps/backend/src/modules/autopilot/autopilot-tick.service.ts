@@ -1,7 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { NOT_DELETED } from '../../common/constants/soft-delete.constants';
 import { PrismaService } from '../../prisma/prisma.service';
-import { DEFAULT_TIMEZONE, getTodayDateKey } from '../calendar/calendar-date.util';
+import {
+  DEFAULT_TIMEZONE,
+  getTodayDateKey,
+} from '../calendar/calendar-date.util';
 import { AutopilotDispatchService } from './autopilot-dispatch.service';
 import { isDueNow } from './autopilot-schedule.util';
 
@@ -31,8 +34,7 @@ export class AutopilotTickService {
     let dispatched = 0;
 
     for (const config of configs) {
-      const timezone =
-        config.workspace.owner.timezone || DEFAULT_TIMEZONE;
+      const timezone = config.workspace.owner.timezone || DEFAULT_TIMEZONE;
 
       if (!isDueNow(config, timezone, now)) {
         continue;

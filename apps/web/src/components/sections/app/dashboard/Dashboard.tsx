@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useMemo } from "react";
 import { QueryState } from "@/components/app/query-state";
 import { Button } from "@/components/ui/button";
 import { MsIcon } from "@/components/ui/ms-icon";
@@ -21,6 +22,7 @@ import {
   getAutopilotStatusBadge,
 } from "@/components/sections/app/autopilot/AutopilotStatusSummary";
 import { QUICK_DRAFT_CREDIT_COST } from "@/lib/credit-costs";
+import { getCreditUsageDisplay } from "@/lib/credit-usage";
 import {
   buildDashboardMetrics,
   formatApprovalQueueSubtitle,
@@ -31,6 +33,7 @@ import {
 } from "@/lib/format-relative-time";
 import { getPostTypeLabel } from "@/lib/post-types";
 import { DEFAULT_TIMEZONE } from "@/lib/timezones";
+import { cn } from "@/lib/utils";
 import { useAppUi } from "@/providers/app-ui-provider";
 
 const METRIC_TINTS: Record<string, { bg: string; color: string }> = {
@@ -154,6 +157,20 @@ function DashboardContent({
     refetch,
   } = useDashboardStats(activeWorkspaceId);
 
+  const creditUsage = useMemo(() => {
+    if (balance) {
+      return getCreditUsageDisplay(balance);
+    }
+    if (!stats) {
+      return null;
+    }
+    return getCreditUsageDisplay({
+      used: stats.credits.used,
+      limit: stats.credits.limit,
+      remaining: Math.max(0, stats.credits.limit - stats.credits.used),
+    });
+  }, [balance, stats]);
+
   return (
     <QueryState
       isLoading={isLoading || !activeWorkspaceId || !stats}
@@ -244,42 +261,43 @@ function DashboardContent({
                     <p className="text-[13px] text-[#7886a0]">
                       {balance
                         ? `Resets ${formatResetDate(balance.periodEnd)}`
-                        : "Loading credits…"}
+                        : creditUsage
+                          ? "Credit balance"
+                          : "Loading credits…"}
                     </p>
                   </div>
-                  <span className="font-display text-[22px] font-extrabold">
-                    {balance?.used ?? stats.credits.used}
-                    <span className="text-sm font-semibold text-[#94a3b8]">
-                      {" "}
-                      / {balance?.limit ?? stats.credits.limit}
+                  {creditUsage ? (
+                    <span className="font-display text-[22px] font-extrabold">
+                      {creditUsage.used}
+                      <span className="text-sm font-semibold text-[#94a3b8]">
+                        {" "}
+                        / {creditUsage.limit}
+                      </span>
                     </span>
-                  </span>
+                  ) : (
+                    <span className="h-7 w-20 animate-pulse rounded-lg bg-[#eceef4]" />
+                  )}
                 </div>
                 <div className="mb-2 h-3 overflow-hidden rounded-full bg-[#f1f3f8]">
                   <div
                     className="h-full rounded-full bg-gradient-to-r from-[#4f46e5] to-[#7c3aed]"
                     style={{
-                      width: `${Math.min(
-                        100,
-                        Math.max(
-                          0,
-                          balance?.percentUsed ?? stats.credits.percentUsed,
-                        ),
-                      )}%`,
+                      width: creditUsage
+                        ? `${creditUsage.usagePercent}%`
+                        : "0%",
                     }}
                   />
                 </div>
                 <div className="flex justify-between text-xs text-[#94a3b8]">
                   <span>
-                    {balance?.remaining ??
-                      Math.max(
-                        0,
-                        stats.credits.limit - stats.credits.used,
-                      )}{" "}
-                    credits remaining
+                    {creditUsage
+                      ? `${creditUsage.remaining} credits remaining`
+                      : "—"}
                   </span>
                   <span>
-                    {balance?.percentUsed ?? stats.credits.percentUsed}% used
+                    {creditUsage
+                      ? `${creditUsage.usagePercentLabel}% used`
+                      : "—"}
                   </span>
                 </div>
               </div>
@@ -446,10 +464,13 @@ function DashboardContent({
 export default function Dashboard() {
   const router = useRouter();
   const { linkedinConnectionState, openConnect, showToast } = useAppUi();
+  const { activeWorkspaceId } = useWorkspace();
   const { data: user } = useCurrentUser();
+  const { data: autopilotConfig } = useAutopilotConfig(activeWorkspaceId);
   const { canAfford, isLoading: creditsLoading } = useCredits();
   const welcomeName = getUserFirstName(user) ?? "there";
   const canGeneratePost = creditsLoading || canAfford(QUICK_DRAFT_CREDIT_COST);
+  const autopilotEnabled = autopilotConfig?.enabled ?? false;
 
   const handleGenerateClick = () => {
     if (!canGeneratePost) {
@@ -530,10 +551,26 @@ export default function Dashboard() {
         <div className="flex flex-wrap gap-2.5">
           <Link
             href="/app/autopilot"
-            className="inline-flex items-center gap-1.5 rounded-[11px] border border-[#e3e6ef] bg-white px-4 py-[11px] text-[14px] font-semibold text-[#1e293b] hover:border-[#cbd2e0] hover:bg-[#f6f7fb]"
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-[11px] border px-4 py-[11px] text-[14px] font-semibold transition-colors",
+              autopilotEnabled
+                ? "border-[#99f6e4] bg-[#f0fdfa] text-[#0f766e] hover:border-[#5eead4] hover:bg-[#ccfbf1]"
+                : "border-[#e3e6ef] bg-white text-[#1e293b] hover:border-[#cbd2e0] hover:bg-[#f6f7fb]",
+            )}
           >
-            <MsIcon name="auto_mode" size={18} className="text-[#7c3aed]" />
-            Turn On Autopilot
+            <MsIcon
+              name="auto_mode"
+              size={18}
+              className={autopilotEnabled ? "text-[#0d9488]" : "text-[#7c3aed]"}
+            />
+            {autopilotEnabled ? (
+              <>
+                <span className="h-1.5 w-1.5 rounded-full bg-[#14b8a6]" />
+                Autopilot on
+              </>
+            ) : (
+              "Turn on Autopilot"
+            )}
           </Link>
           <Link
             href="/app/generate/calendar"
