@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { PostType } from '@prisma/client';
+import { PostMediaType, PostType } from '@prisma/client';
 import {
+  IsBoolean,
   IsEnum,
   IsOptional,
   IsString,
@@ -41,4 +42,26 @@ export class QuickDraftRequestDto {
   @IsString()
   @MaxLength(2000)
   additionalContext?: string;
+
+  @ApiPropertyOptional({ enum: PostMediaType })
+  @IsOptional()
+  @IsEnum(PostMediaType)
+  mediaType?: PostMediaType;
+
+  @ApiPropertyOptional({ example: 'Minimal dark background with gold accents' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  mediaCustomPrompt?: string;
+
+  @ApiPropertyOptional({ example: 'classic' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  mediaTemplateId?: string;
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  skipImageScout?: boolean;
 }

@@ -1,4 +1,4 @@
-import { Injectable, Logger, Optional } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, Optional } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import {
@@ -9,6 +9,7 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NOTIFICATION_DELIVERY_QUEUE } from './notifications.constants';
+import { buildDeliveryJobId } from './notification-dispatch.utils';
 
 export interface NotificationDeliveryJobPayload {
   notificationId: string;
@@ -17,8 +18,12 @@ export interface NotificationDeliveryJobPayload {
 
 const redisEnabled = Boolean(process.env.REDIS_URL);
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 @Injectable()
-export class NotificationDispatchService {
+export class NotificationDispatchService implements OnModuleInit {
   private readonly logger = new Logger(NotificationDispatchService.name);
 
   constructor(
@@ -27,6 +32,55 @@ export class NotificationDispatchService {
     @InjectQueue(NOTIFICATION_DELIVERY_QUEUE)
     private readonly queue?: Queue<NotificationDeliveryJobPayload>,
   ) {}
+
+  async onModuleInit() {
+    if (!redisEnabled || !this.queue) {
+      return;
+    }
+
+    const retryableFailed = await this.prisma.notificationDelivery.updateMany({
+      where: {
+        status: NotificationDeliveryStatus.failed,
+        error: { contains: 'could not be resolved', mode: 'insensitive' },
+      },
+      data: {
+        status: NotificationDeliveryStatus.pending,
+        error: null,
+      },
+    });
+
+    const pending = await this.prisma.notificationDelivery.findMany({
+      where: { status: NotificationDeliveryStatus.pending },
+      orderBy: { createdAt: 'asc' },
+      select: { notificationId: true, channel: true },
+    });
+
+    if (pending.length === 0) {
+      return;
+    }
+
+    this.logger.log(
+      `Replaying ${pending.length} pending notification delivery job(s)` +
+        (retryableFailed.count > 0
+          ? ` (${retryableFailed.count} failed delivery row(s) reset)`
+          : ''),
+    );
+
+    for (const delivery of pending) {
+      try {
+        await this.enqueue({
+          notificationId: delivery.notificationId,
+          channel: delivery.channel,
+        });
+        await sleep(250);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.logger.warn(
+          `Failed to replay delivery for ${delivery.notificationId} (${delivery.channel}): ${message}`,
+        );
+      }
+    }
+  }
 
   async dispatchForUser(
     user: Pick<
@@ -115,10 +169,23 @@ export class NotificationDispatchService {
     }
   }
 
+  private buildDeliveryJobId(payload: NotificationDeliveryJobPayload): string {
+    return buildDeliveryJobId(payload);
+  }
+
   private async enqueue(payload: NotificationDeliveryJobPayload) {
     if (redisEnabled && this.queue) {
+      const jobId = this.buildDeliveryJobId(payload);
+      const existingJob = await this.queue.getJob(jobId);
+      if (existingJob) {
+        const state = await existingJob.getState();
+        if (state === 'failed' || state === 'completed') {
+          await existingJob.remove();
+        }
+      }
+
       await this.queue.add('deliver', payload, {
-        jobId: `${payload.notificationId}:${payload.channel}`,
+        jobId,
         attempts: 3,
         backoff: { type: 'exponential', delay: 1000 },
       });

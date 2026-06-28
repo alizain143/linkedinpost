@@ -1,6 +1,7 @@
 import {
   ContentGoal,
   CouncilAgentRole,
+  PostMediaType,
   PostType,
   UserPlan,
 } from '@prisma/client';
@@ -14,6 +15,12 @@ export interface QuickDraftInput {
   pillar?: string;
   contentProfileId?: string;
   additionalContext?: string;
+  mediaType?: PostMediaType;
+  mediaCustomPrompt?: string;
+  mediaTemplateId?: string;
+  skipImageScout?: boolean;
+  selectedReferenceUrls?: string[];
+  resumeFrom?: 'media_creator';
 }
 
 export interface CouncilInput extends QuickDraftInput {
@@ -56,6 +63,8 @@ export interface GenerationContentProfileContext {
   targetAudience: string | null;
   contentGoal: ContentGoal;
   preferredTone: string | null;
+  brandPrimary: string | null;
+  brandAccent: string | null;
   offerDescription: string | null;
   writingSample: string | null;
   avoidWords: string | null;
@@ -69,6 +78,9 @@ export interface GenerationInputContext {
   pillar?: string;
   additionalContext?: string;
   brief?: string;
+  mediaType?: PostMediaType;
+  mediaCustomPrompt?: string;
+  mediaTemplateId?: string;
   calendarSlotDates?: string[];
   calendarSlotCount?: number;
   calendarDurationDays?: number;
@@ -108,6 +120,24 @@ export interface CouncilJobResult {
   finalScore: number | null;
   revisionCount: number;
   mediaRegenCount: number;
+  paused?: boolean;
+  pauseReason?: 'awaiting_media_selection';
+}
+
+export interface MediaReferenceCandidate {
+  url: string;
+  thumbnailUrl: string;
+  title: string;
+  sourcePage?: string;
+}
+
+export interface CouncilPausedState {
+  paused: true;
+  pauseReason: 'awaiting_media_selection';
+  mediaReferences: MediaReferenceCandidate[];
+  resumeFrom: 'media_creator';
+  priorStepOrder: number;
+  completedSteps: number;
 }
 
 export interface CalendarJobResultSlot {

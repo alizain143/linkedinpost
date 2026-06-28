@@ -4,12 +4,13 @@ import { GenerationJobStatus } from '@prisma/client';
 import { createMockPrismaService } from '../../test/prisma.mock';
 import { userId, workspaceId } from '../../test/fixtures';
 import { PrismaService } from '../../prisma/prisma.service';
-import { MODEL_ROUTER } from '../generation/llm/model-capability.types';
 import { CreditsService } from '../credits/credits.service';
+import { mockNotificationEventServiceProvider } from '../../test/notification-event.mock';
 import { MediaService } from '../media/media.service';
 import { PostsService } from '../posts/posts.service';
 import { CouncilAgentService } from './council-agent.service';
 import { CouncilEventService } from './council-event.service';
+import { CouncilMediaPhaseService } from './council-media-phase.service';
 import { CouncilOrchestrator } from './council-orchestrator';
 
 describe('CouncilOrchestrator', () => {
@@ -34,7 +35,8 @@ describe('CouncilOrchestrator', () => {
         { provide: PostsService, useValue: {} },
         { provide: MediaService, useValue: {} },
         { provide: CreditsService, useValue: {} },
-        { provide: MODEL_ROUTER, useValue: {} },
+        { provide: CouncilMediaPhaseService, useValue: {} },
+        mockNotificationEventServiceProvider(),
       ],
     }).compile();
 

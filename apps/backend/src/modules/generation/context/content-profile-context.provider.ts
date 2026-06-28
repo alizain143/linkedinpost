@@ -48,6 +48,8 @@ export class ContentProfileContextProvider implements ContextProvider {
         targetAudience: profile.targetAudience,
         contentGoal: profile.contentGoal,
         preferredTone: profile.preferredTone,
+        brandPrimary: profile.brandPrimary,
+        brandAccent: profile.brandAccent,
         offerDescription: profile.offerDescription,
         writingSample: profile.writingSample,
         avoidWords: profile.avoidWords,

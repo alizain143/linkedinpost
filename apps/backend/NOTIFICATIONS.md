@@ -34,6 +34,10 @@ FIREBASE_VAPID_KEY=
 
 Requires `REDIS_URL` for async delivery workers.
 
+HTML emails use branded templates in `email-template.ts` (inline PNG logo — email clients block SVG; per-type accent colors and CTAs).
+
+**Push device tokens:** `POST /notifications/devices` keeps one active token per browser `userAgent` (revokes older tokens for the same UA) and caps active tokens at 5 per user. The web app persists the registered token in `localStorage` and skips re-registering when Firebase returns the same value.
+
 ## Weekly reminders
 
 `WeeklyReminderJob` runs hourly and sends at Monday 09:00 in each user's `timezone`. Capped at 80 sends per run (Resend free-tier daily limit buffer).

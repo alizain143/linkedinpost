@@ -1,6 +1,7 @@
 import type {
   GenerationJobStatus,
   GenerationJobType,
+  PostMediaType,
   PostType,
 } from "@/lib/api/types/enums";
 
@@ -25,6 +26,10 @@ export type QuickDraftRequestBody = {
   pillar?: string;
   contentProfileId?: string;
   additionalContext?: string;
+  mediaType?: PostMediaType;
+  mediaCustomPrompt?: string;
+  mediaTemplateId?: string;
+  skipImageScout?: boolean;
 };
 
 export type GenerationJobProgress = {

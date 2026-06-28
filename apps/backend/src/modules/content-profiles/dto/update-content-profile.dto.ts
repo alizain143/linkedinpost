@@ -54,6 +54,18 @@ export class UpdateContentProfileDto {
   @MaxLength(200)
   preferredTone?: string;
 
+  @ApiPropertyOptional({ example: '#1a1a2e', maxLength: 20 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  brandPrimary?: string;
+
+  @ApiPropertyOptional({ example: '#5B3DF5', maxLength: 20 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  brandAccent?: string;
+
   @ApiPropertyOptional({ maxLength: 1000 })
   @IsOptional()
   @IsString()

@@ -20,6 +20,8 @@ import { UserContextProvider } from './context/user-context.provider';
 import { GenerationController } from './generation.controller';
 import { GenerationJobsController } from './generation-jobs.controller';
 import { GenerationJobsQueryService } from './generation-jobs-query.service';
+import { GenerationMediaReferencesController } from './generation-media-references.controller';
+import { GenerationMediaReferencesService } from './generation-media-references.service';
 import { QuickDraftGenerator } from './flows/quick-draft.generator';
 import { CalendarSlotGenerator } from './flows/calendar-slot.generator';
 import { MODEL_ROUTER } from './llm/model-capability.types';
@@ -45,7 +47,11 @@ import { QuickDraftJobService } from './quick-draft-job.service';
     forwardRef(() => CouncilModule),
     forwardRef(() => CalendarGenerationModule),
   ],
-  controllers: [GenerationController, GenerationJobsController],
+  controllers: [
+    GenerationController,
+    GenerationJobsController,
+    GenerationMediaReferencesController,
+  ],
   providers: [
     UserContextProvider,
     ContentProfileContextProvider,
@@ -73,6 +79,7 @@ import { QuickDraftJobService } from './quick-draft-job.service';
     CalendarSlotGenerator,
     QuickDraftJobService,
     GenerationJobsQueryService,
+    GenerationMediaReferencesService,
   ],
   exports: [
     QuickDraftGenerator,
@@ -82,6 +89,7 @@ import { QuickDraftJobService } from './quick-draft-job.service';
     PromptRenderer,
     GenerationJobsQueryService,
     MODEL_ROUTER,
+    GoogleGenAIClientFactory,
   ],
 })
 export class GenerationModule {}

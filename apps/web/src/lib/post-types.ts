@@ -7,6 +7,12 @@ const POST_TYPE_LABELS: Record<PostType, string> = {
   contrarian_take: "Contrarian take",
   hot_take: "Hot take",
   case_study: "Case study",
+  question_post: "Question / poll",
+  framework: "Framework",
+  myth_buster: "Myth buster",
+  prediction: "Prediction",
+  behind_the_scenes: "Behind the scenes",
+  comparison: "Comparison",
 };
 
 export function getPostTypeLabel(postType: PostType | null | undefined): string | null {

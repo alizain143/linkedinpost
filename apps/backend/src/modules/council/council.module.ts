@@ -1,11 +1,14 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import councilConfig from '../../config/council.config';
+import googleConfig from '../../config/google.config';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { CreditsModule } from '../credits/credits.module';
 import { AuthModule } from '../auth/auth.module';
 import { GenerationModule } from '../generation/generation.module';
 import { MediaModule } from '../media/media.module';
+import { MediaTemplatesModule } from '../media-templates/media-template.module';
+import { ImageScoutModule } from '../image-scout/image-scout.module';
 import { PostsModule } from '../posts/posts.module';
 import { WorkspacesModule } from '../workspaces/workspaces.module';
 import { CouncilAgentService } from './council-agent.service';
@@ -15,6 +18,8 @@ import { CouncilJobHandler } from './council-job.handler';
 import { CouncilJobHandlerRegistrar } from './council-job-handler.registrar';
 import { CouncilJobService } from './council-job.service';
 import { CouncilOrchestrator } from './council-orchestrator';
+import { CouncilMediaPhaseService } from './council-media-phase.service';
+import { MediaVisionReviewerService } from './media-vision-reviewer.service';
 import { EditorOutputParser } from './parsers/editor-output.parser';
 import { MediaCreatorOutputParser } from './parsers/media-creator-output.parser';
 import { MediaReviewerOutputParser } from './parsers/media-reviewer-output.parser';
@@ -24,6 +29,7 @@ import { WriterOutputParser } from './parsers/writer-output.parser';
 @Module({
   imports: [
     ConfigModule.forFeature(councilConfig),
+    ConfigModule.forFeature(googleConfig),
     PrismaModule,
     AuthModule,
     WorkspacesModule,
@@ -31,6 +37,8 @@ import { WriterOutputParser } from './parsers/writer-output.parser';
     forwardRef(() => PostsModule),
     forwardRef(() => GenerationModule),
     MediaModule,
+    MediaTemplatesModule,
+    ImageScoutModule,
   ],
   controllers: [CouncilController],
   providers: [
@@ -45,6 +53,8 @@ import { WriterOutputParser } from './parsers/writer-output.parser';
     EditorOutputParser,
     MediaCreatorOutputParser,
     MediaReviewerOutputParser,
+    CouncilMediaPhaseService,
+    MediaVisionReviewerService,
   ],
   exports: [
     CouncilJobService,
@@ -52,6 +62,7 @@ import { WriterOutputParser } from './parsers/writer-output.parser';
     CouncilAgentService,
     CouncilEventService,
     CouncilOrchestrator,
+    CouncilMediaPhaseService,
   ],
 })
 export class CouncilModule {}

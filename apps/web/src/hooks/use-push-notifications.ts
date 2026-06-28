@@ -1,32 +1,26 @@
 "use client";
 
 import { useAuth } from "@clerk/nextjs";
-import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
+import { useCallback, useEffect, useState } from "react";
 import {
   useCurrentUser,
   useUpdateCurrentUser,
 } from "@/hooks/api/use-auth-api";
-import {
-  useRegisterPushDevice,
-} from "@/hooks/api/use-notifications-api";
 import { isFirebaseConfigured } from "@/lib/firebase/client";
-import {
-  requestFcmToken,
-  subscribeToForegroundMessages,
-} from "@/lib/firebase/messaging";
+import { requestFcmToken } from "@/lib/firebase/messaging";
 import { revokeCurrentPushToken } from "@/lib/push-token-lifecycle";
+import {
+  clearPersistedFcmToken,
+} from "@/lib/push-token-storage";
+import { usePpToast } from "@/providers/pp-toast-provider";
 
 const PUSH_PROMPT_KEY = "pp_push_prompt_dismissed";
 
 export function usePushNotifications() {
   const { getToken, isLoaded, isSignedIn } = useAuth();
   const { data: user } = useCurrentUser();
-  const registerDevice = useRegisterPushDevice();
   const updateUser = useUpdateCurrentUser();
-  const queryClient = useQueryClient();
-  const registeredTokenRef = useRef<string | null>(null);
+  const { showToast } = usePpToast();
   const [promptDismissed, setPromptDismissed] = useState(false);
 
   useEffect(() => {
@@ -35,58 +29,9 @@ export function usePushNotifications() {
     }
   }, []);
 
-  const syncToken = useCallback(async () => {
-    if (!isFirebaseConfigured() || !user?.notifications.pushEnabled) {
-      return null;
-    }
-
-    if (
-      typeof window === "undefined" ||
-      !("Notification" in window) ||
-      Notification.permission !== "granted"
-    ) {
-      return null;
-    }
-
-    const token = await requestFcmToken();
-    if (!token) return null;
-
-    if (registeredTokenRef.current !== token) {
-      await registerDevice.mutateAsync(token);
-      registeredTokenRef.current = token;
-    }
-
-    return token;
-  }, [registerDevice, user?.notifications.pushEnabled]);
-
-  useEffect(() => {
-    if (!isLoaded || !isSignedIn || !user?.notifications.pushEnabled) {
-      return;
-    }
-
-    void syncToken();
-  }, [isLoaded, isSignedIn, syncToken, user?.notifications.pushEnabled]);
-
-  useEffect(() => {
-    if (!isLoaded || !isSignedIn) return;
-
-    let unsubscribe = () => {};
-
-    void subscribeToForegroundMessages((payload) => {
-      const title = payload.title ?? "New notification";
-      const body = payload.body ?? "";
-      toast(title, { description: body });
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
-    }).then((off) => {
-      unsubscribe = off;
-    });
-
-    return () => unsubscribe();
-  }, [isLoaded, isSignedIn, queryClient]);
-
   const enablePush = useCallback(async () => {
     if (!isFirebaseConfigured()) {
-      toast.error("Push notifications are not configured yet.");
+      showToast("Push notifications are not configured yet.", "error");
       return false;
     }
 
@@ -99,13 +44,14 @@ export function usePushNotifications() {
       notifications: { pushEnabled: true },
     });
 
-    await syncToken();
+    // PushNotificationsRuntime picks up the new pref and registers the token.
+    await requestFcmToken();
     return true;
-  }, [syncToken, updateUser]);
+  }, [showToast, updateUser]);
 
   const disablePush = useCallback(async () => {
     await revokeCurrentPushToken(() => getToken());
-    registeredTokenRef.current = null;
+    clearPersistedFcmToken();
 
     await updateUser.mutateAsync({
       notifications: { pushEnabled: false },

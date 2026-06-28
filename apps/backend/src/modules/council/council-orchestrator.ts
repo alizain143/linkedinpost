@@ -1,4 +1,4 @@
-import { Injectable, Logger, Inject } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   CouncilAgentRole,
@@ -11,24 +11,21 @@ import {
 import { MEDIA_REGEN_CREDIT_COST } from '../../common/constants/media.constants';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreditsService } from '../credits/credits.service';
-import { CouncilInput, CouncilPriorStep } from '../generation/generation.types';
-import { MODEL_ROUTER } from '../generation/llm/model-capability.types';
-import type { ModelRouter } from '../generation/llm/model-capability.types';
+import {
+  CouncilInput,
+  CouncilPausedState,
+  CouncilPriorStep,
+} from '../generation/generation.types';
 import { MediaService } from '../media/media.service';
 import { NotificationEventService } from '../notifications/notification-event.service';
 import { CouncilAgentService } from './council-agent.service';
 import { CouncilEventService } from './council-event.service';
 import { councilTotalSteps } from './council-progress';
-import { MediaCreatorOutput } from './parsers/media-creator-output.parser';
+import { CouncilPausedError } from './council-paused.error';
+import { shouldSkipImageScout } from '../media-templates/media-template-catalog';
+import { CouncilMediaPhaseService } from './council-media-phase.service';
 import { PostsService } from '../posts/posts.service';
 import { ReviewerOutput } from './parsers/reviewer-output.parser';
-
-interface CouncilMediaDraft {
-  spec: MediaCreatorOutput;
-  imageBuffer: Buffer;
-  mimeType: string;
-  imageModel: string;
-}
 
 @Injectable()
 export class CouncilOrchestrator {
@@ -43,7 +40,7 @@ export class CouncilOrchestrator {
     private readonly mediaService: MediaService,
     private readonly creditsService: CreditsService,
     private readonly notificationEvents: NotificationEventService,
-    @Inject(MODEL_ROUTER) private readonly modelRouter: ModelRouter,
+    private readonly mediaPhaseService: CouncilMediaPhaseService,
   ) {}
 
   async run(generationJobId: string): Promise<void> {
@@ -57,6 +54,11 @@ export class CouncilOrchestrator {
     }
 
     const input = job.input as unknown as CouncilInput;
+    const isResume = input.resumeFrom === 'media_creator';
+    const skipImageScout =
+      input.skipImageScout === true ||
+      shouldSkipImageScout(input.mediaTemplateId);
+    const includeImageScout = !skipImageScout && !isResume;
     const passScore =
       job.creditCost >= 10
         ? this.configService.get<number>('council.premiumPassScore', 90)
@@ -69,18 +71,40 @@ export class CouncilOrchestrator {
       'council.maxMediaRegens',
       1,
     );
-    const totalSteps = councilTotalSteps(maxTextRevisions, maxMediaRegens);
+    const totalSteps = councilTotalSteps(
+      maxTextRevisions,
+      maxMediaRegens,
+      includeImageScout,
+    );
 
-    const priorSteps: CouncilPriorStep[] = [];
+    let priorSteps: CouncilPriorStep[] = [];
     let stepOrder = 0;
     let completedSteps = 0;
-    let revisionCount = 0;
-    let mediaRegenCount = 0;
+    let revisionCount = job.revisionCount;
+    let mediaRegenCount = job.mediaRegenCount;
 
     const postPackageId = job.postPackageId;
     const workspaceId = job.workspaceId;
 
     try {
+      let review: ReviewerOutput;
+
+      if (isResume) {
+        priorSteps =
+          await this.mediaPhaseService.loadPriorStepsFromEvents(generationJobId);
+        const pausedState = job.result as unknown as CouncilPausedState | null;
+        stepOrder = pausedState?.priorStepOrder ?? priorSteps.length;
+        completedSteps = pausedState?.completedSteps ?? priorSteps.length;
+        review = {
+          passed: true,
+          overall: job.postPackage.score ?? passScore,
+          hook: 0,
+          voice: 0,
+          clarity: 0,
+          feedback: '',
+          revisionHints: [],
+        };
+      } else {
       let writerAttempt = 1;
       let draft = await this.executeWriter(
         generationJobId,
@@ -109,7 +133,7 @@ export class CouncilOrchestrator {
       );
 
       let reviewerAttempt = 1;
-      let review = await this.executeReviewer(
+      review = await this.executeReviewer(
         generationJobId,
         input,
         priorSteps,
@@ -214,32 +238,59 @@ export class CouncilOrchestrator {
         });
       });
 
+      if (includeImageScout) {
+        await this.mediaPhaseService.runImageScoutAndPause({
+          generationJobId,
+          input,
+          priorSteps,
+          postPackageId,
+          stepOrder: ++stepOrder,
+          completedSteps,
+          totalSteps,
+          post: {
+            hook: finalCopy.hook,
+            body: finalCopy.body,
+            topic: job.postPackage.topic,
+            pillar: job.postPackage.pillar,
+          },
+        });
+      }
+      }
+
       await this.postsService.applyCouncilPipelineStatus(
         postPackageId,
         PostPackageStatus.media_generating,
       );
 
+      const fallbackMediaType = this.mediaPhaseService.resolveMediaType(
+        input,
+        job.postPackage.mediaTypePreference,
+      );
+
       let mediaAttempt = 1;
-      let media = await this.executeMediaCreator(
+      let media = await this.mediaPhaseService.executeMediaCreator({
         generationJobId,
         input,
         priorSteps,
-        mediaAttempt,
-        ++stepOrder,
+        attempt: mediaAttempt,
+        stepOrder: ++stepOrder,
         completedSteps,
         totalSteps,
-      );
+        fallbackMediaType,
+      });
       completedSteps++;
       let lastMediaCreatorEventId = media.eventId;
 
-      let mediaReview = await this.executeMediaReviewer(
+      let mediaReview = await this.mediaPhaseService.executeMediaReviewer({
         generationJobId,
         input,
         priorSteps,
-        ++stepOrder,
+        stepOrder: ++stepOrder,
         completedSteps,
         totalSteps,
-      );
+        imageBuffer: media.imageBuffer,
+        mimeType: media.mimeType,
+      });
       completedSteps++;
 
       while (!mediaReview.passed && mediaRegenCount < maxMediaRegens) {
@@ -255,15 +306,16 @@ export class CouncilOrchestrator {
           );
         }
 
-        media = await this.executeMediaCreator(
+        media = await this.mediaPhaseService.executeMediaCreator({
           generationJobId,
           input,
           priorSteps,
-          mediaAttempt,
-          ++stepOrder,
+          attempt: mediaAttempt,
+          stepOrder: ++stepOrder,
           completedSteps,
           totalSteps,
-        );
+          fallbackMediaType,
+        });
         completedSteps++;
         lastMediaCreatorEventId = media.eventId;
 
@@ -276,14 +328,16 @@ export class CouncilOrchestrator {
           );
         }
 
-        mediaReview = await this.executeMediaReviewer(
+        mediaReview = await this.mediaPhaseService.executeMediaReviewer({
           generationJobId,
           input,
           priorSteps,
-          ++stepOrder,
+          stepOrder: ++stepOrder,
           completedSteps,
           totalSteps,
-        );
+          imageBuffer: media.imageBuffer,
+          mimeType: media.mimeType,
+        });
         completedSteps++;
       }
 
@@ -351,6 +405,10 @@ export class CouncilOrchestrator {
         },
       });
     } catch (err) {
+      if (err instanceof CouncilPausedError) {
+        return;
+      }
+
       this.logger.error(`Council job ${generationJobId} failed`, err);
 
       await this.postsService.applyCouncilPipelineStatus(
@@ -517,134 +575,6 @@ export class CouncilOrchestrator {
       completedSteps: completedSteps + 1,
       totalSteps,
       output: result.output as unknown as Record<string, unknown>,
-      model: result.model,
-      inputTokens: result.inputTokens,
-      outputTokens: result.outputTokens,
-      startedAt: started.startedAt,
-    });
-
-    return result.output;
-  }
-
-  private async executeMediaCreator(
-    generationJobId: string,
-    input: CouncilInput,
-    priorSteps: CouncilPriorStep[],
-    attempt: number,
-    stepOrder: number,
-    completedSteps: number,
-    totalSteps: number,
-  ): Promise<CouncilMediaDraft & { eventId: string }> {
-    const started = await this.councilEventService.startEvent({
-      generationJobId,
-      agentRole: CouncilAgentRole.media_creator,
-      stepOrder,
-      revisionAttempt: attempt,
-      label: 'Media Creator generating quote card',
-      completedSteps,
-      totalSteps,
-    });
-
-    const result = await this.councilAgentService.runMediaCreator(
-      input,
-      priorSteps,
-    );
-
-    const imageResult = await this.modelRouter.image().generate({
-      prompt: result.output.imagePrompt,
-      width: result.output.width,
-      height: result.output.height,
-      headlineText: result.output.headlineText,
-      styleNotes: result.output.styleNotes,
-    });
-
-    const eventOutput = {
-      ...result.output,
-      generated: true,
-      imageModel: imageResult.model,
-    };
-
-    if (attempt === 1) {
-      priorSteps.push({
-        agentRole: CouncilAgentRole.media_creator,
-        revisionAttempt: attempt,
-        output: eventOutput,
-      });
-    } else {
-      const idx = priorSteps.findIndex(
-        (s) => s.agentRole === CouncilAgentRole.media_creator,
-      );
-      if (idx >= 0) {
-        priorSteps[idx] = {
-          agentRole: CouncilAgentRole.media_creator,
-          revisionAttempt: attempt,
-          output: eventOutput,
-        };
-      }
-    }
-
-    await this.councilEventService.completeEvent(started.id, {
-      generationJobId,
-      agentRole: CouncilAgentRole.media_creator,
-      label: 'Media Creator generated quote card',
-      completedSteps: completedSteps + 1,
-      totalSteps,
-      output: eventOutput,
-      model: result.model,
-      inputTokens: result.inputTokens,
-      outputTokens: result.outputTokens,
-      startedAt: started.startedAt,
-    });
-
-    return {
-      spec: result.output,
-      imageBuffer: imageResult.imageBuffer,
-      mimeType: imageResult.mimeType,
-      imageModel: imageResult.model,
-      eventId: started.id,
-    };
-  }
-
-  private async executeMediaReviewer(
-    generationJobId: string,
-    input: CouncilInput,
-    priorSteps: CouncilPriorStep[],
-    stepOrder: number,
-    completedSteps: number,
-    totalSteps: number,
-  ) {
-    const started = await this.councilEventService.startEvent({
-      generationJobId,
-      agentRole: CouncilAgentRole.media_reviewer,
-      stepOrder,
-      revisionAttempt: 1,
-      label: 'Media Reviewer QA',
-      completedSteps,
-      totalSteps,
-    });
-
-    const result = await this.councilAgentService.runMediaReviewer(
-      input,
-      priorSteps,
-    );
-
-    priorSteps.push({
-      agentRole: CouncilAgentRole.media_reviewer,
-      revisionAttempt: 1,
-      output: result.output as unknown as Record<string, unknown>,
-      scores: { score: result.output.score },
-    });
-
-    await this.councilEventService.completeEvent(started.id, {
-      generationJobId,
-      agentRole: CouncilAgentRole.media_reviewer,
-      label: result.output.passed
-        ? 'Media Reviewer QA passed'
-        : 'Media Reviewer QA failed',
-      completedSteps: completedSteps + 1,
-      totalSteps,
-      output: result.output as unknown as Record<string, unknown>,
-      scores: { score: result.output.score },
       model: result.model,
       inputTokens: result.inputTokens,
       outputTokens: result.outputTokens,

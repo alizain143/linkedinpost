@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { AppShell } from "@/components/app/app-shell";
 import { LinkedInCallbackHandler } from "@/components/app/linkedin-callback-handler";
 import { PushNotificationPrompt } from "@/components/app/push-notification-prompt";
+import { PushNotificationsRuntime } from "@/components/app/push-notifications-runtime";
 import { useCurrentUser } from "@/hooks/api/use-auth-api";
 import { useBillingStatus } from "@/hooks/api/use-billing-api";
 import { useCredits } from "@/hooks/api/use-credits-api";
@@ -27,6 +28,7 @@ export function AppShellClient({ children }: { children: React.ReactNode }) {
             <LinkedInCallbackHandler />
           </Suspense>
           <AppShell pathname={pathname}>{children}</AppShell>
+          <PushNotificationsRuntime />
           <PushNotificationPrompt />
         </AppUiProvider>
       </WorkspaceProvider>

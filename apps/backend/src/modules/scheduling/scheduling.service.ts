@@ -56,11 +56,70 @@ export class SchedulingService {
     userId: string,
     dto: SchedulePostDto,
   ) {
+    // #region agent log
+    fetch('http://127.0.0.1:7936/ingest/839fd5aa-975f-4d2f-afc3-4e50b695a8d5', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Debug-Session-Id': 'c80d58',
+      },
+      body: JSON.stringify({
+        sessionId: 'c80d58',
+        location: 'scheduling.service.ts:schedule:entry',
+        message: 'Schedule request received',
+        data: {
+          workspaceId,
+          postId,
+          scheduledAt: dto.scheduledAt?.toISOString?.() ?? String(dto.scheduledAt),
+        },
+        timestamp: Date.now(),
+        hypothesisId: 'B',
+      }),
+    }).catch(() => {});
+    // #endregion
     await this.workspacesService.assertMember(userId, workspaceId);
     const existing = await this.findPostInWorkspace(workspaceId, postId);
 
+    // #region agent log
+    fetch('http://127.0.0.1:7936/ingest/839fd5aa-975f-4d2f-afc3-4e50b695a8d5', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Debug-Session-Id': 'c80d58',
+      },
+      body: JSON.stringify({
+        sessionId: 'c80d58',
+        location: 'scheduling.service.ts:schedule:postLoaded',
+        message: 'Post loaded for scheduling',
+        data: { postId, status: existing.status },
+        timestamp: Date.now(),
+        hypothesisId: 'B',
+      }),
+    }).catch(() => {});
+    // #endregion
+
     assertScheduleTransition(existing.status, PostPackageStatus.scheduled);
     validateScheduledAt(dto.scheduledAt, this.validationOptions());
+
+    // #region agent log
+    fetch('http://127.0.0.1:7936/ingest/839fd5aa-975f-4d2f-afc3-4e50b695a8d5', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Debug-Session-Id': 'c80d58',
+      },
+      body: JSON.stringify({
+        sessionId: 'c80d58',
+        location: 'scheduling.service.ts:schedule:preEnqueue',
+        message: 'Validation passed, checking Redis',
+        data: {
+          redisEnabled: this.publishJobEnqueueService.isEnabled(),
+        },
+        timestamp: Date.now(),
+        hypothesisId: 'A',
+      }),
+    }).catch(() => {});
+    // #endregion
 
     this.publishJobEnqueueService.assertRedisAvailable();
 
@@ -94,7 +153,45 @@ export class SchedulingService {
         dto.scheduledAt,
         workspace.ownerId,
       );
+      // #region agent log
+      fetch('http://127.0.0.1:7936/ingest/839fd5aa-975f-4d2f-afc3-4e50b695a8d5', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Debug-Session-Id': 'c80d58',
+        },
+        body: JSON.stringify({
+          sessionId: 'c80d58',
+          location: 'scheduling.service.ts:schedule:enqueueSuccess',
+          message: 'Publish job enqueued',
+          data: { postId },
+          timestamp: Date.now(),
+          hypothesisId: 'A',
+        }),
+      }).catch(() => {});
+      // #endregion
     } catch (error) {
+      // #region agent log
+      fetch('http://127.0.0.1:7936/ingest/839fd5aa-975f-4d2f-afc3-4e50b695a8d5', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Debug-Session-Id': 'c80d58',
+        },
+        body: JSON.stringify({
+          sessionId: 'c80d58',
+          location: 'scheduling.service.ts:schedule:enqueueFailed',
+          message: 'Publish job enqueue failed',
+          data: {
+            postId,
+            errorName: error instanceof Error ? error.name : 'unknown',
+            errorMessage: error instanceof Error ? error.message : String(error),
+          },
+          timestamp: Date.now(),
+          hypothesisId: 'A',
+        }),
+      }).catch(() => {});
+      // #endregion
       await this.prisma.postPackage.updateMany({
         where: {
           id: postId,

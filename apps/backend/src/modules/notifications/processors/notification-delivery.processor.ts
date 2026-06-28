@@ -11,7 +11,7 @@ import { NotificationDeliveryJobPayload } from '../notification-dispatch.service
 import { FcmPushSender } from '../senders/fcm-push.sender';
 import { ResendEmailSender } from '../senders/resend-email.sender';
 
-@Processor(NOTIFICATION_DELIVERY_QUEUE, { concurrency: 3 })
+@Processor(NOTIFICATION_DELIVERY_QUEUE, { concurrency: 1 })
 export class NotificationDeliveryProcessor extends WorkerHost {
   private readonly logger = new Logger(NotificationDeliveryProcessor.name);
 

@@ -355,6 +355,28 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
           ? reschedulePostMutation
           : schedulePostMutation;
 
+      // #region agent log
+      fetch("http://127.0.0.1:7936/ingest/839fd5aa-975f-4d2f-afc3-4e50b695a8d5", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Debug-Session-Id": "c80d58",
+        },
+        body: JSON.stringify({
+          sessionId: "c80d58",
+          location: "app-ui-provider.tsx:handleScheduleConfirm",
+          message: "Schedule request starting",
+          data: {
+            postId: scheduleTarget.postId,
+            mode: scheduleTarget.mode,
+            scheduledAt,
+            workspaceId: activeWorkspaceId ?? null,
+          },
+          timestamp: Date.now(),
+          hypothesisId: "C",
+        }),
+      }).catch(() => {});
+      // #endregion
       void mutation
         .mutateAsync({
           postId: scheduleTarget.postId,
@@ -377,6 +399,7 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
         });
     },
     [
+      activeWorkspaceId,
       closeSchedule,
       openConnect,
       reschedulePostMutation,

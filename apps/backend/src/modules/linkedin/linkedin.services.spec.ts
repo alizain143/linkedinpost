@@ -4,6 +4,7 @@ import { createMockPrismaService } from '../../test/prisma.mock';
 import { buildPost, postId, userId } from '../../test/fixtures';
 import { PrismaService } from '../../prisma/prisma.service';
 import { MediaService } from '../media/media.service';
+import { mockNotificationEventServiceProvider } from '../../test/notification-event.mock';
 import { ClerkOAuthService } from './clerk-oauth.service';
 import { LinkedInApiClient } from './linkedin-api.client';
 import {
@@ -70,6 +71,7 @@ describe('LinkedInPublishService', () => {
         { provide: LinkedInApiClient, useValue: linkedInApiClient },
         { provide: LinkedInProfileService, useValue: linkedInProfileService },
         { provide: MediaService, useValue: mediaService },
+        mockNotificationEventServiceProvider(),
       ],
     }).compile();
 

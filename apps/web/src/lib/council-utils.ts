@@ -4,6 +4,7 @@ const AGENT_ROLE_LABELS: Record<string, string> = {
   writer: "Writer",
   reviewer: "Reviewer",
   editor: "Editor",
+  image_scout: "Image Scout",
   media_creator: "Media Creator",
   media_reviewer: "Media Reviewer",
 };

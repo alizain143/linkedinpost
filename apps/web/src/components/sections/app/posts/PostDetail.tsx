@@ -43,6 +43,7 @@ import { getPostSourceLabel } from "@/lib/post-source";
 import { POST_TYPE_SELECT_OPTIONS } from "@/lib/post-types";
 import { TONE_OPTIONS } from "@/lib/form-options";
 import { CouncilTimeline } from "@/components/sections/app/generate/CouncilTimeline";
+import { LinkedInFeedPreview } from "@/components/sections/app/generate/LinkedInFeedPreview";
 import { ApprovalSharePanel } from "@/components/sections/app/posts/ApprovalSharePanel";
 import { useAppUi } from "@/providers/app-ui-provider";
 import { usePpToast } from "@/providers/pp-toast-provider";
@@ -329,8 +330,8 @@ export default function PostDetail({ postId }: PostDetailProps) {
                         >
                         <MsIcon name="image" size={16} />
                         {isMediaGenerating
-                          ? "Generating quote card…"
-                          : `Generate quote card (${MEDIA_GENERATION_CREDIT_COST} cr)`}
+                          ? "Generating media…"
+                          : `Generate media (${MEDIA_GENERATION_CREDIT_COST} cr)`}
                         </Button>
                       </span>
                     ) : null}
@@ -621,6 +622,24 @@ export default function PostDetail({ postId }: PostDetailProps) {
                       />
                     </a>
                   ))}
+                </div>
+                <div className="mt-4">
+                  <h4 className="mb-2 text-sm font-semibold text-[#64748b]">
+                    LinkedIn feed preview
+                  </h4>
+                  <LinkedInFeedPreview
+                    authorName={
+                      profiles?.find((p) => p.id === post.contentProfileId)?.name ??
+                      "You"
+                    }
+                    roleTitle={
+                      profiles?.find((p) => p.id === post.contentProfileId)
+                        ?.roleTitle
+                    }
+                    hook={post.hook}
+                    body={post.body}
+                    mediaUrl={post.media[0]?.url}
+                  />
                 </div>
               </div>
             ) : null}

@@ -33,6 +33,15 @@ export class GenerationInputContextProvider implements ContextProvider {
     if (input.additionalContext !== undefined) {
       slice.input!.additionalContext = input.additionalContext;
     }
+    if (input.mediaType !== undefined) {
+      slice.input!.mediaType = input.mediaType;
+    }
+    if (input.mediaCustomPrompt !== undefined) {
+      slice.input!.mediaCustomPrompt = input.mediaCustomPrompt;
+    }
+    if (input.mediaTemplateId !== undefined) {
+      slice.input!.mediaTemplateId = input.mediaTemplateId;
+    }
     if ('brief' in input && input.brief !== undefined) {
       slice.input!.brief = input.brief as string;
     }

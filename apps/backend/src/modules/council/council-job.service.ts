@@ -62,6 +62,10 @@ export class CouncilJobService {
       contentProfileId: dto.contentProfileId,
       additionalContext: dto.additionalContext,
       brief: dto.brief,
+      mediaType: dto.mediaType,
+      mediaCustomPrompt: dto.mediaCustomPrompt,
+      mediaTemplateId: dto.mediaTemplateId,
+      skipImageScout: dto.skipImageScout,
     };
 
     const placeholderHook = dto.topic?.trim() || 'Generating…';
@@ -75,6 +79,9 @@ export class CouncilJobService {
         postType: dto.postType,
         tone: dto.tone,
         pillar: dto.pillar,
+        mediaTypePreference: dto.mediaType,
+        mediaCustomPrompt: dto.mediaCustomPrompt,
+        mediaTemplateId: dto.mediaTemplateId,
         source,
         status: PostPackageStatus.text_generating,
         ...(options?.scheduledAt ? { scheduledAt: options.scheduledAt } : {}),

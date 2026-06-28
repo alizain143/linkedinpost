@@ -99,6 +99,13 @@ export type MockPrismaService = {
     update: jest.Mock;
     updateMany: jest.Mock;
   };
+  pushDeviceToken: {
+    findUnique: jest.Mock;
+    findMany: jest.Mock;
+    create: jest.Mock;
+    update: jest.Mock;
+    updateMany: jest.Mock;
+  };
   $transaction: jest.Mock;
   $executeRaw: jest.Mock;
 };
@@ -201,6 +208,13 @@ export function createMockPrismaService(): MockPrismaService {
     approvalToken: {
       findUnique: jest.fn(),
       findFirst: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      updateMany: jest.fn(),
+    },
+    pushDeviceToken: {
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
       updateMany: jest.fn(),

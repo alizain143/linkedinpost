@@ -69,4 +69,21 @@ export class GenerationJobEnqueueService {
 
     return job;
   }
+
+  async resumeJob(generationJobId: string) {
+    this.assertRedisAvailable();
+
+    await this.prisma.generationJob.update({
+      where: { id: generationJobId },
+      data: {
+        status: GenerationJobStatus.pending,
+      },
+    });
+
+    await this.queue!.add(
+      'process',
+      { generationJobId },
+      { jobId: `${generationJobId}-resume-${Date.now()}` },
+    );
+  }
 }

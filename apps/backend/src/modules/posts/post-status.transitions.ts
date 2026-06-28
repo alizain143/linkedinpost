@@ -11,6 +11,7 @@ export const ALLOWED_TRANSITIONS: Record<
   ],
   [PostPackageStatus.text_generating]: [],
   [PostPackageStatus.text_reviewing]: [],
+  [PostPackageStatus.awaiting_media_selection]: [],
   [PostPackageStatus.media_generating]: [],
   [PostPackageStatus.ready_for_approval]: [
     PostPackageStatus.approved,
@@ -33,6 +34,7 @@ export const PIPELINE_COLUMN_ORDER: PostPackageStatus[] = [
   PostPackageStatus.draft,
   PostPackageStatus.text_generating,
   PostPackageStatus.text_reviewing,
+  PostPackageStatus.awaiting_media_selection,
   PostPackageStatus.media_generating,
   PostPackageStatus.ready_for_approval,
   PostPackageStatus.approved,
@@ -46,6 +48,7 @@ export const PIPELINE_LABELS: Record<PostPackageStatus, string> = {
   [PostPackageStatus.draft]: 'Draft',
   [PostPackageStatus.text_generating]: 'Text Generating',
   [PostPackageStatus.text_reviewing]: 'Text Reviewing',
+  [PostPackageStatus.awaiting_media_selection]: 'Awaiting Media Selection',
   [PostPackageStatus.media_generating]: 'Media Generating',
   [PostPackageStatus.ready_for_approval]: 'Ready for Approval',
   [PostPackageStatus.approved]: 'Approved',

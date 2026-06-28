@@ -1,10 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Resend } from 'resend';
-import {
-  buildEmailHtml,
-  buildEmailSubject,
-} from '../notification-copy';
+import { buildEmailHtml, buildEmailText } from '../email-template';
+import { buildEmailSubject } from '../notification-copy';
 
 export interface SendEmailParams {
   to: string;
@@ -46,27 +44,64 @@ export class ResendEmailSender {
 
     const subject = buildEmailSubject(params.type as never);
     const html = buildEmailHtml({
+      type: params.type as never,
       title: params.title,
       body: params.body,
       actionUrl: params.actionUrl,
       frontendUrl,
     });
 
-    const result = await this.client.emails.send({
+    const text = buildEmailText({
+      type: params.type as never,
+      title: params.title,
+      body: params.body,
+      actionUrl: params.actionUrl,
+      frontendUrl,
+    });
+
+    const payload = {
       from: fromEmail,
       to: params.to,
       subject,
       html,
-      text: `${params.title}\n\n${params.body}${
-        params.actionUrl ? `\n\n${params.actionUrl}` : ''
-      }`,
+      text,
       tags: [{ name: 'type', value: params.type }],
-    });
+    };
 
-    if (result.error) {
-      throw new Error(result.error.message);
+    let lastError: string | null = null;
+
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      const result = await this.client.emails.send(payload);
+
+      if (!result.error) {
+        return result.data?.id ?? null;
+      }
+
+      lastError = result.error.message;
+      const retryable = isRetryableResendError(lastError);
+
+      if (!retryable || attempt === 3) {
+        throw new Error(lastError);
+      }
+
+      await sleep(attempt * 500);
     }
 
-    return result.data?.id ?? null;
+    throw new Error(lastError ?? 'Resend send failed');
   }
+}
+
+function isRetryableResendError(message: string): boolean {
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes('could not be resolved') ||
+    normalized.includes('unable to fetch') ||
+    normalized.includes('econnreset') ||
+    normalized.includes('etimedout') ||
+    normalized.includes('network')
+  );
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

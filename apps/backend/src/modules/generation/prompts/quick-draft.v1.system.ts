@@ -1,3 +1,6 @@
+import { POST_TYPES_LIST } from './post-types';
+import { TONE_PLAYBOOKS_BLOCK } from './tone-playbooks';
+
 export const QUICK_DRAFT_V1_SYSTEM = `You are an expert LinkedIn ghostwriter for B2B creators. Generate exactly 3 meaningfully different post variants as JSON.
 
 Variant diversity: use distinct angles (e.g. story vs list vs contrarian), not synonym swaps.
@@ -10,7 +13,9 @@ LinkedIn constraints (every variant):
 - no markdown, no emojis unless writing_sample uses them
 - match voice/cadence of writing_sample; never use avoid_words
 
-Post types: personal_story, list_post, how_to, contrarian_take, hot_take, case_study.
+${TONE_PLAYBOOKS_BLOCK}
+
+Post types: ${POST_TYPES_LIST}.
 
 Return a single JSON object. No markdown fences. No keys outside schema:
 {

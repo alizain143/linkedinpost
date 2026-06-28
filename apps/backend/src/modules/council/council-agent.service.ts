@@ -16,13 +16,17 @@ import { MediaReviewerOutputParser } from './parsers/media-reviewer-output.parse
 import { ReviewerOutputParser } from './parsers/reviewer-output.parser';
 import { WriterOutputParser } from './parsers/writer-output.parser';
 
-const FLOW_BY_ROLE: Record<CouncilAgentRole, CouncilFlowId> = {
+const FLOW_BY_ROLE: Partial<Record<CouncilAgentRole, CouncilFlowId>> = {
   writer: 'council-writer',
   reviewer: 'council-reviewer',
   editor: 'council-editor',
   media_creator: 'council-media-creator',
   media_reviewer: 'council-media-reviewer',
 };
+
+export interface MediaCreatorRunOptions {
+  fallbackMediaType?: import('@prisma/client').PostMediaType;
+}
 
 export interface AgentRunOptions {
   passScore?: number;
@@ -77,9 +81,17 @@ export class CouncilAgentService {
     );
   }
 
-  async runMediaCreator(input: CouncilInput, priorSteps: CouncilPriorStep[]) {
-    return this.runAgent(input, priorSteps, 'media_creator', (content) =>
-      this.mediaCreatorParser.parse(content),
+  async runMediaCreator(
+    input: CouncilInput,
+    priorSteps: CouncilPriorStep[],
+    options?: MediaCreatorRunOptions,
+  ) {
+    return this.runAgent(
+      input,
+      priorSteps,
+      CouncilAgentRole.media_creator,
+      (content) =>
+        this.mediaCreatorParser.parse(content, options?.fallbackMediaType),
     );
   }
 
@@ -104,6 +116,9 @@ export class CouncilAgentService {
       councilPassScore: options?.passScore,
     };
     const flowId = FLOW_BY_ROLE[role];
+    if (!flowId) {
+      throw new Error(`No prompt flow configured for agent role: ${role}`);
+    }
     const messages = this.promptRenderer.renderFlow(flowId, 1, context, {
       agentRole: role,
       passScore: options?.passScore,

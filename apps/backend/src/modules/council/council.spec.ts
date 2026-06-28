@@ -65,6 +65,20 @@ describe('ReviewerOutputParser', () => {
 describe('MediaCreatorOutputParser', () => {
   const parser = new MediaCreatorOutputParser();
 
+  it('parses branded quote card JSON', () => {
+    const result = parser.parse(
+      JSON.stringify({
+        mediaType: 'branded_quote_card',
+        altText: 'Branded quote',
+        headlineText: 'Ship weekly',
+        ctaFooter: 'Repost · Comment · Share',
+      }),
+    );
+
+    expect(result.mediaType).toBe('branded_quote_card');
+    expect(result.headlineText).toBe('Ship weekly');
+  });
+
   it('parses v2 media creator JSON', () => {
     const result = parser.parse(
       JSON.stringify({
@@ -102,7 +116,11 @@ describe('council progress', () => {
   });
 
   it('calculates total steps with revisions', () => {
-    expect(councilTotalSteps(1, 1)).toBe(9);
+    expect(councilTotalSteps(1, 1)).toBe(10);
+  });
+
+  it('calculates total steps without image scout', () => {
+    expect(councilTotalSteps(1, 1, false)).toBe(9);
   });
 });
 

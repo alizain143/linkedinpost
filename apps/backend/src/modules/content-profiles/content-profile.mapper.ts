@@ -15,6 +15,8 @@ export interface ContentProfileResponse {
   targetAudience: string | null;
   contentGoal: ContentGoal;
   preferredTone: string | null;
+  brandPrimary: string | null;
+  brandAccent: string | null;
   offerDescription: string | null;
   writingSample: string | null;
   avoidWords: string | null;
@@ -38,6 +40,8 @@ export function toContentProfileResponse(
     targetAudience: profile.targetAudience,
     contentGoal: profile.contentGoal,
     preferredTone: profile.preferredTone,
+    brandPrimary: profile.brandPrimary,
+    brandAccent: profile.brandAccent,
     offerDescription: profile.offerDescription,
     writingSample: profile.writingSample,
     avoidWords: profile.avoidWords,

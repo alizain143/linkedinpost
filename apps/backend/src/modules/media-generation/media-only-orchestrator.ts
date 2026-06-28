@@ -1,7 +1,6 @@
-import { Injectable, Logger, Inject } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
-  CouncilAgentRole,
   CreditTransactionType,
   GenerationJobStatus,
   PostMediaType,
@@ -9,13 +8,9 @@ import {
 } from '@prisma/client';
 import { MEDIA_REGEN_CREDIT_COST } from '../../common/constants/media.constants';
 import { PrismaService } from '../../prisma/prisma.service';
-import { CouncilAgentService } from '../council/council-agent.service';
-import { CouncilEventService } from '../council/council-event.service';
-import { MediaCreatorOutput } from '../council/parsers/media-creator-output.parser';
+import { CouncilMediaPhaseService } from '../council/council-media-phase.service';
 import { CreditsService } from '../credits/credits.service';
 import { CouncilInput, CouncilPriorStep } from '../generation/generation.types';
-import { MODEL_ROUTER } from '../generation/llm/model-capability.types';
-import type { ModelRouter } from '../generation/llm/model-capability.types';
 import { MediaService } from '../media/media.service';
 import { PostsService } from '../posts/posts.service';
 import {
@@ -25,14 +20,6 @@ import {
   toCouncilInputFromPost,
 } from './media-generation.types';
 
-interface MediaDraft {
-  spec: MediaCreatorOutput;
-  imageBuffer: Buffer;
-  mimeType: string;
-  imageModel: string;
-  eventId: string;
-}
-
 @Injectable()
 export class MediaOnlyOrchestrator {
   private readonly logger = new Logger(MediaOnlyOrchestrator.name);
@@ -40,12 +27,10 @@ export class MediaOnlyOrchestrator {
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
-    private readonly councilAgentService: CouncilAgentService,
-    private readonly councilEventService: CouncilEventService,
     private readonly postsService: PostsService,
     private readonly mediaService: MediaService,
     private readonly creditsService: CreditsService,
-    @Inject(MODEL_ROUTER) private readonly modelRouter: ModelRouter,
+    private readonly mediaPhaseService: CouncilMediaPhaseService,
   ) {}
 
   async run(generationJobId: string): Promise<void> {
@@ -78,25 +63,33 @@ export class MediaOnlyOrchestrator {
       );
 
       let mediaAttempt = 1;
-      let media = await this.executeMediaCreator(
+      const fallbackMediaType = this.mediaPhaseService.resolveMediaType(
+        input,
+        post.mediaTypePreference,
+      );
+
+      let media = await this.mediaPhaseService.executeMediaCreator({
         generationJobId,
         input,
         priorSteps,
-        mediaAttempt,
-        ++stepOrder,
+        attempt: mediaAttempt,
+        stepOrder: ++stepOrder,
         completedSteps,
         totalSteps,
-      );
+        fallbackMediaType,
+      });
       completedSteps++;
 
-      let mediaReview = await this.executeMediaReviewer(
+      let mediaReview = await this.mediaPhaseService.executeMediaReviewer({
         generationJobId,
         input,
         priorSteps,
-        ++stepOrder,
+        stepOrder: ++stepOrder,
         completedSteps,
         totalSteps,
-      );
+        imageBuffer: media.imageBuffer,
+        mimeType: media.mimeType,
+      });
       completedSteps++;
 
       while (!mediaReview.passed && mediaRegenCount < maxMediaRegens) {
@@ -108,15 +101,16 @@ export class MediaOnlyOrchestrator {
           MEDIA_REGEN_CREDIT_COST,
         );
 
-        media = await this.executeMediaCreator(
+        media = await this.mediaPhaseService.executeMediaCreator({
           generationJobId,
           input,
           priorSteps,
-          mediaAttempt,
-          ++stepOrder,
+          attempt: mediaAttempt,
+          stepOrder: ++stepOrder,
           completedSteps,
           totalSteps,
-        );
+          fallbackMediaType,
+        });
         completedSteps++;
 
         await this.creditsService.consume(
@@ -126,14 +120,16 @@ export class MediaOnlyOrchestrator {
           { generationJobId, reason: 'media regen' },
         );
 
-        mediaReview = await this.executeMediaReviewer(
+        mediaReview = await this.mediaPhaseService.executeMediaReviewer({
           generationJobId,
           input,
           priorSteps,
-          ++stepOrder,
+          stepOrder: ++stepOrder,
           completedSteps,
           totalSteps,
-        );
+          imageBuffer: media.imageBuffer,
+          mimeType: media.mimeType,
+        });
         completedSteps++;
       }
 
@@ -208,133 +204,5 @@ export class MediaOnlyOrchestrator {
 
       throw err;
     }
-  }
-
-  private async executeMediaCreator(
-    generationJobId: string,
-    input: CouncilInput,
-    priorSteps: CouncilPriorStep[],
-    attempt: number,
-    stepOrder: number,
-    completedSteps: number,
-    totalSteps: number,
-  ): Promise<MediaDraft> {
-    const started = await this.councilEventService.startEvent({
-      generationJobId,
-      agentRole: CouncilAgentRole.media_creator,
-      stepOrder,
-      revisionAttempt: attempt,
-      label: 'Media Creator generating quote card',
-      completedSteps,
-      totalSteps,
-    });
-
-    const result = await this.councilAgentService.runMediaCreator(
-      input,
-      priorSteps,
-    );
-
-    const imageResult = await this.modelRouter.image().generate({
-      prompt: result.output.imagePrompt,
-      width: result.output.width,
-      height: result.output.height,
-      headlineText: result.output.headlineText,
-      styleNotes: result.output.styleNotes,
-    });
-
-    const eventOutput = {
-      ...result.output,
-      generated: true,
-      imageModel: imageResult.model,
-    };
-
-    if (attempt === 1) {
-      priorSteps.push({
-        agentRole: CouncilAgentRole.media_creator,
-        revisionAttempt: attempt,
-        output: eventOutput,
-      });
-    } else {
-      const idx = priorSteps.findIndex(
-        (s) => s.agentRole === CouncilAgentRole.media_creator,
-      );
-      if (idx >= 0) {
-        priorSteps[idx] = {
-          agentRole: CouncilAgentRole.media_creator,
-          revisionAttempt: attempt,
-          output: eventOutput,
-        };
-      }
-    }
-
-    await this.councilEventService.completeEvent(started.id, {
-      generationJobId,
-      agentRole: CouncilAgentRole.media_creator,
-      label: 'Media Creator generated quote card',
-      completedSteps: completedSteps + 1,
-      totalSteps,
-      output: eventOutput,
-      model: result.model,
-      inputTokens: result.inputTokens,
-      outputTokens: result.outputTokens,
-      startedAt: started.startedAt,
-    });
-
-    return {
-      spec: result.output,
-      imageBuffer: imageResult.imageBuffer,
-      mimeType: imageResult.mimeType,
-      imageModel: imageResult.model,
-      eventId: started.id,
-    };
-  }
-
-  private async executeMediaReviewer(
-    generationJobId: string,
-    input: CouncilInput,
-    priorSteps: CouncilPriorStep[],
-    stepOrder: number,
-    completedSteps: number,
-    totalSteps: number,
-  ) {
-    const started = await this.councilEventService.startEvent({
-      generationJobId,
-      agentRole: CouncilAgentRole.media_reviewer,
-      stepOrder,
-      revisionAttempt: 1,
-      label: 'Media Reviewer QA',
-      completedSteps,
-      totalSteps,
-    });
-
-    const result = await this.councilAgentService.runMediaReviewer(
-      input,
-      priorSteps,
-    );
-
-    priorSteps.push({
-      agentRole: CouncilAgentRole.media_reviewer,
-      revisionAttempt: 1,
-      output: result.output as unknown as Record<string, unknown>,
-      scores: { score: result.output.score },
-    });
-
-    await this.councilEventService.completeEvent(started.id, {
-      generationJobId,
-      agentRole: CouncilAgentRole.media_reviewer,
-      label: result.output.passed
-        ? 'Media Reviewer QA passed'
-        : 'Media Reviewer QA failed',
-      completedSteps: completedSteps + 1,
-      totalSteps,
-      output: result.output as unknown as Record<string, unknown>,
-      scores: { score: result.output.score },
-      model: result.model,
-      inputTokens: result.inputTokens,
-      outputTokens: result.outputTokens,
-      startedAt: started.startedAt,
-    });
-
-    return result.output;
   }
 }

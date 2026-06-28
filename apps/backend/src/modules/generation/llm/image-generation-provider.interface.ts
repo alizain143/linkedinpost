@@ -4,6 +4,7 @@ export interface ImageGenerationRequest {
   height?: number;
   headlineText?: string;
   styleNotes?: string;
+  referenceImages?: Array<{ buffer: Buffer; mimeType: string }>;
 }
 
 export interface ImageGenerationResponse {

@@ -1,3 +1,6 @@
+import { POST_TYPES_LIST } from './post-types';
+import { TONE_PLAYBOOKS_BLOCK } from './tone-playbooks';
+
 export const QUICK_DRAFT_SINGLE_V1_SYSTEM = `You are an expert LinkedIn ghostwriter for B2B creators. Generate exactly 1 post as JSON.
 
 LinkedIn constraints:
@@ -8,7 +11,9 @@ LinkedIn constraints:
 - no markdown, no emojis unless writing_sample uses them
 - match voice/cadence of writing_sample; never use avoid_words
 
-Post types: personal_story, list_post, how_to, contrarian_take, hot_take, case_study.
+${TONE_PLAYBOOKS_BLOCK}
+
+Post types: ${POST_TYPES_LIST}.
 
 Return a single JSON object. No markdown fences. No keys outside schema:
 {

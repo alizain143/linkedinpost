@@ -11,18 +11,37 @@ export async function GET() {
 importScripts("https://www.gstatic.com/firebasejs/11.9.1/firebase-messaging-compat.js");
 firebase.initializeApp(${JSON.stringify(config)});
 const messaging = firebase.messaging();
+const notificationIcon = new URL("/icons/app-icon-192.png", self.location.origin).href;
+const notificationBadge = new URL("/icons/favicon-48.png", self.location.origin).href;
 messaging.onBackgroundMessage((payload) => {
-  const title = payload.notification?.title || "linkedinpost.ai";
+  const title =
+    payload.notification?.title || payload.data?.title || "linkedinpost.ai";
+  const body = payload.notification?.body || payload.data?.body || "";
+  const actionUrl = payload.data?.actionUrl || "/app";
   self.registration.showNotification(title, {
-    body: payload.notification?.body,
-    icon: "/icons/favicon.svg",
-    data: { actionUrl: payload.data?.actionUrl || "/app" },
+    body,
+    icon: notificationIcon,
+    badge: notificationBadge,
+    data: { actionUrl },
   });
 });
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const actionUrl = event.notification.data?.actionUrl || "/app";
-  event.waitUntil(clients.openWindow(actionUrl));
+  const rawUrl = event.notification.data?.actionUrl || "/app";
+  const targetUrl = rawUrl.startsWith("http")
+    ? rawUrl
+    : new URL(rawUrl, self.location.origin).href;
+  event.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((windowClients) => {
+      for (const client of windowClients) {
+        if ("focus" in client) {
+          client.navigate(targetUrl);
+          return client.focus();
+        }
+      }
+      return clients.openWindow(targetUrl);
+    }),
+  );
 });`;
 
   return new Response(script, {

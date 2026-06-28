@@ -88,15 +88,4 @@ export function buildEmailSubject(type: NotificationType): string {
   }
 }
 
-export function buildEmailHtml(params: {
-  title: string;
-  body: string;
-  actionUrl: string | null;
-  frontendUrl: string;
-}): string {
-  const cta = params.actionUrl
-    ? `<p style="margin-top:24px"><a href="${params.actionUrl}" style="background:#4f46e5;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:600">View in app</a></p>`
-    : '';
-
-  return `<!DOCTYPE html><html><body style="font-family:Inter,Arial,sans-serif;color:#0f172a;line-height:1.5"><h2 style="margin:0 0 12px">${params.title}</h2><p style="margin:0">${params.body}</p>${cta}<p style="margin-top:32px;font-size:12px;color:#64748b"><a href="${params.frontendUrl}">linkedinpost.ai</a></p></body></html>`;
-}
+export { buildEmailHtml, buildEmailText } from './email-template';

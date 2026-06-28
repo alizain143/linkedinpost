@@ -8,6 +8,7 @@ import { createMockPrismaService } from '../../test/prisma.mock';
 import { userId } from '../../test/fixtures';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreditsService } from '../credits/credits.service';
+import { mockNotificationEventServiceProvider } from '../../test/notification-event.mock';
 import { CalendarOrchestrator } from './calendar-orchestrator';
 import { CalendarJobHandler } from './calendar-job.handler';
 
@@ -26,6 +27,7 @@ describe('CalendarJobHandler', () => {
         { provide: PrismaService, useValue: prisma },
         { provide: CalendarOrchestrator, useValue: calendarOrchestrator },
         { provide: CreditsService, useValue: creditsService },
+        mockNotificationEventServiceProvider(),
       ],
     }).compile();
 

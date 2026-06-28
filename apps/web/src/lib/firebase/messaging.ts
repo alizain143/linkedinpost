@@ -42,8 +42,8 @@ export async function subscribeToForegroundMessages(
 
   return onMessage(messaging, (payload) => {
     handler({
-      title: payload.notification?.title,
-      body: payload.notification?.body,
+      title: payload.notification?.title ?? payload.data?.title,
+      body: payload.notification?.body ?? payload.data?.body,
       actionUrl: payload.data?.actionUrl,
     });
   });

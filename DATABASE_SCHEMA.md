@@ -90,7 +90,8 @@ Pipeline state machine. Transition rules split across `post-status.transitions.t
 | `draft` | Manual draft, editable | Posts CRUD |
 | `text_generating` | Council job queued/running (writer) | `CouncilJobService` |
 | `text_reviewing` | Writer done; reviewer/editor loop | `CouncilOrchestrator` |
-| `media_generating` | Text approved; generating quote card | `CouncilOrchestrator` |
+| `awaiting_media_selection` | Image Scout done; user picks references | `CouncilMediaPhaseService` |
+| `media_generating` | Text approved; generating media | `CouncilOrchestrator` |
 | `ready_for_approval` | Council complete; awaiting human | `CouncilOrchestrator` |
 | `approved` | Human approved | Approvals API / share links |
 | `scheduled` | `scheduledAt` set | Scheduling API |
@@ -121,6 +122,12 @@ LLM / UI taxonomy for post format.
 | `contrarian_take` |
 | `hot_take` |
 | `case_study` |
+| `question_post` |
+| `framework` |
+| `myth_buster` |
+| `prediction` |
+| `behind_the_scenes` |
+| `comparison` |
 
 ### `CreditTransactionType`
 
@@ -159,7 +166,12 @@ Council jobs use this status exclusively (no separate run status).
 
 | Value | Meaning |
 |-------|---------|
-| `quote_card` | Only type today. Nano Banana 2 image |
+| `quote_card` | Legacy AI quote card |
+| `branded_quote_card` | Template: name, title, quote, CTA footer |
+| `stat_highlight` | Template: big stat + label |
+| `tip_card` | Template: numbered tips |
+| `infographic` | AI visual summary |
+| `photo_illustration` | AI mood image (reference-guided) |
 
 ### `CouncilAgentRole`
 
@@ -168,7 +180,8 @@ Council jobs use this status exclusively (no separate run status).
 | `writer` | First draft from brief/topic |
 | `reviewer` | Scores draft; may trigger revision |
 | `editor` | Polishes copy after reviewer pass |
-| `media_creator` | Image spec + generation |
+| `image_scout` | Finds reference image candidates (pauses for user) |
+| `media_creator` | Media spec + generation |
 | `media_reviewer` | Scores media; may trigger regen |
 
 ### `CouncilEventStatus`

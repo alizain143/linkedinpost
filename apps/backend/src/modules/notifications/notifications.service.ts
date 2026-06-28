@@ -95,28 +95,71 @@ export class NotificationsService {
     token: string,
     userAgent?: string,
   ) {
-    const existing = await this.prisma.pushDeviceToken.findUnique({
-      where: { token },
+    const now = new Date();
+
+    const device = await this.prisma.$transaction(async (tx) => {
+      const existing = await tx.pushDeviceToken.findUnique({
+        where: { token },
+      });
+
+      const record = existing
+        ? await tx.pushDeviceToken.update({
+            where: { token },
+            data: {
+              userId,
+              userAgent: userAgent ?? existing.userAgent,
+              lastSeenAt: now,
+              revokedAt: null,
+            },
+          })
+        : await tx.pushDeviceToken.create({
+            data: {
+              userId,
+              token,
+              userAgent,
+            },
+          });
+
+      // One active token per browser profile — drop stale tokens from the same UA.
+      if (userAgent) {
+        await tx.pushDeviceToken.updateMany({
+          where: {
+            userId,
+            userAgent,
+            token: { not: token },
+            revokedAt: null,
+          },
+          data: { revokedAt: now },
+        });
+      }
+
+      return record;
     });
 
-    if (existing) {
-      return this.prisma.pushDeviceToken.update({
-        where: { token },
-        data: {
-          userId,
-          userAgent: userAgent ?? existing.userAgent,
-          lastSeenAt: new Date(),
-          revokedAt: null,
-        },
-      });
+    await this.enforceDeviceTokenLimit(userId);
+
+    return device;
+  }
+
+  /** Keep the most recently seen devices; revoke excess stale registrations. */
+  private async enforceDeviceTokenLimit(
+    userId: string,
+    maxActive = 5,
+  ) {
+    const active = await this.prisma.pushDeviceToken.findMany({
+      where: { userId, revokedAt: null },
+      orderBy: { lastSeenAt: 'desc' },
+      select: { id: true },
+    });
+
+    if (active.length <= maxActive) {
+      return;
     }
 
-    return this.prisma.pushDeviceToken.create({
-      data: {
-        userId,
-        token,
-        userAgent,
-      },
+    const revokeIds = active.slice(maxActive).map((entry) => entry.id);
+    await this.prisma.pushDeviceToken.updateMany({
+      where: { id: { in: revokeIds } },
+      data: { revokedAt: new Date() },
     });
   }
 

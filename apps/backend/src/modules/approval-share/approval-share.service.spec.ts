@@ -15,6 +15,7 @@ import {
 import { createMockPrismaService } from '../../test/prisma.mock';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PlanFeatureService } from '../billing/plan-feature.service';
+import { mockNotificationEventServiceProvider } from '../../test/notification-event.mock';
 import { MediaService } from '../media/media.service';
 import { WorkspacesService } from '../workspaces/workspaces.service';
 import {
@@ -52,6 +53,7 @@ describe('ApprovalShareService', () => {
         { provide: WorkspacesService, useValue: workspacesService },
         { provide: PlanFeatureService, useValue: planFeatureService },
         { provide: MediaService, useValue: mediaService },
+        mockNotificationEventServiceProvider(),
       ],
     }).compile();
 

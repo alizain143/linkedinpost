@@ -30,6 +30,26 @@ export class PublishJobEnqueueService {
 
   assertRedisAvailable() {
     if (!this.isEnabled()) {
+      // #region agent log
+      fetch('http://127.0.0.1:7936/ingest/839fd5aa-975f-4d2f-afc3-4e50b695a8d5', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Debug-Session-Id': 'c80d58',
+        },
+        body: JSON.stringify({
+          sessionId: 'c80d58',
+          location: 'publish-job-enqueue.service.ts:assertRedisAvailable',
+          message: 'Redis not available for publish jobs',
+          data: {
+            redisEnabled: this.redisEnabled,
+            hasQueue: Boolean(this.queue),
+          },
+          timestamp: Date.now(),
+          hypothesisId: 'A',
+        }),
+      }).catch(() => {});
+      // #endregion
       throw new ServiceUnavailableException({
         error: 'Redis is required for scheduled publish jobs',
         code: 'REDIS_UNAVAILABLE',
@@ -38,7 +58,7 @@ export class PublishJobEnqueueService {
   }
 
   private jobId(postPackageId: string) {
-    return `publish:${postPackageId}`;
+    return `publish-${postPackageId}`;
   }
 
   async enqueuePublish(

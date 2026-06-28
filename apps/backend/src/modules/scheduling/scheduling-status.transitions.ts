@@ -8,6 +8,7 @@ export const SCHEDULE_TRANSITIONS: Record<
   [PostPackageStatus.draft]: [],
   [PostPackageStatus.text_generating]: [],
   [PostPackageStatus.text_reviewing]: [],
+  [PostPackageStatus.awaiting_media_selection]: [],
   [PostPackageStatus.media_generating]: [],
   [PostPackageStatus.ready_for_approval]: [],
   [PostPackageStatus.approved]: [PostPackageStatus.scheduled],

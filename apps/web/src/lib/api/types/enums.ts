@@ -11,6 +11,7 @@ export type PostPackageStatus =
   | "draft"
   | "text_generating"
   | "text_reviewing"
+  | "awaiting_media_selection"
   | "media_generating"
   | "ready_for_approval"
   | "approved"
@@ -31,7 +32,21 @@ export type PostType =
   | "how_to"
   | "contrarian_take"
   | "hot_take"
-  | "case_study";
+  | "case_study"
+  | "question_post"
+  | "framework"
+  | "myth_buster"
+  | "prediction"
+  | "behind_the_scenes"
+  | "comparison";
+
+export type PostMediaType =
+  | "quote_card"
+  | "branded_quote_card"
+  | "stat_highlight"
+  | "tip_card"
+  | "infographic"
+  | "photo_illustration";
 
 export type GenerationJobStatus =
   | "pending"

@@ -1,10 +1,11 @@
 import type {
+  PostMediaType,
   PostPackageStatus,
   PostSource,
   PostType,
 } from "@/lib/api/types/enums";
 
-export type PostMediaType = "quote_card";
+export type { PostMediaType };
 
 export type ApiPostMedia = {
   id: string;

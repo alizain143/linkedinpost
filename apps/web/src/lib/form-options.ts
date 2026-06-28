@@ -56,4 +56,10 @@ export const TONE_OPTIONS = [
   "Inspirational",
   "Direct",
   "Conversational",
+  "Funny & witty",
+  "Provocative",
+  "Warm & empathetic",
+  "Educational",
+  "Storytelling",
+  "Data-driven",
 ] as const;

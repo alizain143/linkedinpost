@@ -5,4 +5,6 @@ export default registerAs('google', () => ({
   cloudProject: process.env.GOOGLE_CLOUD_PROJECT ?? '',
   cloudLocation: process.env.GOOGLE_CLOUD_LOCATION ?? 'us-central1',
   imageModel: process.env.GOOGLE_IMAGE_MODEL ?? 'gemini-3.1-flash-image',
+  cseApiKey: process.env.GOOGLE_CSE_API_KEY ?? '',
+  cseCx: process.env.GOOGLE_CSE_CX ?? '',
 }));

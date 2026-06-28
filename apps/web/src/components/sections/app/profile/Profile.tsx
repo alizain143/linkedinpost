@@ -32,6 +32,8 @@ type ProfileFormState = {
   targetAudience: string;
   contentGoal: ContentGoal;
   preferredTone: string;
+  brandPrimary: string;
+  brandAccent: string;
   offerDescription: string;
   writingSample: string;
   avoidWords: string;
@@ -47,6 +49,8 @@ function emptyForm(isDefault: boolean): ProfileFormState {
     targetAudience: "",
     contentGoal: DEFAULT_CONTENT_GOAL,
     preferredTone: "",
+    brandPrimary: "",
+    brandAccent: "",
     offerDescription: "",
     writingSample: "",
     avoidWords: "",
@@ -63,6 +67,8 @@ function profileToForm(profile: ApiContentProfile): ProfileFormState {
     targetAudience: profile.targetAudience ?? "",
     contentGoal: profile.contentGoal,
     preferredTone: profile.preferredTone ?? "",
+    brandPrimary: profile.brandPrimary ?? "",
+    brandAccent: profile.brandAccent ?? "",
     offerDescription: profile.offerDescription ?? "",
     writingSample: profile.writingSample ?? "",
     avoidWords: profile.avoidWords ?? "",
@@ -86,6 +92,8 @@ function formToBody(form: ProfileFormState) {
     targetAudience: optionalField(form.targetAudience),
     contentGoal: form.contentGoal,
     preferredTone: optionalField(form.preferredTone),
+    brandPrimary: optionalField(form.brandPrimary),
+    brandAccent: optionalField(form.brandAccent),
     offerDescription: optionalField(form.offerDescription),
     writingSample: optionalField(form.writingSample),
     avoidWords: optionalField(form.avoidWords),
@@ -423,6 +431,24 @@ function ProfileEditor() {
                 }
                 options={toneOptions}
               />
+              <div className="grid grid-cols-2 gap-3">
+                <InputField
+                  label="Brand primary"
+                  value={form.brandPrimary}
+                  onChange={(event) =>
+                    updateField("brandPrimary", event.target.value)
+                  }
+                  placeholder="#1a1a2e"
+                />
+                <InputField
+                  label="Brand accent"
+                  value={form.brandAccent}
+                  onChange={(event) =>
+                    updateField("brandAccent", event.target.value)
+                  }
+                  placeholder="#5B3DF5"
+                />
+              </div>
               <InputField
                 label="Offer"
                 value={form.offerDescription}

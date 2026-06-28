@@ -95,6 +95,7 @@ export function projectPriorSteps(
     }
     case CouncilAgentRole.media_creator: {
       const editor = findLatest(steps, CouncilAgentRole.editor);
+      const scout = findLatest(steps, CouncilAgentRole.image_scout);
       if (!editor) {
         return [];
       }
@@ -110,11 +111,43 @@ export function projectPriorSteps(
         output.changelog = editor.output.changelog;
       }
 
-      return [
+      const projected: CouncilPriorStep[] = [
         {
           agentRole: CouncilAgentRole.editor,
           revisionAttempt: editor.revisionAttempt,
           output,
+        },
+      ];
+
+      if (scout) {
+        projected.push({
+          agentRole: CouncilAgentRole.image_scout,
+          revisionAttempt: scout.revisionAttempt,
+          output: {
+            queries: scout.output.queries,
+            candidates: scout.output.candidates,
+          },
+        });
+      }
+
+      return projected;
+    }
+    case CouncilAgentRole.image_scout: {
+      const editor = findLatest(steps, CouncilAgentRole.editor);
+      if (!editor) {
+        return [];
+      }
+
+      return [
+        {
+          agentRole: CouncilAgentRole.editor,
+          revisionAttempt: editor.revisionAttempt,
+          output: {
+            hook: editor.output.hook,
+            body: editor.output.body,
+            cta: editor.output.cta,
+            tags: editor.output.tags,
+          },
         },
       ];
     }

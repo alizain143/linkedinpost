@@ -12,6 +12,11 @@ export const COUNCIL_STATUS_TRANSITIONS: Record<
   ],
   [PostPackageStatus.text_reviewing]: [
     PostPackageStatus.text_generating,
+    PostPackageStatus.awaiting_media_selection,
+    PostPackageStatus.media_generating,
+    PostPackageStatus.failed,
+  ],
+  [PostPackageStatus.awaiting_media_selection]: [
     PostPackageStatus.media_generating,
     PostPackageStatus.failed,
   ],

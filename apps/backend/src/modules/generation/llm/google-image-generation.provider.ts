@@ -30,9 +30,25 @@ export class GoogleImageGenerationProvider implements ImageGenerationProvider {
 
     try {
       const client = this.googleGenAIClientFactory.createClient();
+      const parts: Array<
+        | { text: string }
+        | { inlineData: { mimeType: string; data: string } }
+      > = [];
+
+      for (const reference of request.referenceImages ?? []) {
+        parts.push({
+          inlineData: {
+            mimeType: reference.mimeType,
+            data: reference.buffer.toString('base64'),
+          },
+        });
+      }
+
+      parts.push({ text: this.buildPromptText(request) });
+
       const response = await client.models.generateContent({
         model,
-        contents: this.buildPrompt(request),
+        contents: [{ role: 'user', parts }],
         config: {
           responseModalities: [Modality.IMAGE],
         },
@@ -63,16 +79,23 @@ export class GoogleImageGenerationProvider implements ImageGenerationProvider {
     }
   }
 
-  private buildPrompt(request: ImageGenerationRequest): string {
+  private buildPromptText(request: ImageGenerationRequest): string {
     const width = request.width ?? POST_MEDIA_DEFAULT_WIDTH;
     const height = request.height ?? POST_MEDIA_DEFAULT_HEIGHT;
     const headline = request.headlineText?.trim();
     const style = request.styleNotes?.trim();
     const visual = request.prompt.trim();
+    const hasReferences = (request.referenceImages?.length ?? 0) > 0;
 
     const lines = [
-      `LinkedIn quote card, ${width}x${height}px, landscape.`,
+      `LinkedIn feed image, ${width}x${height}px, landscape.`,
     ];
+
+    if (hasReferences) {
+      lines.push(
+        'Use the attached reference images for mood, composition, and color inspiration only. Create an original image.',
+      );
+    }
 
     if (headline) {
       lines.push(`Headline (render exactly): "${headline}"`);
@@ -85,7 +108,7 @@ export class GoogleImageGenerationProvider implements ImageGenerationProvider {
     }
 
     lines.push(
-      'Rules: high contrast readable text, professional, no logos, no watermarks, no stock photo clichés.',
+      'Rules: professional LinkedIn quality, no logos, no watermarks, no stock photo clichés.',
     );
 
     return lines.join('\n');

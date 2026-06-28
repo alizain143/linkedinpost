@@ -15,6 +15,8 @@ export type ApiContentProfile = {
   targetAudience: string | null;
   contentGoal: ContentGoal;
   preferredTone: string | null;
+  brandPrimary: string | null;
+  brandAccent: string | null;
   offerDescription: string | null;
   writingSample: string | null;
   avoidWords: string | null;
@@ -31,6 +33,8 @@ export type CreateContentProfileBody = {
   targetAudience?: string;
   contentGoal?: ContentGoal;
   preferredTone?: string;
+  brandPrimary?: string;
+  brandAccent?: string;
   offerDescription?: string;
   writingSample?: string;
   avoidWords?: string;

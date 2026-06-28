@@ -8,6 +8,7 @@ import { createMockPrismaService } from '../../test/prisma.mock';
 import { userId } from '../../test/fixtures';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreditsService } from '../credits/credits.service';
+import { mockNotificationEventServiceProvider } from '../../test/notification-event.mock';
 import { CouncilOrchestrator } from './council-orchestrator';
 import { CouncilJobHandler } from './council-job.handler';
 
@@ -26,6 +27,7 @@ describe('CouncilJobHandler', () => {
         { provide: PrismaService, useValue: prisma },
         { provide: CouncilOrchestrator, useValue: councilOrchestrator },
         { provide: CreditsService, useValue: creditsService },
+        mockNotificationEventServiceProvider(),
       ],
     }).compile();
 
@@ -37,8 +39,12 @@ describe('CouncilJobHandler', () => {
       id: 'job-1',
       userId,
       creditCost: 10,
+      creditCharged: false,
       postPackageId: 'post-1',
       type: GenerationJobType.council,
+      status: 'pending',
+      input: {},
+      result: null,
     });
     prisma.postPackage.findUnique.mockResolvedValue({
       id: 'post-1',
@@ -62,8 +68,12 @@ describe('CouncilJobHandler', () => {
       id: 'job-2',
       userId,
       creditCost: 3,
+      creditCharged: false,
       postPackageId: 'post-2',
       type: GenerationJobType.council,
+      status: 'pending',
+      input: {},
+      result: null,
     });
     prisma.postPackage.findUnique.mockResolvedValue({
       id: 'post-2',
@@ -88,6 +98,9 @@ describe('CouncilJobHandler', () => {
       creditCost: 3,
       creditCharged: true,
       type: GenerationJobType.council,
+      status: 'completed',
+      input: {},
+      result: null,
     });
 
     await handler.handle('job-3');

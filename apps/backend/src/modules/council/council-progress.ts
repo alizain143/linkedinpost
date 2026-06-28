@@ -25,6 +25,8 @@ export function computeCouncilProgress(
 export function councilTotalSteps(
   maxTextRevisions: number,
   maxMediaRegens: number,
+  includeImageScout = true,
 ): number {
-  return 5 + maxTextRevisions * 2 + maxMediaRegens * 2;
+  const base = includeImageScout ? 6 : 5;
+  return base + maxTextRevisions * 2 + maxMediaRegens * 2;
 }

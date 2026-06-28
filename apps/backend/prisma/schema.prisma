@@ -44,6 +44,7 @@ enum PostPackageStatus {
   draft
   text_generating
   text_reviewing
+  awaiting_media_selection
   media_generating
   ready_for_approval
   approved
@@ -67,6 +68,12 @@ enum PostType {
   contrarian_take
   hot_take
   case_study
+  question_post
+  framework
+  myth_buster
+  prediction
+  behind_the_scenes
+  comparison
 }
 
 enum CreditTransactionType {
@@ -94,12 +101,18 @@ enum GenerationJobType {
 
 enum PostMediaType {
   quote_card
+  branded_quote_card
+  stat_highlight
+  tip_card
+  infographic
+  photo_illustration
 }
 
 enum CouncilAgentRole {
   writer
   reviewer
   editor
+  image_scout
   media_creator
   media_reviewer
 }
@@ -302,6 +315,8 @@ model ContentProfile {
   targetAudience   String?
   contentGoal      ContentGoal @default(build_authority)
   preferredTone    String?
+  brandPrimary     String?
+  brandAccent      String?
   offerDescription String?
   writingSample    String?     @db.Text
   avoidWords       String?
@@ -342,10 +357,13 @@ model PostPackage {
   cta              String?
   tags             String[]          @default([])
   topic            String?
-  postType         PostType?
-  tone             String?
-  pillar           String?
-  source           PostSource        @default(manual)
+  postType            PostType?
+  tone                String?
+  pillar              String?
+  mediaTypePreference PostMediaType?
+  mediaCustomPrompt   String?           @db.Text
+  mediaTemplateId     String?
+  source              PostSource        @default(manual)
   status           PostPackageStatus @default(draft)
   score            Int?
   scheduledAt      DateTime?         @db.Timestamptz(6)
@@ -404,6 +422,7 @@ model PostMedia {
   sizeBytes       Int
   altText         String
   sortOrder       Int           @default(0)
+  metadata        Json?
   createdAt       DateTime      @default(now()) @db.Timestamptz(6)
   updatedAt       DateTime      @updatedAt @db.Timestamptz(6)
 

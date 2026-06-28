@@ -39,7 +39,19 @@ import {
   variantToCreatePostBody,
 } from "@/lib/generation-utils";
 import { CouncilTimeline } from "@/components/sections/app/generate/CouncilTimeline";
+import { LinkedInFeedPreview } from "@/components/sections/app/generate/LinkedInFeedPreview";
+import { MediaReferencePicker } from "@/components/sections/app/generate/MediaReferencePicker";
+import { MediaTemplatePicker } from "@/components/sections/app/generate/MediaTemplatePicker";
 import { GenerationHistoryPanel } from "@/components/sections/app/generate/GenerationHistoryPanel";
+import { fetchMediaReferences, submitMediaReferences } from "@/lib/api/media-references";
+import type { PostMediaType } from "@/lib/api/types/enums";
+import type { MediaReferenceCandidate } from "@/lib/api/types/media-references";
+import { MEDIA_TYPE_OPTIONS } from "@/lib/media-types";
+import {
+  DEFAULT_MEDIA_TEMPLATE_ID,
+  getTemplateDefinition,
+  type MediaTemplateId,
+} from "@/lib/media-template-catalog";
 import { useAppUi } from "@/providers/app-ui-provider";
 import { useAuth } from "@clerk/nextjs";
 import {
@@ -78,10 +90,16 @@ type GenerateFormState = {
   contentProfileId: string;
   postType: PostType;
   tone: string;
+  customTone: string;
+  useCustomTone: boolean;
   topic: string;
   pillar: string;
   additionalContext: string;
   brief: string;
+  mediaType: PostMediaType;
+  mediaCustomPrompt: string;
+  mediaTemplateId: string;
+  skipImageScout: boolean;
 };
 
 export default function Generate() {
@@ -116,11 +134,22 @@ export default function Generate() {
     contentProfileId: "",
     postType: "personal_story",
     tone: TONE_OPTIONS[0],
+    customTone: "",
+    useCustomTone: false,
     topic: "",
     pillar: "",
     additionalContext: "",
     brief: "",
+    mediaType: "branded_quote_card",
+    mediaCustomPrompt: "",
+    mediaTemplateId: DEFAULT_MEDIA_TEMPLATE_ID,
+    skipImageScout: true,
   });
+  const [mediaReferenceCandidates, setMediaReferenceCandidates] = useState<
+    MediaReferenceCandidate[]
+  >([]);
+  const [submittingMediaReferences, setSubmittingMediaReferences] =
+    useState(false);
   const [variants, setVariants] = useState<QuickDraftVariant[]>([]);
   const [generated, setGenerated] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
@@ -366,6 +395,62 @@ export default function Generate() {
     }));
   };
 
+  const awaitingMediaSelection =
+    councilJob.data?.progress?.currentStep === "awaiting_media_selection";
+
+  useEffect(() => {
+    if (!awaitingMediaSelection || !activeCouncilJobId || !activeWorkspaceId) {
+      return;
+    }
+
+    let cancelled = false;
+
+    void (async () => {
+      const token = await getToken();
+      if (!token || cancelled) return;
+      try {
+        const candidates = await fetchMediaReferences(
+          activeWorkspaceId,
+          activeCouncilJobId,
+          token,
+        );
+        if (!cancelled) setMediaReferenceCandidates(candidates);
+      } catch {
+        // timeline still shows progress if fetch fails
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    activeCouncilJobId,
+    activeWorkspaceId,
+    awaitingMediaSelection,
+    getToken,
+  ]);
+
+  const handleSubmitMediaReferences = async (selectedUrls: string[]) => {
+    if (!activeCouncilJobId || !activeWorkspaceId) return;
+    const token = await getToken();
+    if (!token) return;
+
+    setSubmittingMediaReferences(true);
+    try {
+      await submitMediaReferences(activeWorkspaceId, activeCouncilJobId, token, {
+        selectedUrls,
+        mediaType: form.mediaType,
+        mediaCustomPrompt: form.mediaCustomPrompt.trim() || undefined,
+        mediaTemplateId: form.mediaTemplateId || undefined,
+      });
+      showToast("Continuing media generation…", "auto_awesome");
+    } catch (err) {
+      showToast(getApiErrorMessage(err), "error");
+    } finally {
+      setSubmittingMediaReferences(false);
+    }
+  };
+
   const modeCost = getGenerationModeCost(mode);
   const canAffordMode = canAfford(modeCost);
   const selectedMode = GEN_MODES.find((item) => item.id === mode) ?? GEN_MODES[0];
@@ -400,10 +485,14 @@ export default function Generate() {
     return {
       topic: form.topic.trim(),
       postType: form.postType,
-      tone: form.tone || undefined,
+      tone: (form.useCustomTone ? form.customTone : form.tone) || undefined,
       pillar: form.pillar || undefined,
       contentProfileId: form.contentProfileId || undefined,
       additionalContext: form.additionalContext.trim() || undefined,
+      mediaType: form.mediaType,
+      mediaCustomPrompt: form.mediaCustomPrompt.trim() || undefined,
+      mediaTemplateId: form.mediaTemplateId || undefined,
+      skipImageScout: form.skipImageScout || undefined,
     };
   }, [form]);
 
@@ -415,6 +504,16 @@ export default function Generate() {
       brief: form.brief.trim() || undefined,
     };
   }, [buildRequestBody, form.brief]);
+
+  const handleTemplateChange = useCallback((templateId: MediaTemplateId) => {
+    const templateDef = getTemplateDefinition(templateId);
+    setForm((current) => ({
+      ...current,
+      mediaTemplateId: templateId,
+      mediaType: templateDef?.mediaType ?? current.mediaType,
+      skipImageScout: true,
+    }));
+  }, []);
 
   const runGenerate = async () => {
     if (!canAffordMode) {
@@ -859,20 +958,107 @@ export default function Generate() {
       </div>
 
       <label className={appLabel}>Tone</label>
-      <div className="mb-4 flex flex-wrap gap-1.5">
+      <div className="mb-2 flex flex-wrap gap-1.5">
         {TONE_OPTIONS.map((tn) => (
           <Button
             key={tn}
             type="button"
-            variant={pillVariant(form.tone === tn)}
+            variant={pillVariant(!form.useCustomTone && form.tone === tn)}
             size="xs"
-            onClick={() => setForm((current) => ({ ...current, tone: tn }))}
+            onClick={() =>
+              setForm((current) => ({
+                ...current,
+                tone: tn,
+                useCustomTone: false,
+              }))
+            }
             disabled={formDisabled}
           >
             {tn}
           </Button>
         ))}
+        <Button
+          type="button"
+          variant={pillVariant(form.useCustomTone)}
+          size="xs"
+          onClick={() =>
+            setForm((current) => ({ ...current, useCustomTone: true }))
+          }
+          disabled={formDisabled}
+        >
+          Custom
+        </Button>
       </div>
+      {form.useCustomTone ? (
+        <InputField
+          label="Custom tone"
+          fieldClassName="mb-4"
+          value={form.customTone}
+          maxLength={200}
+          placeholder="Funny but professional, like a founder telling a story..."
+          onChange={(event) =>
+            setForm((current) => ({ ...current, customTone: event.target.value }))
+          }
+          disabled={formDisabled}
+        />
+      ) : (
+        <div className="mb-4" />
+      )}
+
+      <details className="mb-4 rounded-xl border border-border bg-card p-3">
+        <summary className="cursor-pointer text-sm font-semibold">
+          Media options
+        </summary>
+        <div className="mt-3 flex flex-col gap-3">
+          <SelectField
+            label="Media type"
+            value={form.mediaType}
+            onChange={(event) =>
+              setForm((current) => ({
+                ...current,
+                mediaType: event.target.value as PostMediaType,
+              }))
+            }
+            options={MEDIA_TYPE_OPTIONS.map((option) => ({
+              value: option.value,
+              label: option.label,
+            }))}
+            disabled={formDisabled}
+          />
+          <MediaTemplatePicker
+            value={form.mediaTemplateId}
+            onChange={handleTemplateChange}
+            disabled={formDisabled}
+          />
+          <TextareaField
+            label="Custom media prompt (optional)"
+            value={form.mediaCustomPrompt}
+            maxLength={500}
+            placeholder="Minimal dark layout, gold accent, professional LinkedIn feed style..."
+            onChange={(event) =>
+              setForm((current) => ({
+                ...current,
+                mediaCustomPrompt: event.target.value,
+              }))
+            }
+            disabled={formDisabled}
+          />
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={form.skipImageScout}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  skipImageScout: event.target.checked,
+                }))
+              }
+              disabled={formDisabled}
+            />
+            Skip reference image search (faster)
+          </label>
+        </div>
+      </details>
 
       <InputField
         label="Topic"
@@ -1020,13 +1206,34 @@ export default function Generate() {
               </div>
             </div>
           ) : activeCouncilJobId && councilJob.data ? (
-            <CouncilTimeline
-              events={councilJob.data.events ?? []}
-              progress={councilJob.data.progress}
-              status={councilJob.data.status}
-              errorMessage={councilJob.data.errorMessage}
-              postPackageId={councilJob.data.postPackageId}
-            />
+            <div className="flex flex-col gap-4">
+              <CouncilTimeline
+                events={councilJob.data.events ?? []}
+                progress={councilJob.data.progress}
+                status={councilJob.data.status}
+                errorMessage={councilJob.data.errorMessage}
+                postPackageId={councilJob.data.postPackageId}
+              />
+              {awaitingMediaSelection ? (
+                <MediaReferencePicker
+                  candidates={mediaReferenceCandidates}
+                  mediaType={form.mediaType}
+                  mediaCustomPrompt={form.mediaCustomPrompt}
+                  mediaTemplateId={form.mediaTemplateId}
+                  onMediaTypeChange={(value) =>
+                    setForm((current) => ({ ...current, mediaType: value }))
+                  }
+                  onCustomPromptChange={(value) =>
+                    setForm((current) => ({ ...current, mediaCustomPrompt: value }))
+                  }
+                  onTemplateChange={handleTemplateChange}
+                  onContinue={(selectedUrls) =>
+                    void handleSubmitMediaReferences(selectedUrls)
+                  }
+                  isSubmitting={submittingMediaReferences}
+                />
+              ) : null}
+            </div>
           ) : (
             <div className="flex flex-col items-center rounded-[18px] border border-dashed border-[#d8dce8] bg-white px-8 py-14 text-center">
               <div className="mb-[18px] flex h-16 w-16 items-center justify-center rounded-[18px] bg-gradient-to-br from-[#eef2ff] to-[#ecfeff]">
