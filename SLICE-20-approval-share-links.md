@@ -66,9 +66,8 @@ Action responses: `{ id, status }`. Single-use: `usedAt` set after successful ac
 | Code | When |
 |------|------|
 | `PLAN_UPGRADE_REQUIRED` | Non-agency user creates link |
-| `POST_NOT_AWAITING_APPROVAL` | Post not `ready_for_approval` on create |
-| `APPROVAL_LINK_INVALID` | Missing, expired, revoked, or used token |
-| `APPROVAL_ALREADY_RESOLVED` | Post no longer `ready_for_approval` on public call |
+| `RESOURCE_NOT_FOUND` | Post missing, or not `ready_for_approval` on create (backend maps both to this code) |
+| `APPROVAL_LINK_INVALID` | Missing, expired, revoked, used token, or post no longer `ready_for_approval` on public call |
 | `INVALID_STATUS_TRANSITION` | Invalid transition (existing) |
 | `VALIDATION_ERROR` | Missing feedback on request-changes |
 

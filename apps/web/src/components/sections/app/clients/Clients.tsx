@@ -21,6 +21,7 @@ import {
   canUseClientWorkspaces,
   getPersonalWorkspace,
 } from "@/lib/client-workspace-utils";
+import { getPlanGateState } from "@/lib/plan-gate-utils";
 import { useAppUi } from "@/providers/app-ui-provider";
 
 function ClientsSkeleton() {
@@ -38,7 +39,8 @@ function ClientsSkeleton() {
 
 export default function Clients() {
   const { confirmRemoveClient, showToast } = useAppUi();
-  const { balance } = useCredits();
+  const { balance, isLoading: creditsLoading, isError: creditsError, refetch: refetchCredits } =
+    useCredits();
   const {
     workspaces,
     activeWorkspaceId,
@@ -46,8 +48,15 @@ export default function Clients() {
     refetch: refetchWorkspaces,
   } = useWorkspace();
 
-  const plan = balance?.plan ?? "free";
-  const agencyAllowed = canUseClientWorkspaces(plan);
+  const planGate = getPlanGateState({
+    isLoading: creditsLoading,
+    isError: creditsError,
+    balance,
+  });
+  const agencyAllowed =
+    planGate.status === "ready" &&
+    planGate.plan != null &&
+    canUseClientWorkspaces(planGate.plan);
 
   const {
     clientWorkspaces,
@@ -119,7 +128,24 @@ export default function Clients() {
 
   return (
     <div>
-      {!agencyAllowed ? (
+      {planGate.status === "loading" ? (
+        <div className="mb-5 h-16 animate-pulse rounded-2xl bg-[#eceef4]" />
+      ) : planGate.status === "error" ? (
+        <div className="mb-5 rounded-2xl border border-[#fecaca] bg-[#fef2f2] px-5 py-4">
+          <p className="text-[13px] text-[#b91c1c]">
+            Could not load your plan. Retry before managing client workspaces.
+          </p>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="mt-3"
+            onClick={() => void refetchCredits()}
+          >
+            Retry
+          </Button>
+        </div>
+      ) : !agencyAllowed ? (
         <div className="mb-5 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[#fde68a] bg-gradient-to-br from-[#fffbeb] to-[#fffdf5] px-5 py-4">
           <div className="min-w-[200px] flex-1">
             <div className="font-display text-[15px] font-bold text-[#92400e]">
@@ -170,7 +196,7 @@ export default function Clients() {
 
       <QueryState
         isLoading={isLoading}
-        error={queryError as Error | null}
+        error={queryError}
         onRetry={() => {
           void refetchClients();
           void refetchDetails();

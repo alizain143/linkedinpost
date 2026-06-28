@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { QueryState } from "@/components/app/query-state";
 import { RequestChangesModal } from "@/components/modals/request-changes-modal";
 import { Button } from "@/components/ui/button";
@@ -87,13 +87,19 @@ function SuccessCard({ action }: { action: SuccessAction }) {
 
 export function PublicApprovalPage({ token }: PublicApprovalPageProps) {
   const { showToast } = usePpToast();
-  const { data: preview, isLoading, error } = usePublicApprovalPreview(token);
+  const {
+    data: preview,
+    isLoading,
+    error,
+    refetch,
+  } = usePublicApprovalPreview(token);
 
   const approveMutation = usePublicApproveMutation(token);
   const requestChangesMutation = usePublicRequestChangesMutation(token);
   const rejectMutation = usePublicRejectMutation(token);
 
   const [successAction, setSuccessAction] = useState<SuccessAction | null>(null);
+  const [linkUnavailable, setLinkUnavailable] = useState(false);
   const [requestChangesOpen, setRequestChangesOpen] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [requestChangesError, setRequestChangesError] = useState<string | null>(
@@ -101,6 +107,23 @@ export function PublicApprovalPage({ token }: PublicApprovalPageProps) {
   );
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectFeedback, setRejectFeedback] = useState("");
+  const rejectTitleId = useId();
+  const rejectCancelRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!rejectOpen) return;
+
+    rejectCancelRef.current?.focus();
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setRejectOpen(false);
+      }
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [rejectOpen]);
 
   const isPending =
     approveMutation.isPending ||
@@ -108,14 +131,24 @@ export function PublicApprovalPage({ token }: PublicApprovalPageProps) {
     rejectMutation.isPending;
 
   const isInvalidLink =
-    error instanceof ApiError && error.code === "APPROVAL_LINK_INVALID";
+    linkUnavailable ||
+    (error instanceof ApiError && error.code === "APPROVAL_LINK_INVALID");
+
+  const handleActionError = (err: unknown) => {
+    if (err instanceof ApiError && err.code === "APPROVAL_LINK_INVALID") {
+      setLinkUnavailable(true);
+      return;
+    }
+
+    showToast(getApiErrorMessage(err), "error");
+  };
 
   const handleApprove = async () => {
     try {
       await approveMutation.mutateAsync();
       setSuccessAction("approved");
     } catch (err) {
-      showToast(getApiErrorMessage(err), "error");
+      handleActionError(err);
     }
   };
 
@@ -133,6 +166,12 @@ export function PublicApprovalPage({ token }: PublicApprovalPageProps) {
       setFeedback("");
       setSuccessAction("changes_requested");
     } catch (err) {
+      if (err instanceof ApiError && err.code === "APPROVAL_LINK_INVALID") {
+        setRequestChangesOpen(false);
+        setLinkUnavailable(true);
+        return;
+      }
+
       setRequestChangesError(getApiErrorMessage(err));
     }
   };
@@ -147,7 +186,7 @@ export function PublicApprovalPage({ token }: PublicApprovalPageProps) {
       setRejectFeedback("");
       setSuccessAction("rejected");
     } catch (err) {
-      showToast(getApiErrorMessage(err), "error");
+      handleActionError(err);
     }
   };
 
@@ -166,6 +205,7 @@ export function PublicApprovalPage({ token }: PublicApprovalPageProps) {
         error={error && !isInvalidLink ? error : null}
         skeleton={<PreviewSkeleton />}
         empty={null}
+        onRetry={() => void refetch()}
       >
         {preview ? (
           <div className="mx-auto w-full max-w-[720px]">
@@ -314,16 +354,18 @@ export function PublicApprovalPage({ token }: PublicApprovalPageProps) {
       {rejectOpen ? (
         <div
           className="animate-ppfade fixed inset-0 z-[90] flex items-center justify-center bg-[rgba(15,19,38,0.5)] p-6 backdrop-blur-[4px]"
-          onClick={() => setRejectOpen(false)}
           role="presentation"
         >
           <div
             className="animate-ppscale w-full max-w-[480px] rounded-[20px] bg-white p-[26px] shadow-[0_40px_90px_-30px_rgba(15,19,38,0.6)]"
-            onClick={(event) => event.stopPropagation()}
             role="dialog"
             aria-modal="true"
+            aria-labelledby={rejectTitleId}
           >
-            <h2 className="font-display text-[18px] font-bold text-[#1e293b]">
+            <h2
+              id={rejectTitleId}
+              className="font-display text-[18px] font-bold text-[#1e293b]"
+            >
               Reject this post?
             </h2>
             <p className="mt-2 text-[13px] leading-relaxed text-[#64748b]">
@@ -339,6 +381,7 @@ export function PublicApprovalPage({ token }: PublicApprovalPageProps) {
             </div>
             <div className="mt-5 flex justify-end gap-2">
               <Button
+                ref={rejectCancelRef}
                 type="button"
                 variant="muted"
                 size="sm"

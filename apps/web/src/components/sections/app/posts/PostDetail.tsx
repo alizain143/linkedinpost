@@ -106,7 +106,7 @@ export default function PostDetail({ postId }: PostDetailProps) {
     isLoading,
     error,
     refetch,
-  } = usePost(activeWorkspaceId, postId);
+  } = usePost(activeWorkspaceId, postId, { pollWhileAwaitingApproval: true });
   const {
     data: versions,
     isLoading: versionsLoading,

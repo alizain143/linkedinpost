@@ -14,12 +14,13 @@ Per-slice specs (when started): `FE-SLICE-NN-*.md` at repo root — same pattern
 |------|--------|
 | Marketing site | Built (landing, pricing, features, auth pages) |
 | App shell + sidebar | Built (`/app/*` routes exist) |
-| Clerk auth | Sign-in/up wired; `GET/PATCH /auth/me` partially integrated |
-| LinkedIn connect | Clerk OAuth flow + `use-linkedin-api` hook started |
-| Document upload | `lib/documents/upload-document.ts` (profile presign flow) |
-| **All main app screens** | **UI shells with `mock-app-data.ts` — not calling API** |
+| Clerk auth | Sign-in/up wired; `GET/PATCH /auth/me` integrated |
+| API integration | **FE-SLICE-01 through FE-SLICE-18 wired** — workspace context, posts, pipeline, approvals, calendar, generation, billing, clients, approval share links |
+| Public approval page | `/approve/[token]` — no auth, preview + actions |
+| **Remaining mock UI** | Notifications API not built — topbar shows honest empty state |
+| **Automated frontend tests** | Vitest unit tests for plan gate, approval-share utils, query errors |
 
-**Integration gap:** Only `use-auth-api` and `use-linkedin-api` exist. Workspace context, credits, posts, jobs, and workflow screens need API layers.
+**Integration gap:** Core workflow screens call the API. Polish gaps remain: mock notifications in shell, no E2E/unit tests, plan-gate edge cases on business features.
 
 ---
 
@@ -627,8 +628,7 @@ Mark `[x]` when slice is shipped (API wired, mocks removed for that screen, basi
 
 **Deliverables**
 
-- "Share for approval" on ready posts — copy link, expiry display
-- List/revoke active links
+- "Share for approval" on ready posts — copy link, expiry display, revoke active link
 - Public route `/approve/[token]` (no auth) — preview, approve, reject, request changes
 - Plan-gate: `approval_share_links` feature flag from billing
 

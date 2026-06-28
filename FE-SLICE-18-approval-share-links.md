@@ -57,6 +57,14 @@ Maps to backend SLICE-20.
 - Single-use token: success screen after client action
 - `APPROVAL_LINK_INVALID`, `POST_NOT_AWAITING_APPROVAL` error messages
 
+### Automated tests
+
+- [`approval-share-utils.test.ts`](apps/web/src/lib/approval-share-utils.test.ts)
+- [`plan-gate-utils.test.ts`](apps/web/src/lib/plan-gate-utils.test.ts)
+- [`query-error-utils.test.ts`](apps/web/src/lib/query-error-utils.test.ts)
+
+Run: `npm run test -w web`
+
 ## Progress
 
 - [x] Types + authenticated/public fetch + utils
@@ -64,6 +72,9 @@ Maps to backend SLICE-20.
 - [x] ApprovalSharePanel on post detail
 - [x] Public approve page + middleware
 - [x] Error messages + docs
+- [x] Plan-gate loading/error handling + regenerate-link confirm + auto-copy
+- [x] Polling + cache refresh when share link deactivates
+- [x] Unit tests for plan gate + approval-share utils
 - [x] `npm run build` passes
 
 ## Test plan (manual)

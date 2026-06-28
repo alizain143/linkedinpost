@@ -132,7 +132,7 @@ export default function Billing() {
   return (
     <QueryState
       isLoading={isLoading}
-      error={queryError as Error | null}
+      error={queryError}
       onRetry={() => {
         void refetchBilling();
         void refetchCredits();

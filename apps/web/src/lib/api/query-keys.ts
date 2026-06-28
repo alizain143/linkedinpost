@@ -58,4 +58,7 @@ export const queryKeys = {
     status: (workspaceId: string, postId: string) =>
       ["approvalShare", workspaceId, postId, "status"] as const,
   },
+  publicApproval: {
+    preview: (token: string) => ["publicApproval", token] as const,
+  },
 };

@@ -16,6 +16,7 @@ import {
   updatePost,
 } from "@/lib/api/posts";
 import { queryKeys } from "@/lib/api/query-keys";
+import { invalidatePostQueries } from "@/lib/post-query-invalidation";
 import type {
   ApiPostPackage,
   ApiPostVersion,
@@ -33,36 +34,6 @@ function stableListFilters(params?: ListPostsParams): ListPostsParams | undefine
     ...params,
     status: params.status ? [...params.status].sort() : undefined,
   };
-}
-
-export function invalidatePostQueries(
-  queryClient: ReturnType<typeof useQueryClient>,
-  workspaceId: string,
-  postId?: string,
-) {
-  void queryClient.invalidateQueries({
-    queryKey: ["posts", workspaceId],
-  });
-  void queryClient.invalidateQueries({
-    queryKey: ["pipeline", workspaceId],
-  });
-  void queryClient.invalidateQueries({
-    queryKey: ["approvals", workspaceId],
-  });
-  void queryClient.invalidateQueries({
-    queryKey: ["calendar", workspaceId],
-  });
-  void queryClient.invalidateQueries({
-    queryKey: queryKeys.dashboard.stats(workspaceId),
-  });
-  if (postId) {
-    void queryClient.invalidateQueries({
-      queryKey: queryKeys.posts.detail(workspaceId, postId),
-    });
-    void queryClient.invalidateQueries({
-      queryKey: queryKeys.posts.versions(workspaceId, postId),
-    });
-  }
 }
 
 type PostActionVariables = {
@@ -91,8 +62,10 @@ export function usePosts(
 export function usePost(
   workspaceId: string | null | undefined,
   postId: string | null | undefined,
+  options?: { pollWhileAwaitingApproval?: boolean },
 ) {
   const { getToken, isLoaded, isSignedIn } = useAuth();
+  const pollWhileAwaitingApproval = options?.pollWhileAwaitingApproval ?? false;
 
   return useQuery({
     queryKey: queryKeys.posts.detail(workspaceId ?? "", postId ?? ""),
@@ -102,6 +75,10 @@ export function usePost(
       if (!token || !workspaceId || !postId) throw new Error("Not authenticated");
       return fetchPost(token, workspaceId, postId);
     },
+    refetchInterval: pollWhileAwaitingApproval
+      ? (query) =>
+          query.state.data?.status === "ready_for_approval" ? 15_000 : false
+      : false,
   });
 }
 

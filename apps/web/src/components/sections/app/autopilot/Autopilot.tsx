@@ -32,6 +32,7 @@ import {
   togglePostingDay,
 } from "@/lib/autopilot-utils";
 import { POSTING_DAY_OPTIONS } from "@/lib/calendar-generation-utils";
+import { getPlanGateState } from "@/lib/plan-gate-utils";
 import { DEFAULT_TIMEZONE, timezoneLabel } from "@/lib/timezones";
 import { useAppUi } from "@/providers/app-ui-provider";
 
@@ -59,12 +60,20 @@ function AutopilotSkeleton() {
 export default function Autopilot() {
   const { activeWorkspaceId } = useWorkspace();
   const { confirmPauseAutopilot, showToast } = useAppUi();
-  const { balance } = useCredits();
+  const { balance, isLoading: creditsLoading, isError: creditsError, refetch: refetchCredits } =
+    useCredits();
   const { data: currentUser } = useCurrentUser();
 
   const timezone = currentUser?.timezone || DEFAULT_TIMEZONE;
-  const plan = balance?.plan ?? "free";
-  const autopilotAllowed = canUseAutopilot(plan);
+  const planGate = getPlanGateState({
+    isLoading: creditsLoading,
+    isError: creditsError,
+    balance,
+  });
+  const autopilotAllowed =
+    planGate.status === "ready" &&
+    planGate.plan != null &&
+    canUseAutopilot(planGate.plan);
 
   const {
     data: config,
@@ -246,7 +255,7 @@ export default function Autopilot() {
   return (
     <QueryState
       isLoading={isLoading || !config}
-      error={queryError as Error | null}
+      error={queryError}
       onRetry={() => {
         void refetchConfig();
         void refetchPlanned();
@@ -256,7 +265,23 @@ export default function Autopilot() {
     >
       {config ? (
         <div>
-          {!autopilotAllowed ? (
+          {planGate.status === "error" ? (
+            <div className="mb-5 rounded-2xl border border-[#fecaca] bg-[#fef2f2] px-5 py-4">
+              <p className="text-[13px] text-[#b91c1c]">
+                Could not load your plan. Retry before changing Autopilot settings.
+              </p>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="mt-3"
+                onClick={() => void refetchCredits()}
+              >
+                Retry
+              </Button>
+            </div>
+          ) : null}
+          {planGate.status === "ready" && !autopilotAllowed ? (
             <div className="mb-5 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[#fde68a] bg-gradient-to-br from-[#fffbeb] to-[#fffdf5] px-5 py-4">
               <div className="min-w-[200px] flex-1">
                 <div className="font-display text-[15px] font-bold text-[#92400e]">

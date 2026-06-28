@@ -17,7 +17,7 @@ import type {
   QuickDraftRequestBody,
 } from "@/lib/api/types/generation";
 import { shouldPollJob } from "@/lib/council-utils";
-import { invalidatePostQueries } from "@/hooks/api/use-posts-api";
+import { invalidatePostQueries } from "@/lib/post-query-invalidation";
 
 const JOB_POLL_INTERVAL_MS = 2500;
 

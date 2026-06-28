@@ -7,6 +7,7 @@ import {
   publicReject,
   publicRequestChanges,
 } from "@/lib/api/public-approval";
+import { queryKeys } from "@/lib/api/query-keys";
 import type {
   ApiPublicApprovalAction,
   ApiPublicApprovalPreview,
@@ -16,7 +17,7 @@ import type {
 
 export function usePublicApprovalPreview(token: string | null | undefined) {
   return useQuery({
-    queryKey: ["publicApproval", token],
+    queryKey: queryKeys.publicApproval.preview(token ?? ""),
     enabled: Boolean(token),
     queryFn: () => fetchPublicApprovalPreview(token!),
     retry: false,

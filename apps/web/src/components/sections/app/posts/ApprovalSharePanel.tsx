@@ -19,6 +19,7 @@ import {
   copyApprovalLink,
   formatApprovalLinkExpiry,
 } from "@/lib/approval-share-utils";
+import { getPlanGateState } from "@/lib/plan-gate-utils";
 import { useAppUi } from "@/providers/app-ui-provider";
 import { usePpToast } from "@/providers/pp-toast-provider";
 
@@ -27,23 +28,47 @@ type ApprovalSharePanelProps = {
   postId: string;
 };
 
+function PanelSkeleton() {
+  return (
+    <div className="space-y-3">
+      <div className="h-10 animate-pulse rounded-xl bg-[#eceef4]" />
+      <div className="h-9 w-40 animate-pulse rounded-lg bg-[#eceef4]" />
+    </div>
+  );
+}
+
 export function ApprovalSharePanel({
   workspaceId,
   postId,
 }: ApprovalSharePanelProps) {
-  const { balance } = useCredits();
+  const {
+    balance,
+    isLoading: creditsLoading,
+    isError: creditsError,
+    refetch: refetchCredits,
+  } = useCredits();
   const { askConfirm } = useAppUi();
   const { showToast } = usePpToast();
 
-  const plan = balance?.plan ?? "free";
-  const agencyAllowed = canUseApprovalShareLinks(plan);
+  const planGate = getPlanGateState({
+    isLoading: creditsLoading,
+    isError: creditsError,
+    balance,
+  });
+  const agencyAllowed =
+    planGate.status === "ready" &&
+    planGate.plan != null &&
+    canUseApprovalShareLinks(planGate.plan);
 
   const {
     data: linkStatus,
-    isLoading,
+    isLoading: linkLoading,
     error,
     refetch,
-  } = useApprovalLinkStatus(workspaceId, postId);
+  } = useApprovalLinkStatus(workspaceId, postId, agencyAllowed, {
+    pollWhileActive: true,
+    refreshRelatedOnDeactivate: true,
+  });
   const createMutation = useCreateApprovalLinkMutation(workspaceId, postId);
   const revokeMutation = useRevokeApprovalLinkMutation(workspaceId, postId);
 
@@ -56,15 +81,40 @@ export function ApprovalSharePanel({
   const copyableUrl = lastCreatedUrl;
   const expiresAt = lastCreatedExpiresAt ?? linkStatus?.expiresAt;
 
-  const handleCreate = async () => {
+  const runCreate = async () => {
     try {
       const result = await createMutation.mutateAsync();
       setLastCreatedUrl(result.url);
       setLastCreatedExpiresAt(result.expiresAt);
-      showToast("Share link created", "link");
+
+      const copied = await copyApprovalLink(result.url);
+      if (copied) {
+        showToast("Share link copied to clipboard", "content_copy");
+      } else {
+        showToast("Share link created — copy it before leaving this page", "link");
+      }
     } catch (err) {
       showToast(getApiErrorMessage(err), "error");
     }
+  };
+
+  const handleCreate = () => {
+    if (activeLink || copyableUrl) {
+      askConfirm({
+        icon: "link",
+        tone: "neutral",
+        title: "Generate a new share link?",
+        body:
+          "This invalidates the current link. If you already sent it to your client, they will need the new URL.",
+        confirmLabel: "Generate new link",
+        onConfirm: () => {
+          void runCreate();
+        },
+      });
+      return;
+    }
+
+    void runCreate();
   };
 
   const handleCopy = async () => {
@@ -117,7 +167,24 @@ export function ApprovalSharePanel({
         ) : null}
       </div>
 
-      {!agencyAllowed ? (
+      {planGate.status === "loading" ? (
+        <PanelSkeleton />
+      ) : planGate.status === "error" ? (
+        <div className="rounded-xl border border-[#fecaca] bg-[#fef2f2] px-4 py-3">
+          <p className="text-[13px] text-[#b91c1c]">
+            Could not load your plan. Try again before creating a share link.
+          </p>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="mt-3"
+            onClick={() => void refetchCredits()}
+          >
+            Retry
+          </Button>
+        </div>
+      ) : !agencyAllowed ? (
         <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[#fde68a] bg-gradient-to-br from-[#fffbeb] to-[#fffdf5] px-4 py-3">
           <div className="min-w-[200px] flex-1">
             <div className="font-display text-[14px] font-bold text-[#92400e]">
@@ -138,7 +205,7 @@ export function ApprovalSharePanel({
         </div>
       ) : (
         <QueryState
-          isLoading={isLoading}
+          isLoading={linkLoading}
           error={error}
           onRetry={() => void refetch()}
         >
@@ -178,7 +245,8 @@ export function ApprovalSharePanel({
                   {linkStatus?.createdAt
                     ? `. Created ${formatApprovalLinkExpiry(linkStatus.createdAt)}.`
                     : "."}{" "}
-                  Generate a new link to copy a fresh URL.
+                  Generate a new link to copy a fresh URL. This will invalidate
+                  the link already sent to your client.
                 </p>
               </div>
             ) : (
@@ -193,7 +261,7 @@ export function ApprovalSharePanel({
                 variant="primary"
                 size="sm"
                 disabled={createMutation.isPending}
-                onClick={() => void handleCreate()}
+                onClick={handleCreate}
               >
                 <MsIcon name="link" size={16} />
                 {activeLink || copyableUrl ? "Generate new link" : "Generate share link"}
@@ -212,7 +280,8 @@ export function ApprovalSharePanel({
             </div>
 
             <p className={appMutedSm}>
-              Links are single-use and expire after 14 days.{" "}
+              Links are single-use after your client acts on them. Expiry is shown
+              when you create a link.{" "}
               <Link href="/app/clients" className="font-semibold text-[#4f46e5]">
                 Client workspaces
               </Link>{" "}

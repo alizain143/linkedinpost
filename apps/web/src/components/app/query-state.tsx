@@ -2,10 +2,11 @@
 
 import type { ReactNode } from "react";
 import { ApiErrorBanner } from "@/components/app/api-error-banner";
+import { toQueryError } from "@/lib/query-error-utils";
 
 type QueryStateProps = {
   isLoading: boolean;
-  error: Error | null;
+  error: unknown;
   isEmpty?: boolean;
   skeleton?: ReactNode;
   empty?: ReactNode;
@@ -22,6 +23,8 @@ export function QueryState({
   onRetry,
   children,
 }: QueryStateProps) {
+  const queryError = toQueryError(error);
+
   if (isLoading) {
     return (
       <>
@@ -32,8 +35,8 @@ export function QueryState({
     );
   }
 
-  if (error) {
-    return <ApiErrorBanner error={error} onRetry={onRetry} />;
+  if (queryError) {
+    return <ApiErrorBanner error={queryError} onRetry={onRetry} />;
   }
 
   if (isEmpty) {

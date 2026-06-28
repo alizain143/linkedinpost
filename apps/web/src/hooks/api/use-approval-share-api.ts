@@ -2,6 +2,7 @@
 
 import { useAuth } from "@clerk/nextjs";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef } from "react";
 import {
   createApprovalLink,
   fetchApprovalLinkStatus,
@@ -13,15 +14,28 @@ import type {
   ApiApprovalLinkRevoked,
   ApiApprovalLinkStatus,
 } from "@/lib/api/types/approval-share";
+import { invalidatePostQueries } from "@/lib/post-query-invalidation";
+
+const ACTIVE_LINK_POLL_MS = 15_000;
+
+type ApprovalLinkStatusOptions = {
+  pollWhileActive?: boolean;
+  refreshRelatedOnDeactivate?: boolean;
+};
 
 export function useApprovalLinkStatus(
   workspaceId: string | null | undefined,
   postId: string | null | undefined,
   enabled = true,
+  options?: ApprovalLinkStatusOptions,
 ) {
   const { getToken, isLoaded, isSignedIn } = useAuth();
+  const queryClient = useQueryClient();
+  const previousActiveRef = useRef<boolean | null>(null);
+  const pollWhileActive = options?.pollWhileActive ?? false;
+  const refreshRelatedOnDeactivate = options?.refreshRelatedOnDeactivate ?? false;
 
-  return useQuery({
+  const query = useQuery({
     queryKey: queryKeys.approvalShare.status(workspaceId ?? "", postId ?? ""),
     enabled: Boolean(isLoaded && isSignedIn && workspaceId && postId && enabled),
     queryFn: async () => {
@@ -29,7 +43,32 @@ export function useApprovalLinkStatus(
       if (!token) throw new Error("Not authenticated");
       return fetchApprovalLinkStatus(token, workspaceId!, postId!);
     },
+    refetchInterval: pollWhileActive
+      ? (currentQuery) => (currentQuery.state.data?.active ? ACTIVE_LINK_POLL_MS : false)
+      : false,
   });
+
+  useEffect(() => {
+    if (!refreshRelatedOnDeactivate || !workspaceId || !postId || !enabled) {
+      return;
+    }
+
+    const active = query.data?.active ?? false;
+    if (previousActiveRef.current === true && !active) {
+      invalidatePostQueries(queryClient, workspaceId, postId);
+    }
+
+    previousActiveRef.current = active;
+  }, [
+    enabled,
+    postId,
+    query.data?.active,
+    queryClient,
+    refreshRelatedOnDeactivate,
+    workspaceId,
+  ]);
+
+  return query;
 }
 
 export function useCreateApprovalLinkMutation(
@@ -75,6 +114,7 @@ export function useRevokeApprovalLinkMutation(
         void queryClient.invalidateQueries({
           queryKey: queryKeys.approvalShare.status(workspaceId, postId),
         });
+        invalidatePostQueries(queryClient, workspaceId, postId);
       }
     },
   });

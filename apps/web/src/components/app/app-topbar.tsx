@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { Input } from "@/components/ui/input";
 import { MsIcon } from "@/components/ui/ms-icon";
 import { QUICK_DRAFT_CREDIT_COST } from "@/lib/credit-costs";
 import { useCredits } from "@/hooks/api/use-credits-api";
@@ -14,53 +13,9 @@ type AppTopbarProps = {
   onMenuClick: () => void;
 };
 
-const NOTIFICATIONS = [
-  {
-    icon: "how_to_reg",
-    tint: "#fff8eb",
-    color: "#d97706",
-    title: "Post ready for approval",
-    time: "2 minutes ago",
-    href: "/app/approvals",
-  },
-  {
-    icon: "auto_mode",
-    tint: "#f5f0ff",
-    color: "#7c3aed",
-    title: "Autopilot generated tomorrow's post",
-    time: "26 minutes ago",
-    href: "/app/autopilot",
-  },
-  {
-    icon: "check_circle",
-    tint: "#f0fdf4",
-    color: "#16a34a",
-    title: "Post published successfully",
-    time: "1 hour ago",
-    href: "/app/calendar",
-  },
-  {
-    icon: "rate_review",
-    tint: "#ecfeff",
-    color: "#0891b2",
-    title: "Client requested changes",
-    time: "3 hours ago",
-    href: "/app/approvals",
-  },
-  {
-    icon: "link_off",
-    tint: "#fef2f2",
-    color: "#dc2626",
-    title: "LinkedIn reconnect required",
-    time: "Yesterday",
-    href: "#",
-    action: "connect" as const,
-  },
-];
-
 export function AppTopbar({ title, onMenuClick }: AppTopbarProps) {
   const router = useRouter();
-  const { linkedinConnectionState, openConnect, showToast } = useAppUi();
+  const { linkedinConnectionState, openConnect } = useAppUi();
   const { canAfford, isLoading: creditsLoading } = useCredits();
   const canGeneratePost = creditsLoading || canAfford(QUICK_DRAFT_CREDIT_COST);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -71,7 +26,6 @@ export function AppTopbar({ title, onMenuClick }: AppTopbarProps) {
   const blockGenerate = (event?: { preventDefault: () => void }) => {
     event?.preventDefault();
     setGenOpen(false);
-    showToast("You're out of credits. Upgrade your plan to keep generating.", "error");
     router.push("/app/billing");
   };
 
@@ -90,15 +44,6 @@ export function AppTopbar({ title, onMenuClick }: AppTopbarProps) {
       setGenOpen(false);
     }
   };
-
-  const visibleNotifications = NOTIFICATIONS.filter(
-    (notification) =>
-      !(
-        "action" in notification &&
-        notification.action === "connect" &&
-        linkedinConnectionState === "publishReady"
-      ),
-  );
 
   useEffect(() => {
     const close = (e: MouseEvent) => {
@@ -130,14 +75,6 @@ export function AppTopbar({ title, onMenuClick }: AppTopbarProps) {
       </div>
 
       <div className="flex items-center gap-2.5">
-        <div className="pp-search h-[38px] w-60 items-center gap-2 rounded-[10px] border border-[#e7e9f2] bg-white px-3">
-          <MsIcon name="search" size={18} className="shrink-0 text-[#94a3b8]" />
-          <Input
-            variant="search"
-            placeholder="Search posts, drafts…"
-          />
-        </div>
-
         {linkedinConnectionState === "publishReady" ? (
           <div className="pp-search items-center gap-1.5 rounded-[10px] border border-[#cdeed7] bg-[#f0fdf4] px-3 py-2 text-[13px] font-semibold text-[#0a7a3f]">
             <MsIcon name="check_circle" size={16} className="text-[#16a34a]" />
@@ -171,49 +108,28 @@ export function AppTopbar({ title, onMenuClick }: AppTopbarProps) {
             onClick={() => setNotifOpen((v) => !v)}
             className="relative flex h-[38px] w-[38px] items-center justify-center rounded-[10px] border border-[#e7e9f2] bg-white hover:bg-[#f6f7fb]"
             aria-label="Notifications"
+            aria-expanded={notifOpen}
           >
             <MsIcon name="notifications" size={20} className="text-[#475569]" />
-            <span className="absolute right-2.5 top-2 h-[7px] w-[7px] rounded-full border-[1.5px] border-white bg-[#f43f5e]" />
           </button>
           {notifOpen ? (
             <div className="animate-ppfade absolute right-0 top-[calc(100%+8px)] z-50 w-80 overflow-hidden rounded-[14px] border border-[#eceef3] bg-white shadow-[0_18px_40px_-14px_rgba(24,28,64,0.3)]">
-              <div className="flex items-center justify-between border-b border-[#f1f3f8] px-4 py-3">
+              <div className="border-b border-[#f1f3f8] px-4 py-3">
                 <span className="font-display text-sm font-bold">Notifications</span>
-                <button
-                  type="button"
-                  onClick={() => showToast("All notifications marked read", "done_all")}
-                  className="text-[11px] font-semibold text-[#4f46e5]"
-                >
-                  Mark all read
-                </button>
               </div>
-              {visibleNotifications.map((n) => (
-                <Link
-                  key={n.title}
-                  href={n.href}
-                  onClick={(e) => {
-                    if ("action" in n && n.action === "connect") {
-                      e.preventDefault();
-                      openConnect();
-                    }
-                    setNotifOpen(false);
-                  }}
-                  className="flex gap-3 border-b border-[#f6f7fb] px-4 py-3 last:border-0 hover:bg-[#fafbff]"
-                >
-                  <div
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px]"
-                    style={{ background: n.tint }}
-                  >
-                    <MsIcon name={n.icon} size={18} style={{ color: n.color }} />
-                  </div>
-                  <div>
-                    <div className="text-[13px] font-semibold leading-snug text-[#1e293b]">
-                      {n.title}
-                    </div>
-                    <div className="mt-0.5 text-[11.5px] text-[#94a3b8]">{n.time}</div>
-                  </div>
-                </Link>
-              ))}
+              <div className="px-4 py-8 text-center">
+                <MsIcon
+                  name="notifications_none"
+                  size={28}
+                  className="mx-auto mb-2 text-[#cbd5e1]"
+                />
+                <p className="text-[13px] font-semibold text-[#64748b]">
+                  No notifications yet
+                </p>
+                <p className="mt-1 text-[12px] text-[#94a3b8]">
+                  Approval updates and publish alerts will appear here.
+                </p>
+              </div>
             </div>
           ) : null}
         </div>

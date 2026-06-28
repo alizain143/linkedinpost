@@ -157,7 +157,7 @@ function DashboardContent({
   return (
     <QueryState
       isLoading={isLoading || !activeWorkspaceId || !stats}
-      error={error as Error | null}
+      error={error}
       onRetry={() => void refetch()}
       skeleton={<DashboardSkeleton />}
     >

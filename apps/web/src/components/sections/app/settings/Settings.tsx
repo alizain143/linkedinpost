@@ -238,7 +238,7 @@ export default function Settings() {
   return (
     <QueryState
       isLoading={isLoading}
-      error={userError as Error | null}
+      error={userError}
       onRetry={() => void refetch()}
       skeleton={<SettingsSkeleton />}
     >

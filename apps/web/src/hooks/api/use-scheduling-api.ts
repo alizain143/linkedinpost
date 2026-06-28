@@ -10,7 +10,7 @@ import {
 } from "@/lib/api/posts";
 import type { ApiPostPackage } from "@/lib/api/types/post";
 import type { SchedulePostBody } from "@/lib/api/types/scheduling";
-import { invalidatePostQueries } from "@/hooks/api/use-posts-api";
+import { invalidatePostQueries } from "@/lib/post-query-invalidation";
 
 type ScheduleVariables = {
   postId: string;

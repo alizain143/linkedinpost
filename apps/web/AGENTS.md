@@ -22,7 +22,7 @@ Next.js App Router · Clerk auth · TanStack Query · API at `NEXT_PUBLIC_API_UR
 - **API:** `useApiClient()` + `parseApiResponse`; Bearer token from Clerk
 - **Server state:** TanStack Query hooks in `src/hooks/api/`
 - **Workspace:** Most calls need `workspaceId` from workspace context (FE-SLICE-01)
-- **UI:** Prefer wiring existing section components; remove `mock-app-data` imports as slices ship
+- **UI:** Prefer wiring existing section components; delete unused mock data as slices ship
 - **Types:** Align with backend DTOs — see Swagger or `apps/backend/src/common/swagger/`
 
 ## Keep docs updated
