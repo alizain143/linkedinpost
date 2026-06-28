@@ -1,31 +1,17 @@
-import {
-  apiBaseUrl,
-  authHeaders,
-  parseApiResponse,
-  type ApiUser,
-} from "@/lib/api/client";
+import { apiFetch } from "@/lib/api/fetch";
+import type { ApiUser } from "@/lib/api/types/user";
+
+export type { ApiUser, UserNotificationPrefs } from "@/lib/api/types/user";
 
 export async function fetchCurrentUser(token: string): Promise<ApiUser> {
-  const response = await fetch(`${apiBaseUrl()}/auth/me`, {
-    headers: {
-      Accept: "application/json",
-      ...authHeaders(token),
-    },
-  });
-  return parseApiResponse<ApiUser>(response);
+  return apiFetch<ApiUser>(token, "/auth/me");
 }
 
 export async function logout(token: string): Promise<{ success: boolean }> {
-  const response = await fetch(`${apiBaseUrl()}/auth/logout`, {
+  return apiFetch<{ success: boolean }>(token, "/auth/logout", {
     method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-      ...authHeaders(token),
-    },
     body: "{}",
   });
-  return parseApiResponse<{ success: boolean }>(response);
 }
 
 export type UpdateUserBody = Partial<
@@ -41,14 +27,8 @@ export async function updateCurrentUser(
   token: string,
   body: UpdateUserBody,
 ): Promise<ApiUser> {
-  const response = await fetch(`${apiBaseUrl()}/auth/me`, {
+  return apiFetch<ApiUser>(token, "/auth/me", {
     method: "PATCH",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-      ...authHeaders(token),
-    },
     body: JSON.stringify(body),
   });
-  return parseApiResponse<ApiUser>(response);
 }

@@ -1,20 +1,39 @@
 "use client";
 
-import { Suspense, useCallback, useState } from "react";
+import { useCallback, useState } from "react";
 import { ConfirmDialog } from "@/components/modals/confirm-dialog";
 import { ConnectLinkedInModal } from "@/components/modals/connect-linkedin-modal";
 import { RequestChangesModal } from "@/components/modals/request-changes-modal";
 import { ScheduleModal } from "@/components/modals/schedule-modal";
-import { useLogout } from "@/hooks/api/use-auth-api";
+import { useCurrentUser, useLogout } from "@/hooks/api/use-auth-api";
+import {
+  useInvalidateLinkedIn,
+  useLinkedInConnection,
+} from "@/hooks/api/use-linkedin-api";
+import {
+  usePublishPostMutation,
+  useReschedulePostMutation,
+  useSchedulePostMutation,
+} from "@/hooks/api/use-scheduling-api";
 import { useLinkedInClerk } from "@/hooks/use-linkedin-clerk";
-import { isAuthBypassEnabled } from "@/lib/auth-bypass";
+import { useWorkspace } from "@/hooks/use-workspace";
+import { ApiError } from "@/lib/api/client";
+import type {
+  PublishTarget,
+  ScheduleTarget,
+} from "@/lib/api/types/scheduling";
+import { getApiErrorMessage } from "@/lib/api-error-messages";
 import { clerkErrorMessage } from "@/lib/auth/clerk";
 import {
   LINKEDIN_CONNECT_CALLBACK,
-  LINKEDIN_CONNECT_COMPLETE,
   LINKEDIN_OAUTH_STRATEGY,
   LINKEDIN_PUBLISH_SCOPE,
 } from "@/lib/auth/linkedin-clerk";
+import {
+  getLinkedInConnectionState,
+  type LinkedInConnectionState,
+} from "@/lib/linkedin-utils";
+import { DEFAULT_TIMEZONE } from "@/lib/timezones";
 import { usePpToast } from "@/providers/pp-toast-provider";
 import { useClerk } from "@clerk/nextjs";
 import { useQueryClient } from "@tanstack/react-query";
@@ -36,11 +55,12 @@ type AppUiContextValue = {
   linkedinConnected: boolean;
   linkedinPublishReady: boolean;
   linkedInProfileName: string | null;
+  linkedinConnectionState: LinkedInConnectionState;
   openConnect: () => void;
   disconnectLinkedIn: () => void;
   requireLinkedIn: (fn: () => void) => () => void;
   askConfirm: (cfg: ConfirmConfig) => void;
-  openSchedule: () => void;
+  openSchedule: (target?: ScheduleTarget) => void;
   openRequestChanges: () => void;
   showToast: (msg: string, icon?: string) => void;
   toastCopy: () => void;
@@ -52,11 +72,15 @@ type AppUiContextValue = {
   confirmLogout: () => void;
   confirmDeleteAccount: () => void;
   confirmCancelPlan: () => void;
-  confirmRemoveClient: (name: string) => void;
-  confirmDeleteDraft: (title: string) => void;
-  confirmRejectPost: () => void;
+  confirmRemoveClient: (name: string, onConfirm: () => void) => void;
+  confirmDeleteDraft: (title: string, onConfirm: () => void) => void;
+  confirmDeleteContentProfile: (name: string, onConfirm: () => void) => void;
+  confirmRejectPost: (
+    title: string,
+    onConfirm: (feedback?: string) => void,
+  ) => void;
   confirmPauseAutopilot: (onPause: () => void) => void;
-  confirmPublishNow: () => void;
+  confirmPublishNow: (target: PublishTarget) => void;
 };
 
 const AppUiContext = createContext<AppUiContextValue | null>(null);
@@ -67,25 +91,41 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const logoutMutation = useLogout();
-  const bypass = isAuthBypassEnabled();
+  const { activeWorkspaceId } = useWorkspace();
+  const { data: currentUser } = useCurrentUser();
+  const userTimezone = currentUser?.timezone ?? DEFAULT_TIMEZONE;
+
+  const schedulePostMutation = useSchedulePostMutation(activeWorkspaceId);
+  const reschedulePostMutation = useReschedulePostMutation(activeWorkspaceId);
+  const publishPostMutation = usePublishPostMutation(activeWorkspaceId);
 
   const { connected, publishReady, profileName, externalAccount, user } =
     useLinkedInClerk();
+  const { data: connection } = useLinkedInConnection();
+  const invalidateLinkedIn = useInvalidateLinkedIn();
 
-  const [mockLinkedInConnected, setMockLinkedInConnected] = useState(false);
   const [showConnect, setShowConnect] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [confirm, setConfirm] = useState<ConfirmConfig | null>(null);
-  const [showSchedule, setShowSchedule] = useState(false);
+  const [scheduleTarget, setScheduleTarget] = useState<ScheduleTarget | null>(
+    null,
+  );
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
   const [showRequestChanges, setShowRequestChanges] = useState(false);
+  const [requestChangesFeedback, setRequestChangesFeedback] = useState("");
 
-  const linkedinConnected = bypass ? mockLinkedInConnected : connected;
-  const linkedinPublishReady = bypass ? mockLinkedInConnected : publishReady;
-  const linkedInProfileName = bypass
-    ? mockLinkedInConnected
-      ? "Maya Reyes"
-      : null
-    : profileName;
+  const linkedinConnected = connection?.connected ?? connected;
+  const linkedinPublishReady = connection?.publishReady ?? publishReady;
+  const linkedInProfileName = connection?.profileName ?? profileName;
+  const linkedinConnectionState = getLinkedInConnectionState(
+    connection ?? {
+      connected: linkedinConnected,
+      publishReady: linkedinPublishReady,
+      profileName: linkedInProfileName,
+      approvedScopes: [],
+      linkedInMemberId: null,
+    },
+  );
 
   const openConnect = useCallback(() => setShowConnect(true), []);
   const closeConnect = useCallback(() => {
@@ -94,13 +134,6 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const doConnectLinkedIn = useCallback(async () => {
-    if (bypass) {
-      setShowConnect(false);
-      setMockLinkedInConnected(true);
-      showToast("LinkedIn connected", "link");
-      return;
-    }
-
     if (!user) {
       showToast("Sign in to connect LinkedIn", "link_off");
       return;
@@ -108,7 +141,7 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
 
     setConnecting(true);
     try {
-      if (externalAccount && connected && !publishReady) {
+      if (externalAccount && linkedinConnected && !linkedinPublishReady) {
         await externalAccount.reauthorize({
           additionalScopes: [LINKEDIN_PUBLISH_SCOPE],
           redirectUrl: LINKEDIN_CONNECT_CALLBACK,
@@ -125,7 +158,13 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
       setConnecting(false);
       showToast(clerkErrorMessage(err), "link_off");
     }
-  }, [bypass, connected, externalAccount, publishReady, showToast, user]);
+  }, [
+    externalAccount,
+    linkedinConnected,
+    linkedinPublishReady,
+    showToast,
+    user,
+  ]);
 
   const disconnectLinkedIn = useCallback(() => {
     setConfirm({
@@ -135,12 +174,6 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
       body: "Scheduled posts won't publish until you reconnect. Your drafts and calendar stay saved.",
       confirmLabel: "Disconnect",
       onConfirm: () => {
-        if (bypass) {
-          setMockLinkedInConnected(false);
-          showToast("LinkedIn disconnected", "link_off");
-          return;
-        }
-
         if (!externalAccount) {
           showToast("LinkedIn is not connected", "link_off");
           return;
@@ -150,12 +183,13 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
           .destroy()
           .then(async () => {
             await user?.reload();
+            invalidateLinkedIn();
             showToast("LinkedIn disconnected", "link_off");
           })
           .catch((err) => showToast(clerkErrorMessage(err), "link_off"));
       },
     });
-  }, [bypass, externalAccount, showToast, user]);
+  }, [externalAccount, invalidateLinkedIn, showToast, user]);
 
   const askConfirmInternal = useCallback((cfg: ConfirmConfig) => {
     setConfirm(cfg);
@@ -177,20 +211,77 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
     [linkedinPublishReady, openConnect],
   );
 
-  const openSchedule = useCallback(() => {
-    if (linkedinPublishReady) setShowSchedule(true);
-    else openConnect();
-  }, [linkedinPublishReady, openConnect]);
+  const openSchedule = useCallback(
+    (target?: ScheduleTarget) => {
+      if (!target) {
+        showToast("Save a post first to schedule it", "event_busy");
+        return;
+      }
+      if (!linkedinPublishReady) {
+        openConnect();
+        return;
+      }
+      setScheduleError(null);
+      setScheduleTarget(target);
+    },
+    [linkedinPublishReady, openConnect, showToast],
+  );
 
-  const confirmSchedule = useCallback(() => {
-    setShowSchedule(false);
-    showToast("Approved & scheduled for Mon 9:00 AM", "event_available");
-  }, [showToast]);
+  const closeSchedule = useCallback(() => {
+    setScheduleTarget(null);
+    setScheduleError(null);
+  }, []);
+
+  const handleScheduleConfirm = useCallback(
+    (scheduledAt: string) => {
+      if (!scheduleTarget) return;
+
+      const mutation =
+        scheduleTarget.mode === "reschedule"
+          ? reschedulePostMutation
+          : schedulePostMutation;
+
+      void mutation
+        .mutateAsync({
+          postId: scheduleTarget.postId,
+          body: { scheduledAt },
+        })
+        .then(() => {
+          closeSchedule();
+          showToast("Post scheduled", "schedule");
+        })
+        .catch((err) => {
+          const message = getApiErrorMessage(err);
+          setScheduleError(message);
+          if (
+            err instanceof ApiError &&
+            (err.code === "LINKEDIN_NOT_CONNECTED" ||
+              err.code === "LINKEDIN_SCOPE_MISSING")
+          ) {
+            openConnect();
+          }
+        });
+    },
+    [
+      closeSchedule,
+      openConnect,
+      reschedulePostMutation,
+      schedulePostMutation,
+      scheduleTarget,
+      showToast,
+    ],
+  );
 
   const submitRequestChanges = useCallback(() => {
     setShowRequestChanges(false);
+    setRequestChangesFeedback("");
     showToast("Revision sent to AI Council", "send");
   }, [showToast]);
+
+  const openRequestChanges = useCallback(() => {
+    setRequestChangesFeedback("");
+    setShowRequestChanges(true);
+  }, []);
 
   const toastCopy = useCallback(
     () => showToast("Copied to clipboard", "content_copy"),
@@ -268,43 +359,72 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
   }, [askConfirmInternal, showToast]);
 
   const confirmRemoveClient = useCallback(
-    (name: string) => {
+    (name: string, onConfirm: () => void) => {
       askConfirmInternal({
         icon: "person_remove",
         tone: "danger",
         title: `Remove ${name}?`,
         body: "Their drafts and calendar will be archived. You can re-add them later.",
         confirmLabel: "Remove client",
-        onConfirm: () => showToast("Client removed", "person_remove"),
+        onConfirm: () => {
+          onConfirm();
+          showToast("Client removed", "person_remove");
+        },
       });
     },
     [askConfirmInternal, showToast],
   );
 
   const confirmDeleteDraft = useCallback(
-    (title: string) => {
+    (title: string, onConfirm: () => void) => {
       askConfirmInternal({
         icon: "delete",
         tone: "danger",
         title: "Delete this draft?",
         body: `"${title}" will be permanently removed from your pipeline.`,
         confirmLabel: "Delete draft",
-        onConfirm: () => showToast("Draft deleted", "delete"),
+        onConfirm: () => {
+          onConfirm();
+          showToast("Draft deleted", "delete");
+        },
       });
     },
     [askConfirmInternal, showToast],
   );
 
-  const confirmRejectPost = useCallback(() => {
-    askConfirmInternal({
-      icon: "cancel",
-      tone: "danger",
-      title: "Reject this post package?",
-      body: "It will be removed from the approval queue. This can't be undone.",
-      confirmLabel: "Reject",
-      onConfirm: () => showToast("Post package rejected", "cancel"),
-    });
-  }, [askConfirmInternal, showToast]);
+  const confirmDeleteContentProfile = useCallback(
+    (name: string, onConfirm: () => void) => {
+      askConfirmInternal({
+        icon: "delete",
+        tone: "danger",
+        title: "Delete this content profile?",
+        body: `"${name}" will be removed from this workspace. Posts already generated keep their history.`,
+        confirmLabel: "Delete profile",
+        onConfirm: () => {
+          onConfirm();
+          showToast("Content profile deleted", "delete");
+        },
+      });
+    },
+    [askConfirmInternal, showToast],
+  );
+
+  const confirmRejectPost = useCallback(
+    (title: string, onConfirm: (feedback?: string) => void) => {
+      askConfirmInternal({
+        icon: "cancel",
+        tone: "danger",
+        title: "Reject this post package?",
+        body: `"${title}" will be removed from the approval queue and returned to draft.`,
+        confirmLabel: "Reject",
+        onConfirm: () => {
+          onConfirm();
+          showToast("Post package rejected", "cancel");
+        },
+      });
+    },
+    [askConfirmInternal, showToast],
+  );
 
   const confirmPauseAutopilot = useCallback(
     (onPause: () => void) => {
@@ -323,31 +443,71 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
     [askConfirmInternal, showToast],
   );
 
-  const confirmPublishNow = useCallback(() => {
-    if (!linkedinPublishReady) {
-      openConnect();
-      return;
-    }
-    askConfirmInternal({
-      icon: "send",
-      tone: "neutral",
-      title: "Publish to LinkedIn now?",
-      body: "This post package will be published to your LinkedIn profile immediately.",
-      confirmLabel: "Publish now",
-      onConfirm: () => showToast("Published to LinkedIn", "check_circle"),
-    });
-  }, [askConfirmInternal, linkedinPublishReady, openConnect, showToast]);
+  const confirmPublishNow = useCallback(
+    (target: PublishTarget) => {
+      if (!linkedinPublishReady) {
+        openConnect();
+        return;
+      }
+      askConfirmInternal({
+        icon: "send",
+        tone: "neutral",
+        title: "Publish to LinkedIn now?",
+        body: `"${target.hook}" will be published to your LinkedIn profile immediately.`,
+        confirmLabel: "Publish now",
+        onConfirm: () => {
+          void publishPostMutation
+            .mutateAsync({ postId: target.postId })
+            .then((post) => {
+              if (post.status === "published") {
+                toastPublished();
+                if (post.linkedInPostUrl) {
+                  showToast("View your post on LinkedIn", "open_in_new");
+                }
+                return;
+              }
+              if (post.status === "failed") {
+                showToast(
+                  post.publishErrorMessage ?? "Publish failed",
+                  "error",
+                );
+              }
+            })
+            .catch((err) => {
+              const message = getApiErrorMessage(err);
+              showToast(message, "error");
+              if (
+                err instanceof ApiError &&
+                (err.code === "LINKEDIN_NOT_CONNECTED" ||
+                  err.code === "LINKEDIN_SCOPE_MISSING")
+              ) {
+                openConnect();
+              }
+            });
+        },
+      });
+    },
+    [
+      askConfirmInternal,
+      linkedinPublishReady,
+      openConnect,
+      publishPostMutation,
+      showToast,
+      toastPublished,
+    ],
+  );
 
   const value: AppUiContextValue = {
     linkedinConnected,
     linkedinPublishReady,
     linkedInProfileName,
+    linkedinConnectionState,
     openConnect,
     disconnectLinkedIn,
     requireLinkedIn,
     askConfirm,
     openSchedule,
-    openRequestChanges: () => setShowRequestChanges(true),
+    openRequestChanges,
     showToast,
     toastCopy,
     toastSave,
@@ -360,6 +520,7 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
     confirmCancelPlan,
     confirmRemoveClient,
     confirmDeleteDraft,
+    confirmDeleteContentProfile,
     confirmRejectPost,
     confirmPauseAutopilot,
     confirmPublishNow,
@@ -371,6 +532,11 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
       {showConnect ? (
         <ConnectLinkedInModal
           connecting={connecting}
+          mode={
+            linkedinConnectionState === "needsPublishScope"
+              ? "reauthorize"
+              : "connect"
+          }
           onClose={closeConnect}
           onConnect={() => void doConnectLinkedIn()}
         />
@@ -378,15 +544,28 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
       {confirm ? (
         <ConfirmDialog config={confirm} onCancel={cancelConfirm} onConfirm={doConfirm} />
       ) : null}
-      {showSchedule ? (
+      {scheduleTarget ? (
         <ScheduleModal
-          onClose={() => setShowSchedule(false)}
-          onConfirm={confirmSchedule}
+          target={scheduleTarget}
+          profileName={linkedInProfileName}
+          timezone={userTimezone}
+          isSubmitting={
+            schedulePostMutation.isPending || reschedulePostMutation.isPending
+          }
+          error={scheduleError}
+          onClose={closeSchedule}
+          onConfirm={handleScheduleConfirm}
         />
       ) : null}
       {showRequestChanges ? (
         <RequestChangesModal
-          onClose={() => setShowRequestChanges(false)}
+          open={showRequestChanges}
+          feedback={requestChangesFeedback}
+          onFeedbackChange={setRequestChangesFeedback}
+          onClose={() => {
+            setShowRequestChanges(false);
+            setRequestChangesFeedback("");
+          }}
           onSubmit={submitRequestChanges}
         />
       ) : null}

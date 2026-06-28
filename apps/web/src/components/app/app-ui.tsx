@@ -1,6 +1,13 @@
 /** Design tokens from PostPilot AI.dc.html — authenticated app area */
 "use client";
 
+import type { PostPackageStatus } from "@/lib/api/types/enums";
+import {
+  getPostStatusLabel,
+  isPostPackageStatus,
+  POST_STATUS_STYLES,
+} from "@/lib/post-status";
+
 export const appCard =
   "rounded-2xl border border-[#eceef4] bg-white";
 export const appCardLg =
@@ -35,16 +42,21 @@ export function StatusBadge({
   status,
   className = "",
 }: {
-  status: string;
+  status: PostPackageStatus | string;
   className?: string;
 }) {
-  const s = STATUS_STYLES[status] ?? { bg: "#f1f3f8", text: "#64748b" };
+  const label = isPostPackageStatus(status)
+    ? getPostStatusLabel(status)
+    : status;
+  const s = isPostPackageStatus(status)
+    ? POST_STATUS_STYLES[status]
+    : (STATUS_STYLES[status] ?? { bg: "#f1f3f8", text: "#64748b" });
   return (
     <span
       className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-bold ${className}`}
       style={{ background: s.bg, color: s.text }}
     >
-      {status}
+      {label}
     </span>
   );
 }

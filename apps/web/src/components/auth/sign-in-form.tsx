@@ -17,7 +17,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { InputField } from "@/components/ui/input";
 import { MsIcon } from "@/components/ui/ms-icon";
-import { isAuthBypassEnabled } from "@/lib/auth-bypass";
 import {
   clerkErrorMessage,
   needsEmailSecondFactor,
@@ -41,8 +40,6 @@ export function SignInForm() {
   const [verifyEmail, setVerifyEmail] = useState("");
   const [digits, setDigits] = useState<string[]>(Array(OTP_LENGTH).fill(""));
   const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
-
-  const bypass = isAuthBypassEnabled();
 
   const finishLogin = async (sessionId: string | null) => {
     if (!sessionId || !setActive) return false;
@@ -135,10 +132,6 @@ export function SignInForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (bypass) {
-      router.push(DASHBOARD_ROUTE);
-      return;
-    }
     if (!isLoaded || !signIn) return;
 
     setLoading(true);
@@ -241,7 +234,7 @@ export function SignInForm() {
       <AuthDivider />
       <AuthError message={error} />
 
-      <form onSubmit={handleSubmit} noValidate={bypass}>
+      <form onSubmit={handleSubmit}>
         <AuthField
           label="Email"
           icon="mail"
@@ -278,7 +271,7 @@ export function SignInForm() {
           variant="primary"
           size="auth"
           fullWidth
-          disabled={loading || (!bypass && !isLoaded)}
+          disabled={loading || !isLoaded}
         >
           {loading ? "Signing in…" : "Sign in"}
         </Button>

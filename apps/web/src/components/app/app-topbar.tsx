@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { MsIcon } from "@/components/ui/ms-icon";
+import { QUICK_DRAFT_CREDIT_COST } from "@/lib/credit-costs";
+import { useCredits } from "@/hooks/api/use-credits-api";
 import { useAppUi } from "@/providers/app-ui-provider";
 
 type AppTopbarProps = {
@@ -56,11 +59,46 @@ const NOTIFICATIONS = [
 ];
 
 export function AppTopbar({ title, onMenuClick }: AppTopbarProps) {
-  const { linkedinConnected, openConnect, showToast } = useAppUi();
+  const router = useRouter();
+  const { linkedinConnectionState, openConnect, showToast } = useAppUi();
+  const { canAfford, isLoading: creditsLoading } = useCredits();
+  const canGeneratePost = creditsLoading || canAfford(QUICK_DRAFT_CREDIT_COST);
   const [notifOpen, setNotifOpen] = useState(false);
   const [genOpen, setGenOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
   const genRef = useRef<HTMLDivElement>(null);
+
+  const blockGenerate = (event?: { preventDefault: () => void }) => {
+    event?.preventDefault();
+    setGenOpen(false);
+    showToast("You're out of credits. Upgrade your plan to keep generating.", "error");
+    router.push("/app/billing");
+  };
+
+  const handleGenerateToggle = () => {
+    if (!canGeneratePost) {
+      blockGenerate();
+      return;
+    }
+    setGenOpen((value) => !value);
+  };
+
+  const handleGeneratePostClick = (event: React.MouseEvent) => {
+    if (!canGeneratePost) {
+      blockGenerate(event);
+    } else {
+      setGenOpen(false);
+    }
+  };
+
+  const visibleNotifications = NOTIFICATIONS.filter(
+    (notification) =>
+      !(
+        "action" in notification &&
+        notification.action === "connect" &&
+        linkedinConnectionState === "publishReady"
+      ),
+  );
 
   useEffect(() => {
     const close = (e: MouseEvent) => {
@@ -100,11 +138,20 @@ export function AppTopbar({ title, onMenuClick }: AppTopbarProps) {
           />
         </div>
 
-        {linkedinConnected ? (
+        {linkedinConnectionState === "publishReady" ? (
           <div className="pp-search items-center gap-1.5 rounded-[10px] border border-[#cdeed7] bg-[#f0fdf4] px-3 py-2 text-[13px] font-semibold text-[#0a7a3f]">
             <MsIcon name="check_circle" size={16} className="text-[#16a34a]" />
             LinkedIn connected
           </div>
+        ) : linkedinConnectionState === "needsPublishScope" ? (
+          <button
+            type="button"
+            onClick={openConnect}
+            className="pp-search items-center gap-1.5 rounded-[10px] border border-[#fde68a] bg-[#fffbeb] px-3 py-2 text-[13px] font-semibold text-[#92400e] hover:bg-[#fef3c7]"
+          >
+            <MsIcon name="warning" size={16} className="text-[#d97706]" />
+            Finish setup
+          </button>
         ) : (
           <button
             type="button"
@@ -140,12 +187,12 @@ export function AppTopbar({ title, onMenuClick }: AppTopbarProps) {
                   Mark all read
                 </button>
               </div>
-              {NOTIFICATIONS.map((n) => (
+              {visibleNotifications.map((n) => (
                 <Link
                   key={n.title}
                   href={n.href}
                   onClick={(e) => {
-                    if (n.action === "connect") {
+                    if ("action" in n && n.action === "connect") {
                       e.preventDefault();
                       openConnect();
                     }
@@ -174,8 +221,12 @@ export function AppTopbar({ title, onMenuClick }: AppTopbarProps) {
         <div className="relative" ref={genRef}>
           <button
             type="button"
-            onClick={() => setGenOpen((v) => !v)}
-            className="flex items-center gap-1.5 rounded-[10px] bg-[#4f46e5] px-4 py-2 text-[13.5px] font-semibold text-white shadow-[0_3px_10px_rgba(79,70,229,0.26)] hover:bg-[#4338ca]"
+            onClick={handleGenerateToggle}
+            className={`flex items-center gap-1.5 rounded-[10px] px-4 py-2 text-[13.5px] font-semibold text-white shadow-[0_3px_10px_rgba(79,70,229,0.26)] ${
+              canGeneratePost
+                ? "bg-[#4f46e5] hover:bg-[#4338ca]"
+                : "cursor-not-allowed bg-[#94a3b8]"
+            }`}
           >
             <MsIcon name="auto_awesome" size={17} />
             Generate
@@ -185,7 +236,7 @@ export function AppTopbar({ title, onMenuClick }: AppTopbarProps) {
             <div className="animate-ppfade absolute right-0 top-[calc(100%+8px)] z-50 w-60 rounded-[13px] border border-[#eceef3] bg-white p-1.5 shadow-[0_18px_40px_-14px_rgba(24,28,64,0.3)]">
               <Link
                 href="/app/generate"
-                onClick={() => setGenOpen(false)}
+                onClick={handleGeneratePostClick}
                 className="flex items-center gap-3 rounded-[9px] p-2.5 hover:bg-[#f6f7fb]"
               >
                 <div className="flex h-[30px] w-[30px] items-center justify-center rounded-lg bg-[#eef2ff]">
@@ -196,7 +247,7 @@ export function AppTopbar({ title, onMenuClick }: AppTopbarProps) {
                 </span>
               </Link>
               <Link
-                href="/app/calendar"
+                href="/app/generate/calendar"
                 onClick={() => setGenOpen(false)}
                 className="flex items-center gap-3 rounded-[9px] p-2.5 hover:bg-[#f6f7fb]"
               >

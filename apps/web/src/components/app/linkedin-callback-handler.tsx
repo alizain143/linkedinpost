@@ -1,6 +1,9 @@
 "use client";
 
-import { useSyncLinkedInProfile } from "@/hooks/api/use-linkedin-api";
+import {
+  useInvalidateLinkedIn,
+  useSyncLinkedInProfile,
+} from "@/hooks/api/use-linkedin-api";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { usePpToast } from "@/providers/pp-toast-provider";
@@ -10,6 +13,7 @@ export function LinkedInCallbackHandler() {
   const router = useRouter();
   const { showToast } = usePpToast();
   const syncProfile = useSyncLinkedInProfile();
+  const invalidateLinkedIn = useInvalidateLinkedIn();
   const handledRef = useRef(false);
 
   useEffect(() => {
@@ -20,9 +24,15 @@ export function LinkedInCallbackHandler() {
 
     if (linkedin === "connected") {
       showToast("LinkedIn connected", "link");
-      void syncProfile.mutateAsync().catch(() => {
-        showToast("Connected, but profile sync is pending", "link");
-      });
+      void syncProfile
+        .mutateAsync()
+        .then(() => {
+          invalidateLinkedIn();
+        })
+        .catch(() => {
+          showToast("Connected, but profile sync is pending", "link");
+          invalidateLinkedIn();
+        });
     } else if (linkedin === "error") {
       showToast(
         searchParams.get("message") ?? "Could not connect LinkedIn",
@@ -34,7 +44,7 @@ export function LinkedInCallbackHandler() {
     url.searchParams.delete("linkedin");
     url.searchParams.delete("message");
     router.replace(url.pathname + url.search);
-  }, [router, searchParams, showToast, syncProfile]);
+  }, [invalidateLinkedIn, router, searchParams, showToast, syncProfile]);
 
   return null;
 }

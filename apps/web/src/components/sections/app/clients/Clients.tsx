@@ -1,106 +1,230 @@
 "use client";
 
-import { MsIcon } from "@/components/ui/ms-icon";
+import { useMemo, useState } from "react";
+import { QueryState } from "@/components/app/query-state";
+import { AddClientModal } from "@/components/sections/app/clients/AddClientModal";
+import { ClientWorkspaceCard } from "@/components/sections/app/clients/ClientWorkspaceCard";
 import { Button } from "@/components/ui/button";
-import { MOCK_CLIENTS } from "@/lib/mock-app-data";
+import { MsIcon } from "@/components/ui/ms-icon";
+import {
+  useClientWorkspaceDetails,
+  useClientWorkspaces,
+  useCreateClientWorkspace,
+  useDeleteClientWorkspace,
+} from "@/hooks/api/use-workspaces-api";
+import { useCredits } from "@/hooks/api/use-credits-api";
+import { useWorkspace } from "@/hooks/use-workspace";
+import { getApiErrorMessage } from "@/lib/api-error-messages";
+import type { ApiWorkspace } from "@/lib/api/types/workspace";
+import {
+  AGENCY_MAX_CLIENT_WORKSPACES,
+  canUseClientWorkspaces,
+  getPersonalWorkspace,
+} from "@/lib/client-workspace-utils";
 import { useAppUi } from "@/providers/app-ui-provider";
 
-function profileStyle(status: string) {
-  if (status === "Complete") return "bg-[#f0fdf4] text-[#16a34a]";
-  if (status === "In progress") return "bg-[#fff8eb] text-[#d97706]";
-  return "bg-[#f1f3f8] text-[#64748b]";
+function ClientsSkeleton() {
+  return (
+    <div className="pp-grid3">
+      {Array.from({ length: 3 }).map((_, index) => (
+        <div
+          key={index}
+          className="h-[220px] animate-pulse rounded-2xl bg-[#eceef4]"
+        />
+      ))}
+    </div>
+  );
 }
 
 export default function Clients() {
   const { confirmRemoveClient, showToast } = useAppUi();
+  const { balance } = useCredits();
+  const {
+    workspaces,
+    activeWorkspaceId,
+    setActiveWorkspace,
+    refetch: refetchWorkspaces,
+  } = useWorkspace();
+
+  const plan = balance?.plan ?? "free";
+  const agencyAllowed = canUseClientWorkspaces(plan);
+
+  const {
+    clientWorkspaces,
+    isLoading: clientsLoading,
+    error: clientsError,
+    refetch: refetchClients,
+  } = useClientWorkspaces();
+
+  const clientIds = useMemo(
+    () => clientWorkspaces.map((workspace) => workspace.id),
+    [clientWorkspaces],
+  );
+
+  const {
+    detailsById,
+    isLoading: detailsLoading,
+    error: detailsError,
+    refetch: refetchDetails,
+  } = useClientWorkspaceDetails(clientIds);
+
+  const createMutation = useCreateClientWorkspace();
+  const deleteMutation = useDeleteClientWorkspace();
+
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalError, setModalError] = useState<string | null>(null);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+
+  const atLimit = clientWorkspaces.length >= AGENCY_MAX_CLIENT_WORKSPACES;
+  const canAddClient = agencyAllowed && !atLimit;
+  const isLoading = clientsLoading;
+  const queryError = clientsError || detailsError;
+
+  const handleCreate = (body: Parameters<typeof createMutation.mutate>[0]) => {
+    setModalError(null);
+
+    createMutation.mutate(body, {
+      onSuccess: (detail) => {
+        setModalOpen(false);
+        setActiveWorkspace(detail.id);
+        showToast("Client created", "groups");
+      },
+      onError: (error) => {
+        setModalError(getApiErrorMessage(error));
+      },
+    });
+  };
+
+  const handleRemove = (workspace: ApiWorkspace) => {
+    confirmRemoveClient(workspace.name, () => {
+      setRemovingId(workspace.id);
+
+      deleteMutation.mutate(workspace.id, {
+        onSuccess: () => {
+          if (activeWorkspaceId === workspace.id) {
+            const personal = getPersonalWorkspace(workspaces);
+            if (personal) {
+              setActiveWorkspace(personal.id);
+            }
+          }
+          setRemovingId(null);
+        },
+        onError: (error) => {
+          setRemovingId(null);
+          showToast(getApiErrorMessage(error), "error");
+        },
+      });
+    });
+  };
 
   return (
     <div>
+      {!agencyAllowed ? (
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[#fde68a] bg-gradient-to-br from-[#fffbeb] to-[#fffdf5] px-5 py-4">
+          <div className="min-w-[200px] flex-1">
+            <div className="font-display text-[15px] font-bold text-[#92400e]">
+              Upgrade to Agency for client workspaces
+            </div>
+            <div className="text-[13px] text-[#a16207]">
+              Manage up to 5 client workspaces with separate pipelines,
+              calendars, and content profiles.
+            </div>
+          </div>
+          <Button
+            href="/app/billing"
+            variant="primary"
+            size="md"
+            className="shrink-0 rounded-[10px]"
+          >
+            View plans
+          </Button>
+        </div>
+      ) : null}
+
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <p className="text-[14px] text-[#64748b]">
-          <span className="font-semibold text-[#1e293b]">5 client workspaces</span>
-          {" · "}Agency plan
+          <span className="font-semibold text-[#1e293b]">
+            {clientWorkspaces.length} client workspace
+            {clientWorkspaces.length === 1 ? "" : "s"}
+          </span>
+          {" · "}
+          {agencyAllowed
+            ? `Agency plan · ${clientWorkspaces.length}/${AGENCY_MAX_CLIENT_WORKSPACES} used`
+            : "Agency plan required"}
         </p>
         <Button
           type="button"
           variant="primary"
           size="sm"
           className="rounded-[10px]"
-          onClick={() => showToast("Client invite sent", "person_add")}
+          disabled={!canAddClient || createMutation.isPending}
+          onClick={() => {
+            setModalError(null);
+            setModalOpen(true);
+          }}
         >
           <MsIcon name="add" size={17} />
           Add client
         </Button>
       </div>
 
-      <div className="pp-grid3">
-        {MOCK_CLIENTS.map((c) => (
-          <div
-            key={c.name}
-            className="rounded-2xl border border-[#eceef4] bg-white p-5"
-          >
-            <div className="flex items-center gap-3">
-              <div
-                className={`flex h-11 w-11 items-center justify-center rounded-xl ${c.color} font-display text-sm font-bold text-white`}
-              >
-                {c.initials}
-              </div>
-              <div>
-                <div className="font-display font-bold">{c.name}</div>
-                <div className="text-xs text-[#94a3b8]">{c.industry}</div>
-              </div>
-            </div>
-            <p className="mt-3 text-xs text-[#64748b]">{c.audience}</p>
-            <div className="mt-4 flex gap-5 text-xs">
-              <div>
-                <div className="font-bold text-[#1e293b]">{c.drafts}</div>
-                <div className="text-[#94a3b8]">Drafts</div>
-              </div>
-              <div>
-                <div className="font-bold text-[#1e293b]">{c.scheduled}</div>
-                <div className="text-[#94a3b8]">Scheduled</div>
-              </div>
-              <div>
-                <span
-                  className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${profileStyle(c.profile)}`}
-                >
-                  {c.profile}
-                </span>
-                <div className="mt-0.5 text-[#94a3b8]">Profile</div>
-              </div>
-            </div>
-            <div className="mt-4 flex gap-2">
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                className="flex-1"
-                onClick={() => showToast(`Opened ${c.name}`, "open_in_new")}
-              >
-                Open
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="px-3 hover:bg-[#fef2f2] hover:text-[#dc2626]"
-                onClick={() => confirmRemoveClient(c.name)}
-              >
-                <MsIcon name="delete" size={18} />
-              </Button>
-            </div>
-          </div>
-        ))}
+      <QueryState
+        isLoading={isLoading}
+        error={queryError as Error | null}
+        onRetry={() => {
+          void refetchClients();
+          void refetchDetails();
+          refetchWorkspaces();
+        }}
+        skeleton={<ClientsSkeleton />}
+      >
+        <div className="pp-grid3">
+          {clientWorkspaces.map((workspace) => (
+            <ClientWorkspaceCard
+              key={workspace.id}
+              workspace={workspace}
+              detail={detailsById.get(workspace.id)}
+              isLoading={detailsLoading && !detailsById.has(workspace.id)}
+              onRemove={handleRemove}
+              isRemoving={removingId === workspace.id}
+            />
+          ))}
 
-        <button
-          type="button"
-          onClick={() => showToast("Add client flow coming soon", "add")}
-          className="flex min-h-[220px] flex-col items-center justify-center rounded-2xl border border-dashed border-[#d8dce8] bg-white p-5 text-[#94a3b8] hover:border-[#cbd2e0] hover:bg-[#fafbff]"
-        >
-          <MsIcon name="add" size={28} className="mb-2" />
-          <span className="text-sm font-semibold">Add new client</span>
-        </button>
-      </div>
+          {canAddClient ? (
+            <button
+              type="button"
+              onClick={() => {
+                setModalError(null);
+                setModalOpen(true);
+              }}
+              className="flex min-h-[220px] flex-col items-center justify-center rounded-2xl border border-dashed border-[#d8dce8] bg-white p-5 text-[#94a3b8] hover:border-[#cbd2e0] hover:bg-[#fafbff]"
+            >
+              <MsIcon name="add" size={28} className="mb-2" />
+              <span className="text-sm font-semibold">Add new client</span>
+            </button>
+          ) : null}
+        </div>
+
+        {agencyAllowed && clientWorkspaces.length === 0 ? (
+          <p className="mt-4 text-[13px] text-[#64748b]">
+            No client workspaces yet. Create one to manage content for a client
+            in its own workspace.
+          </p>
+        ) : null}
+      </QueryState>
+
+      <AddClientModal
+        open={modalOpen}
+        onClose={() => {
+          if (!createMutation.isPending) {
+            setModalOpen(false);
+            setModalError(null);
+          }
+        }}
+        onSubmit={handleCreate}
+        isSubmitting={createMutation.isPending}
+        errorMessage={modalError}
+      />
     </div>
   );
 }

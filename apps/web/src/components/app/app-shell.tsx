@@ -7,8 +7,10 @@ import { AppTopbar } from "@/components/app/app-topbar";
 const PAGE_TITLES: Record<string, string> = {
   "/app/dashboard": "Dashboard",
   "/app/generate": "Generate",
+  "/app/generate/calendar": "Generate calendar",
   "/app/autopilot": "Autopilot",
   "/app/pipeline": "Pipeline",
+  "/app/posts": "Posts",
   "/app/calendar": "Calendar",
   "/app/approvals": "Approvals",
   "/app/clients": "Clients",
@@ -17,6 +19,16 @@ const PAGE_TITLES: Record<string, string> = {
   "/app/settings": "Settings",
 };
 
+function getPageTitle(pathname: string): string {
+  if (pathname.startsWith("/app/posts/") && pathname !== "/app/posts") {
+    return "Post detail";
+  }
+  if (pathname === "/app/generate/calendar") {
+    return PAGE_TITLES["/app/generate/calendar"] ?? "Generate calendar";
+  }
+  return PAGE_TITLES[pathname] ?? "Dashboard";
+}
+
 type AppShellProps = {
   children: React.ReactNode;
   pathname: string;
@@ -24,7 +36,7 @@ type AppShellProps = {
 
 export function AppShell({ children, pathname }: AppShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const title = PAGE_TITLES[pathname] ?? "Dashboard";
+  const title = getPageTitle(pathname);
 
   return (
     <div className="flex min-h-screen bg-[#f6f7f9]">

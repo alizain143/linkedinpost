@@ -13,7 +13,6 @@ import {
   AuthHeading,
 } from "@/components/auth/auth-ui";
 import { Button } from "@/components/ui/button";
-import { isAuthBypassEnabled } from "@/lib/auth-bypass";
 import { clerkErrorMessage } from "@/lib/auth/clerk";
 
 export function SignUpForm() {
@@ -26,14 +25,8 @@ export function SignUpForm() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const bypass = isAuthBypassEnabled();
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (bypass) {
-      router.push("/app/dashboard");
-      return;
-    }
     if (!agreed) {
       setError("Please accept the Terms and Privacy Policy to continue.");
       return;
@@ -81,7 +74,7 @@ export function SignUpForm() {
       <AuthDivider />
       <AuthError message={error} />
 
-      <form onSubmit={handleSubmit} noValidate={bypass}>
+      <form onSubmit={handleSubmit}>
         <AuthField
           label="Full name"
           icon="person"
@@ -132,14 +125,14 @@ export function SignUpForm() {
           </span>
         </label>
 
-        {!bypass ? <div id="clerk-captcha" className="mb-4" /> : null}
+        <div id="clerk-captcha" className="mb-4" />
 
         <Button
           type="submit"
           variant="primary"
           size="auth"
           fullWidth
-          disabled={loading || (!bypass && !isLoaded)}
+          disabled={loading || !isLoaded}
         >
           {loading ? "Creating account…" : "Create account"}
         </Button>

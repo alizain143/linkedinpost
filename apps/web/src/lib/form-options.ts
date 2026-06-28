@@ -27,7 +27,6 @@ export const AUTOPILOT_STRATEGY_FIELDS = [
 
 export const PUBLISHING_SETTING_FIELDS = [
   { label: "Default account", options: ["Maya Reyes · Profile"], default: "Maya Reyes · Profile" },
-  { label: "Timezone", options: [...TIMEZONE_OPTIONS], default: "GMT-5 Eastern" },
   { label: "Approval mode", options: ["Require approval before publish"], default: "Require approval before publish" },
 ] as const;
 

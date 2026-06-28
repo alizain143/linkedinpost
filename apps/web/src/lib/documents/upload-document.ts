@@ -1,33 +1,7 @@
-import { apiBaseUrl, authHeaders, parseApiResponse } from "@/lib/api/client";
+import { initDocumentUpload } from "@/lib/api/documents";
 import { DocumentPurpose } from "@/lib/documents/constants";
 
-export type InitUploadResult = {
-  documentId: string;
-  uploadUrl: string;
-};
-
-export async function initDocumentUpload(
-  token: string,
-  file: File,
-  purpose: DocumentPurpose,
-): Promise<InitUploadResult> {
-  const response = await fetch(`${apiBaseUrl()}/documents/init`, {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-      ...authHeaders(token),
-    },
-    body: JSON.stringify({
-      filename: file.name,
-      mimeType: file.type,
-      sizeBytes: file.size,
-      purpose,
-    }),
-  });
-
-  return parseApiResponse<InitUploadResult>(response);
-}
+export type { InitUploadResult } from "@/lib/api/documents";
 
 export async function uploadFileToPresignedUrl(
   uploadUrl: string,

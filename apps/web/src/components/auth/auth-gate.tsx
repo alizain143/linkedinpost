@@ -3,23 +3,16 @@
 import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { isAuthBypassEnabled } from "@/lib/auth-bypass";
 
 export function AuthGate({ children }: { children: React.ReactNode }) {
-  const bypass = isAuthBypassEnabled();
   const { isLoaded, isSignedIn } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (bypass) return;
     if (isLoaded && isSignedIn) {
       router.replace("/app/dashboard");
     }
-  }, [bypass, isLoaded, isSignedIn, router]);
-
-  if (bypass) {
-    return children;
-  }
+  }, [isLoaded, isSignedIn, router]);
 
   if (!isLoaded || isSignedIn) {
     return (

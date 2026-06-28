@@ -96,20 +96,29 @@ Update this section as features land. Tell the agent to mark items `[x]` when do
 
 ### Frontend screens (track separately)
 
-- [ ] Marketing pages (static)
-- [ ] App shell + sidebar
-- [ ] Dashboard
-- [ ] Generate
-- [ ] Calendar
-- [ ] Drafts / Scheduled
-- [ ] Content Profile
-- [ ] Pipeline
-- [ ] Approvals
-- [ ] Post Package detail
-- [ ] Autopilot
-- [ ] Clients (agency)
-- [ ] Billing
-- [ ] Settings
+See [FRONTEND_IMPLEMENTATION.md](FRONTEND_IMPLEMENTATION.md) for slice order and dependencies (`FE-SLICE-01`–`18`).
+
+- [x] Marketing pages (static)
+- [x] App shell + sidebar (UI only)
+- [x] Auth pages (Clerk)
+- [x] API foundation + workspace context (FE-SLICE-01)
+- [x] Settings + profile photo (FE-SLICE-02)
+- [x] Content profile (FE-SLICE-03)
+- [x] Credits in shell (FE-SLICE-04)
+- [x] Dashboard — API wired (FE-SLICE-05)
+- [x] Posts + post detail (FE-SLICE-06)
+- [x] Generate — quick draft (FE-SLICE-12)
+- [x] Generate — council + jobs (FE-SLICE-13)
+- [x] Calendar — API wired (FE-SLICE-09)
+- [x] Pipeline — API wired (FE-SLICE-07)
+- [x] Approvals — API wired (FE-SLICE-08)
+- [x] Schedule + publish (FE-SLICE-11)
+- [x] LinkedIn connection (FE-SLICE-10)
+- [x] Autopilot — API wired (FE-SLICE-15)
+- [x] Bulk calendar gen (FE-SLICE-14)
+- [x] Clients / agency (FE-SLICE-17)
+- [x] Billing — API wired (FE-SLICE-16)
+- [x] Approval share links (FE-SLICE-18)
 
 ---
 

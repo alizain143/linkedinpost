@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { CreditsMeter } from "@/components/app/credits-meter";
 import { Brand } from "@/components/ui/brand";
 import { Button } from "@/components/ui/button";
 import { MsIcon } from "@/components/ui/ms-icon";
+import { WorkspaceSwitcher } from "@/components/app/workspace-switcher";
 import { APP_NAV } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import {
@@ -12,7 +14,7 @@ import {
   getUserDisplayName,
   getUserInitials,
 } from "@/hooks/api/use-auth-api";
-import { isAuthBypassEnabled } from "@/lib/auth-bypass";
+import { useCredits } from "@/hooks/api/use-credits-api";
 import { useAppUi } from "@/providers/app-ui-provider";
 
 type AppSidebarProps = {
@@ -56,21 +58,49 @@ function NavLinks({
   );
 }
 
-export function AppSidebar({ mobileOpen, onCloseMobile }: AppSidebarProps) {
-  const pathname = usePathname();
+function SidebarUserFooter() {
   const { confirmLogout } = useAppUi();
   const { data: user } = useCurrentUser();
-  const bypass = isAuthBypassEnabled();
+  const { balance } = useCredits();
 
-  const displayName = bypass ? "Maya Reyes" : getUserDisplayName(user);
-  const initials = bypass ? "MR" : getUserInitials(user);
-  const email = bypass ? "maya@northbeam.co" : (user?.email ?? "");
-  const planLabel = bypass ? "PRO" : (user?.plan?.toUpperCase() ?? "FREE");
-  const workspaceName = bypass
-    ? "Maya's Workspace"
-    : user?.firstName
-      ? `${user.firstName}'s Workspace`
-      : "My Workspace";
+  const displayName = getUserDisplayName(user);
+  const initials = getUserInitials(user);
+  const email = user?.email ?? "";
+  const planLabel = (balance?.plan ?? user?.plan ?? "free").toUpperCase();
+
+  return (
+    <>
+      <CreditsMeter />
+      <div className="flex items-center gap-2.5 px-0.5 py-1">
+        <div className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#fb7185] to-[#f43f5e] font-display text-[13px] font-bold text-white">
+          {initials}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-[13px] font-semibold text-[#1e293b]">
+            {displayName}
+          </div>
+          <div className="truncate text-[11px] text-[#94a3b8]">{email}</div>
+        </div>
+        <span className="shrink-0 rounded-full bg-[#eef2ff] px-2 py-0.5 text-[10.5px] font-bold tracking-wide text-[#4f46e5]">
+          {planLabel}
+        </span>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="size-[30px] shrink-0 rounded-lg"
+          aria-label="Log out"
+          onClick={confirmLogout}
+        >
+          <MsIcon name="logout" size={18} className="text-[#94a3b8]" />
+        </Button>
+      </div>
+    </>
+  );
+}
+
+export function AppSidebar({ mobileOpen, onCloseMobile }: AppSidebarProps) {
+  const pathname = usePathname();
 
   return (
     <>
@@ -93,9 +123,15 @@ export function AppSidebar({ mobileOpen, onCloseMobile }: AppSidebarProps) {
         <div className="px-4 pb-3 pt-[18px]">
           <Brand href="/app/dashboard" size="sm" />
         </div>
+        <div className="px-3 pb-2">
+          <WorkspaceSwitcher />
+        </div>
         <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 py-1">
           <NavLinks pathname={pathname} onNavigate={onCloseMobile} />
         </nav>
+        <div className="border-t border-[#f1f3f8] px-[14px] pb-4 pt-[14px]">
+          <SidebarUserFooter />
+        </div>
       </aside>
 
       {/* Desktop sidebar */}
@@ -105,23 +141,7 @@ export function AppSidebar({ mobileOpen, onCloseMobile }: AppSidebarProps) {
         </div>
 
         <div className="px-3 pb-2">
-          <button
-            type="button"
-            className="flex w-full items-center justify-between rounded-[10px] border border-[#eceef4] bg-[#f8f9fc] px-[11px] py-[9px] text-left"
-          >
-            <div className="flex min-w-0 items-center gap-[9px]">
-              <div className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-[7px] bg-gradient-to-br from-[#4f46e5] to-[#0891b2] font-display text-[11px] font-bold text-white">
-                {initials[0] ?? "W"}
-              </div>
-              <div className="min-w-0">
-                <div className="truncate text-[12.5px] font-bold leading-tight">
-                  {workspaceName}
-                </div>
-                <div className="text-[10.5px] text-[#94a3b8]">Personal</div>
-              </div>
-            </div>
-            <MsIcon name="unfold_more" size={17} className="shrink-0 text-[#94a3b8]" />
-          </button>
+          <WorkspaceSwitcher />
         </div>
 
         <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 py-1">
@@ -129,53 +149,7 @@ export function AppSidebar({ mobileOpen, onCloseMobile }: AppSidebarProps) {
         </nav>
 
         <div className="border-t border-[#f1f3f8] px-[14px] pb-4 pt-[14px]">
-          <div className="mb-3 rounded-[13px] border border-[#e6e8ff] bg-gradient-to-br from-[#f6f5ff] to-[#eef2ff] p-[13px]">
-            <div className="mb-2 flex items-center justify-between">
-              <span className="text-xs font-semibold text-[#4338ca]">Credits</span>
-              <span className="font-display text-xs font-bold text-[#4338ca]">
-                23 / 50
-              </span>
-            </div>
-            <div className="mb-[11px] h-[7px] overflow-hidden rounded-full bg-[#e0e3ff]">
-              <div className="h-full w-[46%] rounded-full bg-gradient-to-r from-[#4f46e5] to-[#7c3aed]" />
-            </div>
-            <Button
-              href="/app/billing"
-              variant="primary"
-              size="xs"
-              fullWidth
-              className="py-2"
-            >
-              Upgrade Plan
-            </Button>
-          </div>
-
-          <div className="flex items-center gap-2.5 px-0.5 py-1">
-            <div className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#fb7185] to-[#f43f5e] font-display text-[13px] font-bold text-white">
-              {initials}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-[13px] font-semibold text-[#1e293b]">
-                {displayName}
-              </div>
-              <div className="truncate text-[11px] text-[#94a3b8]">
-                {email}
-              </div>
-            </div>
-            <span className="shrink-0 rounded-full bg-[#eef2ff] px-2 py-0.5 text-[10.5px] font-bold tracking-wide text-[#4f46e5]">
-              {planLabel}
-            </span>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="size-[30px] shrink-0 rounded-lg"
-              aria-label="Log out"
-              onClick={confirmLogout}
-            >
-              <MsIcon name="logout" size={18} className="text-[#94a3b8]" />
-            </Button>
-          </div>
+          <SidebarUserFooter />
         </div>
       </aside>
     </>

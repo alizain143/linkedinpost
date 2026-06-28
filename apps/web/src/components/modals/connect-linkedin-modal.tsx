@@ -6,15 +6,19 @@ import { MsIcon } from "@/components/ui/ms-icon";
 
 type ConnectLinkedInModalProps = {
   connecting: boolean;
+  mode?: "connect" | "reauthorize";
   onClose: () => void;
   onConnect: () => void;
 };
 
 export function ConnectLinkedInModal({
   connecting,
+  mode = "connect",
   onClose,
   onConnect,
 }: ConnectLinkedInModalProps) {
+  const isReauthorize = mode === "reauthorize";
+
   return (
     <div
       className="animate-ppfade fixed inset-0 z-[92] flex items-center justify-center bg-[rgba(15,19,38,0.5)] p-6 backdrop-blur-[4px]"
@@ -52,11 +56,14 @@ export function ConnectLinkedInModal({
 
         <div className="px-[30px] pb-7 pt-[26px]">
           <h2 className="text-center font-display text-[21px] font-extrabold tracking-[-0.02em] text-[#0d1326]">
-            Connect your LinkedIn account
+            {isReauthorize
+              ? "Finish LinkedIn publishing setup"
+              : "Connect your LinkedIn account"}
           </h2>
           <p className="mx-auto mt-2 mb-[22px] max-w-[340px] text-center text-sm leading-[1.6] text-[#64748b]">
-            To schedule and publish posts, link your LinkedIn profile. It takes a
-            few seconds and you stay in control of every post.
+            {isReauthorize
+              ? "Grant publish permission so linkedinpost.ai can schedule and publish approved posts to your profile."
+              : "To schedule and publish posts, link your LinkedIn profile. It takes a few seconds and you stay in control of every post."}
           </p>
 
           <div className="mb-[22px] flex flex-col gap-3 rounded-[14px] border border-[#eef0f5] bg-[#f8f9fc] px-[18px] py-4">
@@ -89,7 +96,7 @@ export function ConnectLinkedInModal({
                 size={19}
                 className="animate-ppspin text-white"
               />
-              Connecting to LinkedIn…
+              {isReauthorize ? "Updating permissions…" : "Connecting to LinkedIn…"}
             </Button>
           ) : (
             <Button
@@ -103,7 +110,7 @@ export function ConnectLinkedInModal({
               <span className="flex h-5 w-5 items-center justify-center rounded-[5px] bg-white font-display text-xs font-extrabold text-[#0a66c2]">
                 in
               </span>
-              Continue with LinkedIn
+              {isReauthorize ? "Grant publish access" : "Continue with LinkedIn"}
             </Button>
           )}
 

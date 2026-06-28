@@ -278,7 +278,7 @@ Backend deep-dives in `apps/backend/`: `GENERATION.md`, `COUNCIL.md`, `PUBLISHIN
 
 ## Frontend status
 
-All app screens listed in `PRODUCT_OVERVIEW.md` are **not started** (marketing, dashboard, generate, calendar, pipeline, etc.).
+Marketing site and app UI shells exist under `apps/web`. **FE-SLICE-01** through **FE-SLICE-18** are wired to the API (workspace context, settings, content profile, credits shell, dashboard stats, posts CRUD, pipeline kanban, approvals queue, calendar views, LinkedIn connection, schedule/publish, quick draft generate, council jobs + polling, bulk calendar generation, autopilot config + planned posts, billing + Stripe checkout/portal, agency client workspaces, approval share links + public `/approve/[token]` page).
 
 ---
 

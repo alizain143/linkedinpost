@@ -8,18 +8,20 @@ import {
   updateCurrentUser,
   type UpdateUserBody,
 } from "@/lib/api/auth";
-import type { ApiUser } from "@/lib/api/client";
+import { ApiError } from "@/lib/api/client";
+import type { ApiUser } from "@/lib/api/types/user";
 import { queryKeys } from "@/lib/api/query-keys";
-import { isAuthBypassEnabled } from "@/lib/auth-bypass";
 
 export function useCurrentUser() {
   const { getToken, isLoaded, isSignedIn } = useAuth();
-  const bypass = isAuthBypassEnabled();
 
   return useQuery({
     queryKey: queryKeys.currentUser,
-    enabled: bypass ? false : isLoaded && isSignedIn,
+    enabled: isLoaded && isSignedIn,
     retry: (failureCount, error) => {
+      if (error instanceof ApiError && error.code === "ACCOUNT_DELETED") {
+        return false;
+      }
       if (error instanceof Error && error.message === "Not authenticated") {
         return failureCount < 5;
       }
@@ -75,4 +77,11 @@ export function getUserInitials(user?: ApiUser | null) {
   const initials = `${first}${last}`.toUpperCase();
   if (initials) return initials;
   return user.email[0]?.toUpperCase() ?? "?";
+}
+
+export function getUserFirstName(user?: ApiUser | null) {
+  if (!user) return null;
+  if (user.firstName?.trim()) return user.firstName.trim();
+  const display = getUserDisplayName(user);
+  return display.split(/\s+/)[0] ?? display;
 }

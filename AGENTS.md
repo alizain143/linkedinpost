@@ -34,4 +34,4 @@ See [.cursor/rules/docs-sync.mdc](.cursor/rules/docs-sync.mdc) for the full chec
 
 ## Frontend
 
-See [apps/web/AGENTS.md](apps/web/AGENTS.md) for Next.js and UI conventions.
+See [FRONTEND_IMPLEMENTATION.md](FRONTEND_IMPLEMENTATION.md) for the API integration slice plan and [apps/web/AGENTS.md](apps/web/AGENTS.md) for Next.js conventions.

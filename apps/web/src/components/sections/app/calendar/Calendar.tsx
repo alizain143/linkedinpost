@@ -1,206 +1,203 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { StatusBadge } from "@/components/app/app-ui";
+import { QueryState } from "@/components/app/query-state";
+import { CalendarEventChip } from "@/components/sections/app/calendar/CalendarEventChip";
 import { Button, filterVariant, segmentVariant } from "@/components/ui/button";
 import { MsIcon } from "@/components/ui/ms-icon";
+import { useCurrentUser } from "@/hooks/api/use-auth-api";
+import { useCalendar } from "@/hooks/api/use-calendar-api";
+import { useWorkspace } from "@/hooks/use-workspace";
+import type { CalendarView } from "@/lib/api/types/calendar";
+import {
+  CALENDAR_FILTERS,
+  calendarFilterToStatuses,
+  parseCalendarFilter,
+  type CalendarFilter,
+} from "@/lib/calendar-filters";
+import {
+  formatCalendarEventTime,
+  formatCalendarHeaderLabel,
+  formatListItemDate,
+  getEventStatusStyle,
+  getLegendLabel,
+  getTodayDateKey,
+  shiftAnchorDate,
+} from "@/lib/calendar-utils";
+import {
+  CALENDAR_LEGEND_STATUSES,
+  POST_STATUS_STYLES,
+} from "@/lib/post-status";
+import { DEFAULT_TIMEZONE, timezoneLabel } from "@/lib/timezones";
 
-const FILTERS = [
-  "All",
-  "Needs Approval",
-  "Scheduled",
-  "Published",
-  "Failed",
-  "Autopilot",
-  "Manual",
-] as const;
+const VIEW_OPTIONS: CalendarView[] = ["month", "week", "list"];
 
-const LEGEND = [
-  { label: "Idea", color: "#64748b" },
-  { label: "Draft", color: "#7c3aed" },
-  { label: "Scheduled", color: "#4f46e5" },
-  { label: "Published", color: "#16a34a" },
-];
-
-type CalPost = {
-  title: string;
-  status: string;
-  source?: "Autopilot" | "Manual";
-  time?: string;
-};
-
-const MONTH_POSTS: Record<string, Record<number, CalPost[]>> = {
-  "2026-5": {
-    8: [{ title: "May momentum check-in", status: "Published", source: "Manual", time: "9:00 AM" }],
-    15: [{ title: "What we shipped in May", status: "Published", source: "Autopilot", time: "8:30 AM" }],
-    22: [{ title: "Hiring update", status: "Scheduled", source: "Manual", time: "9:00 AM" }],
-    29: [{ title: "Q2 lessons learned", status: "Draft", source: "Autopilot", time: "10:00 AM" }],
-  },
-  "2026-6": {
-    2: [{ title: "I almost shut down…", status: "Published", source: "Autopilot", time: "9:00 AM" }],
-    4: [{ title: "3 hiring mistakes…", status: "Scheduled", source: "Manual", time: "8:30 AM" }],
-    6: [{ title: "Why most LinkedIn…", status: "Scheduled", source: "Autopilot", time: "9:00 AM" }],
-    9: [{ title: "B2B hooks framework", status: "Draft", source: "Manual", time: "9:00 AM" }],
-    11: [{ title: "$1M ARR with zero ads", status: "Published", source: "Manual", time: "10:00 AM" }],
-    16: [{ title: "Cold outreach is dead", status: "Failed", source: "Autopilot", time: "9:00 AM" }],
-    23: [{ title: "The hire that changed…", status: "Idea", source: "Autopilot", time: "9:00 AM" }],
-    27: [{ title: "Enterprise deal lessons", status: "Scheduled", source: "Manual", time: "9:00 AM" }],
-  },
-  "2026-7": {
-    3: [{ title: "Mid-year founder reset", status: "Draft", source: "Manual", time: "9:00 AM" }],
-    8: [{ title: "Summer hiring playbook", status: "Scheduled", source: "Autopilot", time: "8:30 AM" }],
-    14: [{ title: "Contrarian take on PLG", status: "Needs Approval", source: "Manual", time: "9:00 AM" }],
-    21: [{ title: "What churn taught us", status: "Idea", source: "Autopilot", time: "9:00 AM" }],
-    28: [{ title: "July product recap", status: "Scheduled", source: "Manual", time: "10:00 AM" }],
-  },
-};
-
-const STATUS_COLORS: Record<string, { c: string; bg: string }> = {
-  Published: { c: "#16a34a", bg: "#f0fdf4" },
-  Scheduled: { c: "#4f46e5", bg: "#eef2ff" },
-  Draft: { c: "#7c3aed", bg: "#f5f0ff" },
-  Failed: { c: "#dc2626", bg: "#fef2f2" },
-  Idea: { c: "#64748b", bg: "#f1f3f8" },
-  "Needs Approval": { c: "#d97706", bg: "#fff8eb" },
-};
-
-const TODAY = { year: 2026, month: 5, day: 27 };
-const MONTH_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-function monthKey(year: number, month: number) {
-  return `${year}-${month + 1}`;
-}
-
-function filterPosts(posts: CalPost[], filter: string) {
-  if (filter === "All") return posts;
-  if (filter === "Autopilot") return posts.filter((p) => p.source === "Autopilot");
-  if (filter === "Manual") return posts.filter((p) => p.source === "Manual");
-  return posts.filter((p) => p.status === filter);
-}
-
-function buildMonthCells(year: number, month: number) {
-  const firstDay = new Date(year, month, 1);
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const jsDay = firstDay.getDay();
-  const leadBlanks = jsDay === 0 ? 6 : jsDay - 1;
-
-  const cells: { day: number | null; isToday: boolean }[] = [];
-  for (let i = 0; i < leadBlanks; i++) cells.push({ day: null, isToday: false });
-  for (let d = 1; d <= daysInMonth; d++) {
-    cells.push({
-      day: d,
-      isToday:
-        year === TODAY.year && month === TODAY.month && d === TODAY.day,
-    });
+function parseCalendarView(value: string | null): CalendarView {
+  if (value === "week" || value === "list" || value === "month") {
+    return value;
   }
-  while (cells.length % 7 !== 0) cells.push({ day: null, isToday: false });
-  return cells;
+  return "month";
 }
 
-function getWeekDays(year: number, month: number, anchorDay: number) {
-  const anchor = new Date(year, month, anchorDay);
-  const jsDay = anchor.getDay();
-  const mondayOffset = jsDay === 0 ? -6 : 1 - jsDay;
-  const monday = new Date(year, month, anchorDay + mondayOffset);
-
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(monday);
-    d.setDate(monday.getDate() + i);
-    return {
-      day: d.getDate(),
-      month: d.getMonth(),
-      year: d.getFullYear(),
-      inMonth: d.getMonth() === month && d.getFullYear() === year,
-      isToday:
-        d.getFullYear() === TODAY.year &&
-        d.getMonth() === TODAY.month &&
-        d.getDate() === TODAY.day,
-      dow: ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"][i],
-    };
-  });
+function isIsoDateKey(value: string | null): value is string {
+  return !!value && /^\d{4}-\d{2}-\d{2}$/.test(value);
 }
 
-function PostChip({ post }: { post: CalPost }) {
-  const sc = STATUS_COLORS[post.status] ?? STATUS_COLORS.Idea;
+function isInAnchorMonth(dayDate: string, anchorDate: string): boolean {
+  return dayDate.slice(0, 7) === anchorDate.slice(0, 7);
+}
+
+function CalendarMonthSkeleton() {
   return (
-    <div
-      className="cursor-pointer rounded-md px-1.5 py-1 hover:brightness-[0.97]"
-      style={{ background: sc.bg, borderLeft: `3px solid ${sc.c}` }}
-    >
-      <div
-        className="truncate text-[11px] font-semibold leading-tight"
-        style={{ color: sc.c }}
-      >
-        {post.title}
+    <div className="overflow-hidden rounded-2xl border border-[#eceef4] bg-white">
+      <div className="grid grid-cols-7 border-b border-[#f1f3f8]">
+        {Array.from({ length: 7 }).map((_, i) => (
+          <div key={i} className="h-9 animate-pulse bg-[#f8f9fc]" />
+        ))}
+      </div>
+      <div className="grid grid-cols-7">
+        {Array.from({ length: 35 }).map((_, i) => (
+          <div
+            key={i}
+            className="min-h-[104px] animate-pulse border-b border-r border-[#f1f3f8] bg-[#fbfbfc] last:border-r-0"
+          />
+        ))}
       </div>
     </div>
   );
 }
 
+function CalendarListSkeleton() {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-[#eceef4] bg-white">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div
+          key={i}
+          className="h-[74px] animate-pulse border-b border-[#f1f3f8] last:border-0"
+        />
+      ))}
+    </div>
+  );
+}
+
 export default function Calendar() {
-  const [view, setView] = useState<"month" | "week" | "list">("month");
-  const [filter, setFilter] = useState<string>("All");
-  const [monthDate, setMonthDate] = useState(() => new Date(2026, 5, 1));
-  const [weekAnchorDay, setWeekAnchorDay] = useState(9);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { activeWorkspaceId } = useWorkspace();
+  const { data: currentUser } = useCurrentUser();
 
-  const year = monthDate.getFullYear();
-  const month = monthDate.getMonth();
-  const key = monthKey(year, month);
-  const monthPosts = MONTH_POSTS[key] ?? {};
+  const userTimezone = currentUser?.timezone ?? DEFAULT_TIMEZONE;
+  const initialView = parseCalendarView(searchParams.get("view"));
+  const initialFilter = parseCalendarFilter(searchParams.get("filter"));
+  const initialDate = isIsoDateKey(searchParams.get("date"))
+    ? searchParams.get("date")!
+    : getTodayDateKey(userTimezone);
 
-  const monthLabel = monthDate.toLocaleDateString("en-US", {
-    month: "long",
-    year: "numeric",
-  });
+  const [view, setView] = useState<CalendarView>(initialView);
+  const [filter, setFilter] = useState<CalendarFilter>(initialFilter);
+  const [anchorDate, setAnchorDate] = useState(initialDate);
+  const timezoneSyncedRef = useRef(false);
 
-  const cells = useMemo(() => buildMonthCells(year, month), [year, month]);
-  const weekDays = useMemo(
-    () => getWeekDays(year, month, weekAnchorDay),
-    [year, month, weekAnchorDay],
+  useEffect(() => {
+    if (currentUser?.timezone && !timezoneSyncedRef.current) {
+      if (!isIsoDateKey(searchParams.get("date"))) {
+        setAnchorDate(getTodayDateKey(currentUser.timezone));
+      }
+      timezoneSyncedRef.current = true;
+    }
+  }, [currentUser?.timezone, searchParams]);
+
+  const syncUrl = useCallback(
+    (next: { view?: CalendarView; date?: string; filter?: CalendarFilter }) => {
+      const params = new URLSearchParams();
+      params.set("view", next.view ?? view);
+      params.set("date", next.date ?? anchorDate);
+      params.set("filter", next.filter ?? filter);
+      router.replace(`/app/calendar?${params.toString()}`, { scroll: false });
+    },
+    [anchorDate, filter, router, view],
   );
 
-  const listItems = useMemo(() => {
-    return Object.entries(monthPosts)
-      .flatMap(([day, posts]) =>
-        filterPosts(posts, filter).map((post) => ({
-          ...post,
-          day: Number(day),
-        })),
-      )
-      .sort((a, b) => a.day - b.day);
-  }, [monthPosts, filter]);
+  const statusParam = useMemo(
+    () => calendarFilterToStatuses(filter),
+    [filter],
+  );
 
-  const goPrevMonth = () => {
-    setMonthDate((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1));
-    setWeekAnchorDay(1);
+  const queryParams = useMemo(
+    () => ({
+      view,
+      date: anchorDate,
+      ...(statusParam ? { status: statusParam } : {}),
+      ...(view === "list" ? { limit: 50 } : {}),
+    }),
+    [anchorDate, statusParam, view],
+  );
+
+  const { data, isLoading, error, refetch } = useCalendar(
+    activeWorkspaceId,
+    queryParams,
+  );
+
+  const displayTimezone = data?.timezone ?? userTimezone;
+  const headerLabel = formatCalendarHeaderLabel(data, anchorDate);
+
+  const goPrev = () => {
+    const nextDate =
+      view === "month"
+        ? shiftAnchorDate(anchorDate, { months: -1 })
+        : shiftAnchorDate(anchorDate, { days: -7 });
+    setAnchorDate(nextDate);
+    syncUrl({ date: nextDate });
   };
 
-  const goNextMonth = () => {
-    setMonthDate((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1));
-    setWeekAnchorDay(1);
+  const goNext = () => {
+    const nextDate =
+      view === "month"
+        ? shiftAnchorDate(anchorDate, { months: 1 })
+        : shiftAnchorDate(anchorDate, { days: 7 });
+    setAnchorDate(nextDate);
+    syncUrl({ date: nextDate });
   };
 
-  const postsForDay = (day: number) =>
-    filterPosts(monthPosts[day] ?? [], filter);
-
-  const postsForDate = (y: number, m: number, day: number) => {
-    const k = monthKey(y, m);
-    return filterPosts(MONTH_POSTS[k]?.[day] ?? [], filter);
+  const goToday = () => {
+    const nextDate = getTodayDateKey(displayTimezone);
+    setAnchorDate(nextDate);
+    syncUrl({ date: nextDate });
   };
+
+  const handleViewChange = (nextView: CalendarView) => {
+    setView(nextView);
+    syncUrl({ view: nextView });
+  };
+
+  const handleFilterChange = (nextFilter: CalendarFilter) => {
+    setFilter(nextFilter);
+    syncUrl({ filter: nextFilter });
+  };
+
+  const calendarSkeleton =
+    view === "list" ? <CalendarListSkeleton /> : <CalendarMonthSkeleton />;
 
   return (
     <div>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">
-          <h2 className="font-display text-xl font-bold">{monthLabel}</h2>
+          <div>
+            <h2 className="font-display text-xl font-bold">{headerLabel}</h2>
+            <p className="text-[11.5px] text-[#94a3b8]">
+              Times shown in {timezoneLabel(displayTimezone)}
+            </p>
+          </div>
           <div className="flex gap-1">
             <Button
               type="button"
               variant="icon"
               size="icon"
-              aria-label="Previous month"
-              onClick={goPrevMonth}
+              aria-label={view === "month" ? "Previous month" : "Previous period"}
+              onClick={goPrev}
             >
               <MsIcon name="chevron_left" size={18} className="text-[#475569]" />
             </Button>
@@ -208,28 +205,46 @@ export default function Calendar() {
               type="button"
               variant="icon"
               size="icon"
-              aria-label="Next month"
-              onClick={goNextMonth}
+              aria-label={view === "month" ? "Next month" : "Next period"}
+              onClick={goNext}
             >
               <MsIcon name="chevron_right" size={18} className="text-[#475569]" />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="rounded-[8px] px-2.5 text-xs font-semibold text-[#64748b]"
+              onClick={goToday}
+            >
+              Today
             </Button>
           </div>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex gap-0.5 rounded-[10px] bg-[#eef0f5] p-0.5">
-            {(["month", "week", "list"] as const).map((v) => (
+            {VIEW_OPTIONS.map((v) => (
               <Button
                 key={v}
                 type="button"
                 variant={segmentVariant(view === v)}
                 size="sm"
                 className="rounded-[8px] px-3.5 py-1.5 capitalize"
-                onClick={() => setView(v)}
+                onClick={() => handleViewChange(v)}
               >
                 {v}
               </Button>
             ))}
           </div>
+          <Button
+            href="/app/generate/calendar"
+            variant="secondary"
+            size="sm"
+            className="rounded-[10px]"
+          >
+            <MsIcon name="calendar_month" size={17} />
+            Generate calendar
+          </Button>
           <Button
             href="/app/generate"
             variant="primary"
@@ -243,192 +258,210 @@ export default function Calendar() {
       </div>
 
       <div className="mb-3.5 flex flex-wrap gap-1.5">
-        {FILTERS.map((f) => (
+        {CALENDAR_FILTERS.map((f) => (
           <Button
             key={f}
             type="button"
-            variant={filterVariant(filter === f, f === "Autopilot" && filter !== f)}
+            variant={filterVariant(filter === f)}
             shape="pill"
             size="sm"
-            onClick={() => setFilter(f)}
+            onClick={() => handleFilterChange(f)}
           >
-            {f === "Autopilot" ? (
-              <span className="inline-flex items-center gap-1">
-                <MsIcon name="auto_mode" size={14} />
-                Autopilot
-              </span>
-            ) : (
-              f
-            )}
+            {f}
           </Button>
         ))}
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-4">
-        {LEGEND.map((l) => (
+        {CALENDAR_LEGEND_STATUSES.map((status) => (
           <span
-            key={l.label}
+            key={status}
             className="inline-flex items-center gap-1.5 text-xs font-medium text-[#64748b]"
           >
             <span
               className="h-2 w-2 rounded-[3px]"
-              style={{ background: l.color }}
+              style={{ background: POST_STATUS_STYLES[status].text }}
             />
-            {l.label}
+            {getLegendLabel(status)}
           </span>
         ))}
       </div>
 
-      {view === "month" ? (
-        <div className="overflow-hidden rounded-2xl border border-[#eceef4] bg-white">
-          <div className="grid grid-cols-7 border-b border-[#f1f3f8]">
-            {["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"].map((d) => (
-              <div
-                key={d}
-                className="py-2.5 text-center text-[11.5px] font-bold tracking-wide text-[#94a3b8]"
-              >
-                {d}
-              </div>
-            ))}
-          </div>
-          <div className="grid grid-cols-7">
-            {cells.map((cell, i) => {
-              const posts = cell.day ? postsForDay(cell.day) : [];
-              return (
+      <QueryState
+        isLoading={isLoading}
+        error={error}
+        skeleton={calendarSkeleton}
+        onRetry={() => void refetch()}
+      >
+        {data?.view === "month" ? (
+          <div className="overflow-hidden rounded-2xl border border-[#eceef4] bg-white">
+            <div className="grid grid-cols-7 border-b border-[#f1f3f8]">
+              {["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"].map((d) => (
                 <div
-                  key={i}
-                  className={`min-h-[104px] border-b border-r border-[#f1f3f8] p-2 last:border-r-0 ${
-                    cell.isToday ? "bg-[#fafbff]" : cell.day ? "" : "bg-[#fbfbfc]"
-                  }`}
+                  key={d}
+                  className="py-2.5 text-center text-[11.5px] font-bold tracking-wide text-[#94a3b8]"
                 >
-                  {cell.day ? (
-                    <>
-                      <div
-                        className={`mb-1 flex h-7 w-7 items-center justify-center text-sm font-semibold ${
-                          cell.isToday
-                            ? "rounded-full bg-[#4f46e5] text-white"
-                            : "text-[#64748b]"
-                        }`}
-                      >
-                        {cell.day}
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        {posts.map((p) => (
-                          <PostChip key={p.title} post={p} />
-                        ))}
-                      </div>
-                    </>
-                  ) : null}
+                  {d}
                 </div>
-              );
-            })}
-          </div>
-        </div>
-      ) : view === "week" ? (
-        <div className="overflow-hidden rounded-2xl border border-[#eceef4] bg-white">
-          <div className="grid grid-cols-7">
-            {weekDays.map((w, i) => {
-              const posts = w.inMonth
-                ? postsForDay(w.day)
-                : postsForDate(w.year, w.month, w.day);
-              return (
-                <div
-                  key={`${w.dow}-${i}`}
-                  className={`border-r border-[#f1f3f8] p-3 last:border-r-0 ${
-                    !w.inMonth ? "bg-[#fbfbfc]" : ""
-                  }`}
-                >
-                  <div className="mb-3 border-b border-[#f1f3f8] pb-3 text-center">
-                    <div className="text-[11px] font-bold tracking-wide text-[#94a3b8]">
-                      {w.dow}
-                    </div>
+              ))}
+            </div>
+            <div className="grid grid-cols-7">
+              {data.cells.map((cell) => {
+                const posts = cell.posts;
+                return (
+                  <div
+                    key={cell.date}
+                    className={`min-h-[104px] border-b border-r border-[#f1f3f8] p-2 last:border-r-0 ${
+                      cell.isToday
+                        ? "bg-[#fafbff]"
+                        : cell.inMonth
+                          ? ""
+                          : "bg-[#fbfbfc]"
+                    }`}
+                  >
                     <div
-                      className={`mt-1 font-display text-lg font-bold ${
-                        w.isToday ? "text-[#4f46e5]" : "text-[#1e293b]"
+                      className={`mb-1 flex h-7 w-7 items-center justify-center text-sm font-semibold ${
+                        cell.isToday
+                          ? "rounded-full bg-[#4f46e5] text-white"
+                          : cell.inMonth
+                            ? "text-[#64748b]"
+                            : "text-[#cbd2e0]"
                       }`}
                     >
-                      {w.day}
+                      {cell.day}
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      {posts.map((post) => (
+                        <CalendarEventChip key={post.id} event={post} />
+                      ))}
                     </div>
                   </div>
-                  <div className="flex min-h-[200px] flex-col gap-1.5">
-                    {posts.map((p) => {
-                      const sc = STATUS_COLORS[p.status] ?? STATUS_COLORS.Idea;
-                      return (
-                        <div
-                          key={p.title}
-                          className="cursor-pointer rounded-[9px] p-2"
-                          style={{
-                            background: sc.bg,
-                            border: `1px solid ${sc.c}22`,
-                          }}
-                        >
-                          <div
-                            className="mb-0.5 text-[10px] font-bold"
-                            style={{ color: sc.c }}
-                          >
-                            {p.time ?? "9:00 AM"}
-                          </div>
-                          <div className="text-[11.5px] font-semibold leading-snug text-[#1e293b]">
-                            {p.title}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      ) : listItems.length > 0 ? (
-        <div className="overflow-hidden rounded-2xl border border-[#eceef4] bg-white">
-          {listItems.map((item) => (
-            <div
-              key={`${item.day}-${item.title}`}
-              className="flex items-center gap-4 border-b border-[#f1f3f8] px-5 py-4 last:border-0 hover:bg-[#fafbff]"
-            >
-              <div className="flex h-[46px] w-[46px] shrink-0 flex-col items-center justify-center rounded-[11px] bg-[#eef2ff]">
-                <span className="text-[10px] font-bold text-[#4f46e5]">
-                  {MONTH_ABBR[month]}
-                </span>
-                <span className="font-display text-lg font-extrabold text-[#4338ca]">
-                  {item.day}
-                </span>
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-semibold text-[#1e293b]">
-                  {item.title}
-                </div>
-                <div className="text-xs text-[#94a3b8]">
-                  {item.time ?? "9:00 AM"} · Maya Reyes
-                </div>
-              </div>
-              <StatusBadge status={item.status} />
-              <div className="flex gap-1">
-                {["edit", "content_copy", "send"].map((icon) => (
-                  <Button
-                    key={icon}
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="rounded-lg"
-                  >
-                    <MsIcon name={icon} size={17} className="text-[#94a3b8]" />
-                  </Button>
-                ))}
-              </div>
+                );
+              })}
             </div>
-          ))}
-        </div>
-      ) : (
-        <div className="rounded-2xl border border-[#eceef4] bg-white px-6 py-14 text-center">
-          <MsIcon name="event_busy" size={36} className="mx-auto mb-3 text-[#cbd2e0]" />
-          <p className="text-sm font-semibold text-[#64748b]">
-            No posts for {monthLabel}
-            {filter !== "All" ? ` matching “${filter}”` : ""}.
-          </p>
-        </div>
-      )}
+          </div>
+        ) : null}
+
+        {data?.view === "week" ? (
+          <div className="overflow-hidden rounded-2xl border border-[#eceef4] bg-white">
+            <div className="grid grid-cols-7">
+              {data.days.map((day) => {
+                const inAnchorMonth = isInAnchorMonth(day.date, anchorDate);
+                return (
+                  <div
+                    key={day.date}
+                    className={`border-r border-[#f1f3f8] p-3 last:border-r-0 ${
+                      !inAnchorMonth ? "bg-[#fbfbfc]" : ""
+                    }`}
+                  >
+                    <div className="mb-3 border-b border-[#f1f3f8] pb-3 text-center">
+                      <div className="text-[11px] font-bold tracking-wide text-[#94a3b8]">
+                        {day.dayOfWeek}
+                      </div>
+                      <div
+                        className={`mt-1 font-display text-lg font-bold ${
+                          day.date === getTodayDateKey(data.timezone)
+                            ? "text-[#4f46e5]"
+                            : inAnchorMonth
+                              ? "text-[#1e293b]"
+                              : "text-[#cbd2e0]"
+                        }`}
+                      >
+                        {day.day}
+                      </div>
+                    </div>
+                    <div className="flex min-h-[200px] flex-col gap-1.5">
+                      {day.posts.map((post) => {
+                        const style = getEventStatusStyle(post.status);
+                        return (
+                          <Link
+                            key={post.id}
+                            href={`/app/posts/${post.id}`}
+                            className="cursor-pointer rounded-[9px] p-2 hover:brightness-[0.97]"
+                            style={{
+                              background: style.bg,
+                              border: `1px solid ${style.c}22`,
+                            }}
+                          >
+                            <div
+                              className="mb-0.5 text-[10px] font-bold"
+                              style={{ color: style.c }}
+                            >
+                              {formatCalendarEventTime(
+                                post.scheduledAt,
+                                data.timezone,
+                              )}
+                            </div>
+                            <div className="text-[11.5px] font-semibold leading-snug text-[#1e293b]">
+                              {post.hook}
+                            </div>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+
+        {data?.view === "list" ? (
+          data.items.length > 0 ? (
+            <div className="overflow-hidden rounded-2xl border border-[#eceef4] bg-white">
+              {data.items.map((item) => {
+                const dateParts = formatListItemDate(
+                  item.scheduledAt,
+                  data.timezone,
+                );
+                return (
+                  <Link
+                    key={item.id}
+                    href={`/app/posts/${item.id}`}
+                    className="flex items-center gap-4 border-b border-[#f1f3f8] px-5 py-4 last:border-0 hover:bg-[#fafbff]"
+                  >
+                    <div className="flex h-[46px] w-[46px] shrink-0 flex-col items-center justify-center rounded-[11px] bg-[#eef2ff]">
+                      <span className="text-[10px] font-bold text-[#4f46e5]">
+                        {dateParts.monthAbbr}
+                      </span>
+                      <span className="font-display text-lg font-extrabold text-[#4338ca]">
+                        {dateParts.day}
+                      </span>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-semibold text-[#1e293b]">
+                        {item.hook}
+                      </div>
+                      <div className="text-xs text-[#94a3b8]">
+                        {formatCalendarEventTime(
+                          item.scheduledAt,
+                          data.timezone,
+                        )}
+                      </div>
+                    </div>
+                    <StatusBadge status={item.status} />
+                  </Link>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-[#eceef4] bg-white px-6 py-14 text-center">
+              <MsIcon
+                name="event_busy"
+                size={36}
+                className="mx-auto mb-3 text-[#cbd2e0]"
+              />
+              <p className="text-sm font-semibold text-[#64748b]">
+                No posts in this range
+                {filter !== "All" ? ` matching “${filter}”` : ""}.
+              </p>
+              <p className="mt-1 text-xs text-[#94a3b8]">
+                {data.rangeStart} – {data.rangeEnd}
+              </p>
+            </div>
+          )
+        ) : null}
+      </QueryState>
     </div>
   );
 }

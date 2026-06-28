@@ -13,16 +13,13 @@ import {
   authSocialIconSlotClass,
 } from "@/components/auth/auth-ui";
 import { useAppleSignInAvailable } from "@/hooks/use-apple-sign-in-available";
-import { isAuthBypassEnabled } from "@/lib/auth-bypass";
 import { clerkErrorMessage } from "@/lib/auth/clerk";
 import {
   SIGN_IN_OAUTH_COMPLETE_URL,
   SIGN_IN_OAUTH_REDIRECT_URL,
   SIGN_UP_OAUTH_COMPLETE_URL,
   SIGN_UP_OAUTH_REDIRECT_URL,
-  DASHBOARD_ROUTE,
 } from "@/lib/auth/routes";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 type OAuthStrategy =
@@ -41,7 +38,6 @@ export function AuthSocialButtons({
   disabled,
   onError,
 }: AuthSocialButtonsProps) {
-  const router = useRouter();
   const appleAvailable = useAppleSignInAvailable();
   const signIn = useSignIn();
   const signUp = useSignUp();
@@ -63,11 +59,6 @@ export function AuthSocialButtons({
     strategy: OAuthStrategy,
     setLoading: (value: boolean) => void,
   ) => {
-    if (isAuthBypassEnabled()) {
-      router.push(DASHBOARD_ROUTE);
-      return;
-    }
-
     const loaded = isSignIn ? signIn.isLoaded : signUp.isLoaded;
     const resource = isSignIn ? signIn.signIn : signUp.signUp;
     if (!loaded || !resource || disabled || oauthLoading) return;
@@ -90,11 +81,10 @@ export function AuthSocialButtons({
     }
   };
 
-  const bypass = isAuthBypassEnabled();
   const isDisabled =
     disabled ||
     oauthLoading ||
-    (!bypass && (isSignIn ? !signIn.isLoaded : !signUp.isLoaded));
+    (isSignIn ? !signIn.isLoaded : !signUp.isLoaded);
 
   return (
     <div className="mb-5 flex flex-col gap-2.5">
