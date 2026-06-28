@@ -38,6 +38,20 @@ export class AutopilotTickService {
         continue;
       }
 
+      const todayKey = getTodayDateKey(timezone, now);
+
+      const claimed = await this.prisma.autopilotConfig.updateMany({
+        where: {
+          id: config.id,
+          OR: [{ lastRunDateKey: null }, { lastRunDateKey: { not: todayKey } }],
+        },
+        data: { lastRunDateKey: todayKey },
+      });
+
+      if (claimed.count === 0) {
+        continue;
+      }
+
       const result = await this.dispatchService.dispatch(
         config,
         config.workspace.ownerId,
@@ -46,19 +60,19 @@ export class AutopilotTickService {
       );
 
       if (!result.success) {
+        await this.prisma.autopilotConfig.update({
+          where: { id: config.id },
+          data: { lastRunDateKey: null },
+        });
         continue;
       }
 
-      const todayKey = getTodayDateKey(timezone, now);
-      await this.prisma.autopilotConfig.update({
-        where: { id: config.id },
-        data: {
-          lastRunDateKey: todayKey,
-          ...(result.nextPillarIndex !== undefined
-            ? { lastPillarIndex: result.nextPillarIndex }
-            : {}),
-        },
-      });
+      if (result.nextPillarIndex !== undefined) {
+        await this.prisma.autopilotConfig.update({
+          where: { id: config.id },
+          data: { lastPillarIndex: result.nextPillarIndex },
+        });
+      }
 
       dispatched++;
       this.logger.log(

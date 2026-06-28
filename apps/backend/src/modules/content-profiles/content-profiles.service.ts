@@ -147,7 +147,10 @@ export class ContentProfilesService {
     const profile = await this.findProfileInWorkspace(workspaceId, id);
 
     await this.prisma.$transaction(async (tx) => {
-      await tx.contentProfile.delete({ where: { id } });
+      await tx.contentProfile.update({
+        where: { id },
+        data: { deletedAt: new Date() },
+      });
 
       if (profile.isDefault) {
         const oldest = await tx.contentProfile.findFirst({

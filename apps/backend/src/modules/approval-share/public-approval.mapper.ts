@@ -1,4 +1,4 @@
-import { ConflictException } from '@nestjs/common';
+import { NotFoundException } from '@nestjs/common';
 import { PostPackage, PostPackageStatus, Workspace } from '@prisma/client';
 import { PostMediaResponse } from '../media/media.types';
 import { PublicApprovalPreviewDto } from './dto/public-approval-preview.dto';
@@ -28,9 +28,9 @@ export function toPublicApprovalPreview(
 
 export function assertPostAwaitingApproval(post: PostPackage): void {
   if (post.status !== PostPackageStatus.ready_for_approval) {
-    throw new ConflictException({
-      error: 'This post is no longer awaiting approval',
-      code: 'APPROVAL_ALREADY_RESOLVED',
+    throw new NotFoundException({
+      error: 'Approval link is invalid or expired',
+      code: 'APPROVAL_LINK_INVALID',
     });
   }
 }

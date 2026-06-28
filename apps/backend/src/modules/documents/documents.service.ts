@@ -61,6 +61,20 @@ export class DocumentsService {
   async initUpload(userId: string, dto: InitUploadDto) {
     this.assertMimeAndSize(dto.purpose, dto.mimeType, dto.sizeBytes);
 
+    const pendingCount = await this.prisma.document.count({
+      where: {
+        userId,
+        status: DocumentStatus.pending,
+      },
+    });
+
+    if (pendingCount >= 10) {
+      throw new BadRequestException({
+        error: 'Too many pending uploads. Complete or cancel existing uploads first.',
+        code: 'PENDING_UPLOAD_LIMIT',
+      });
+    }
+
     const filename = sanitizeFilename(dto.filename);
     const storageBucket = this.r2BucketService.resolveBucket(dto.purpose);
     const uploadExpiresAt = new Date(

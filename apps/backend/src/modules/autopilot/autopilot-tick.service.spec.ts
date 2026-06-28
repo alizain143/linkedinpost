@@ -46,6 +46,7 @@ describe('AutopilotTickService', () => {
 
   it('dispatches due configs once and updates lastRunDateKey', async () => {
     prisma.autopilotConfig.findMany.mockResolvedValue([config]);
+    prisma.autopilotConfig.updateMany.mockResolvedValue({ count: 1 });
     dispatchService.dispatch.mockResolvedValue({
       success: true,
       nextPillarIndex: 1,
@@ -61,12 +62,10 @@ describe('AutopilotTickService', () => {
 
     expect(dispatched).toBe(1);
     expect(dispatchService.dispatch).toHaveBeenCalledTimes(1);
+    expect(prisma.autopilotConfig.updateMany).toHaveBeenCalled();
     expect(prisma.autopilotConfig.update).toHaveBeenCalledWith({
       where: { id: config.id },
-      data: {
-        lastRunDateKey: '2026-06-26',
-        lastPillarIndex: 1,
-      },
+      data: { lastPillarIndex: 1 },
     });
   });
 

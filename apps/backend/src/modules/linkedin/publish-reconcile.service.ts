@@ -13,11 +13,10 @@ export class PublishReconcileService implements OnModuleInit {
   async onModuleInit() {
     if (!this.publishJobEnqueueService.isEnabled()) return;
 
-    const now = new Date();
     const scheduledPosts = await this.prisma.postPackage.findMany({
       where: {
         status: PostPackageStatus.scheduled,
-        scheduledAt: { gt: now },
+        scheduledAt: { not: null },
       },
       include: {
         workspace: { select: { ownerId: true } },

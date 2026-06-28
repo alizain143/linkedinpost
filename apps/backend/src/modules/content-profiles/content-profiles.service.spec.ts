@@ -103,7 +103,7 @@ describe('ContentProfilesService', () => {
         .mockResolvedValueOnce(profile)
         .mockResolvedValueOnce(oldest);
       prisma.$transaction.mockImplementation(async (fn) => fn(prisma));
-      prisma.contentProfile.delete.mockResolvedValue(profile);
+      prisma.contentProfile.update.mockResolvedValue(profile);
       prisma.contentProfile.update.mockResolvedValue({
         ...oldest,
         isDefault: true,
@@ -112,6 +112,10 @@ describe('ContentProfilesService', () => {
       const result = await service.remove(workspaceId, profileId, userId);
 
       expect(result).toEqual({ deleted: true });
+      expect(prisma.contentProfile.update).toHaveBeenCalledWith({
+        where: { id: profileId },
+        data: { deletedAt: expect.any(Date) },
+      });
       expect(prisma.contentProfile.update).toHaveBeenCalledWith({
         where: { id: oldest.id },
         data: { isDefault: true },

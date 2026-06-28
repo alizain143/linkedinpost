@@ -22,9 +22,10 @@ Requires **Redis** (`REDIS_URL`). Without Redis, council POST returns `503 REDIS
 ## Pipeline
 
 - **Text revision loop:** if reviewer `overall < COUNCIL_PASS_SCORE` (default 75), writer revises once (max `COUNCIL_MAX_TEXT_REVISIONS=1`)
-- **Media regen loop:** media reviewer may fail once (max `COUNCIL_MAX_MEDIA_REGENS=1`); each regen charges **5 credits** (`CreditTransactionType.media`)
+- **Media regen loop:** media reviewer may fail once (max `COUNCIL_MAX_MEDIA_REGENS=1`); each regen charges **5 credits** (`CreditTransactionType.media`) **after** successful R2 attach
 - **Output:** creates `PostPackage` at enqueue, updates through pipeline, final status `ready_for_approval`
-- **Credits:** 3 on success (`CreditTransactionType.council`); media regens billed separately
+- **Credits:** handler charges 3 on success (`CreditTransactionType.council`) after orchestrator completes; orchestrator does not set `status=completed` or `creditCharged`
+- **Retry:** processor skips when `creditCharged`; orchestrator can resume; `failed → text_generating` allowed for council retry
 
 ## Env
 

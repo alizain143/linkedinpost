@@ -49,6 +49,7 @@ describe('LinkedInPublishService', () => {
       ...approvedPost,
       _count: { versions: 1 },
     });
+    prisma.postPackage.updateMany.mockResolvedValue({ count: 1 });
     prisma.postPackage.update.mockImplementation(({ data }) => ({
       ...approvedPost,
       ...data,

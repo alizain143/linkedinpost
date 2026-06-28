@@ -1,5 +1,4 @@
 import {
-  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -8,13 +7,13 @@ import {
   ApprovalToken,
   PostPackage,
   PostPackageStatus,
+  Prisma,
   Workspace,
 } from '@prisma/client';
 import { NOT_DELETED } from '../../common/constants/soft-delete.constants';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PlanFeatureService } from '../billing/plan-feature.service';
 import { MediaService } from '../media/media.service';
-import { PostsService } from '../posts/posts.service';
 import { WorkspacesService } from '../workspaces/workspaces.service';
 import {
   generateApprovalRawToken,
@@ -41,7 +40,6 @@ export class ApprovalShareService {
     private readonly configService: ConfigService,
     private readonly workspacesService: WorkspacesService,
     private readonly planFeatureService: PlanFeatureService,
-    private readonly postsService: PostsService,
     private readonly mediaService: MediaService,
   ) {}
 
@@ -80,9 +78,9 @@ export class ApprovalShareService {
 
   private assertPostReadyForLink(post: PostPackage) {
     if (post.status !== PostPackageStatus.ready_for_approval) {
-      throw new ConflictException({
-        error: 'Post is not awaiting approval',
-        code: 'POST_NOT_AWAITING_APPROVAL',
+      throw new NotFoundException({
+        error: 'Post not found',
+        code: 'RESOURCE_NOT_FOUND',
       });
     }
   }
@@ -107,7 +105,7 @@ export class ApprovalShareService {
     userId: string,
   ): Promise<CreateApprovalLinkResponseDto> {
     await this.planFeatureService.assertAllows(userId, 'approval_share_links');
-    await this.workspacesService.assertMember(userId, workspaceId);
+    await this.workspacesService.assertOwner(userId, workspaceId);
 
     const post = await this.findPostInWorkspace(workspaceId, postId);
     this.assertPostReadyForLink(post);
@@ -228,53 +226,84 @@ export class ApprovalShareService {
   }
 
   async approve(rawToken: string): Promise<PublicApprovalActionResponseDto> {
-    const { token, post } = await this.resolveToken(rawToken);
-    assertPostAwaitingApproval(post);
-
-    const updated = await this.postsService.applyApprovalAction(post, 'approve');
-    await this.markTokenUsed(token.id);
-
-    return { id: updated.id, status: updated.status };
+    return this.applyPublicApprovalAction(rawToken, 'approve');
   }
 
   async requestChanges(
     rawToken: string,
     feedback: string,
   ): Promise<PublicApprovalActionResponseDto> {
-    const { token, post } = await this.resolveToken(rawToken);
-    assertPostAwaitingApproval(post);
-
-    const updated = await this.postsService.applyApprovalAction(
-      post,
-      'request-changes',
-      feedback,
-    );
-    await this.markTokenUsed(token.id);
-
-    return { id: updated.id, status: updated.status };
+    return this.applyPublicApprovalAction(rawToken, 'request-changes', feedback);
   }
 
   async reject(
     rawToken: string,
     feedback?: string,
   ): Promise<PublicApprovalActionResponseDto> {
+    return this.applyPublicApprovalAction(rawToken, 'reject', feedback);
+  }
+
+  private async applyPublicApprovalAction(
+    rawToken: string,
+    action: 'approve' | 'request-changes' | 'reject',
+    feedback?: string,
+  ): Promise<PublicApprovalActionResponseDto> {
     const { token, post } = await this.resolveToken(rawToken);
     assertPostAwaitingApproval(post);
 
-    const updated = await this.postsService.applyApprovalAction(
-      post,
-      'reject',
-      feedback,
-    );
-    await this.markTokenUsed(token.id);
+    const to =
+      action === 'approve'
+        ? PostPackageStatus.approved
+        : PostPackageStatus.draft;
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const statusUpdate = await tx.postPackage.updateMany({
+        where: {
+          id: post.id,
+          ...NOT_DELETED,
+          status: PostPackageStatus.ready_for_approval,
+        },
+        data: this.buildApprovalUpdateData(post, to, feedback),
+      });
+
+      if (statusUpdate.count === 0) {
+        this.throwInvalidLink();
+      }
+
+      const tokenUpdate = await tx.approvalToken.updateMany({
+        where: {
+          id: token.id,
+          usedAt: null,
+          revokedAt: null,
+        },
+        data: { usedAt: new Date() },
+      });
+
+      if (tokenUpdate.count === 0) {
+        this.throwInvalidLink();
+      }
+
+      return tx.postPackage.findFirstOrThrow({
+        where: { id: post.id, ...NOT_DELETED },
+      });
+    });
 
     return { id: updated.id, status: updated.status };
   }
 
-  private async markTokenUsed(tokenId: string) {
-    await this.prisma.approvalToken.update({
-      where: { id: tokenId },
-      data: { usedAt: new Date() },
-    });
+  private buildApprovalUpdateData(
+    _post: PostPackage,
+    to: PostPackageStatus,
+    feedback?: string,
+  ): Prisma.PostPackageUpdateManyMutationInput {
+    if (to === PostPackageStatus.approved) {
+      return { status: to, approvalFeedback: null };
+    }
+
+    return {
+      status: to,
+      approvalFeedback: feedback ?? null,
+      submittedForApprovalAt: null,
+    };
   }
 }

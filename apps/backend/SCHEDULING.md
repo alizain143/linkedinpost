@@ -21,6 +21,10 @@ scheduled → PATCH /schedule (new time)
 scheduled → DELETE /schedule → approved
 ```
 
+`SchedulingService` calls `assertRedisAvailable()` before persisting `scheduled` status. Schedule/unschedule via legacy `PATCH .../status` is blocked — use these routes.
+
+Published posts appear on the calendar by `publishedAt` when `scheduledAt` was cleared at publish time.
+
 ## Validation
 
 Shared [`scheduling.validation.ts`](src/modules/scheduling/scheduling.validation.ts) used by both `SchedulingService` and legacy `PATCH .../status`.

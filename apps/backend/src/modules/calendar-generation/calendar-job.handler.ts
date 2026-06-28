@@ -1,9 +1,17 @@
 import { Injectable } from '@nestjs/common';
-import { CreditTransactionType, GenerationJobType } from '@prisma/client';
+import {
+  CreditTransactionType,
+  GenerationJobStatus,
+  GenerationJobType,
+} from '@prisma/client';
 import { CreditsService } from '../credits/credits.service';
 import { JobHandler } from '../job-queue/job-handler.interface';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CalendarOrchestrator } from './calendar-orchestrator';
+
+type CalendarJobResult = {
+  postPackageIds?: string[];
+};
 
 @Injectable()
 export class CalendarJobHandler implements JobHandler {
@@ -20,7 +28,18 @@ export class CalendarJobHandler implements JobHandler {
       where: { id: generationJobId },
     });
 
-    await this.calendarOrchestrator.run(generationJobId);
+    if (job.creditCharged) {
+      return;
+    }
+
+    const existingResult = job.result as CalendarJobResult | null;
+    const hasCreatedPosts =
+      (existingResult?.postPackageIds?.length ?? 0) > 0 ||
+      job.status === GenerationJobStatus.completed;
+
+    if (!hasCreatedPosts) {
+      await this.calendarOrchestrator.run(generationJobId);
+    }
 
     await this.creditsService.consume(
       job.userId,
@@ -31,7 +50,11 @@ export class CalendarJobHandler implements JobHandler {
 
     await this.prisma.generationJob.update({
       where: { id: generationJobId },
-      data: { creditCharged: true },
+      data: {
+        creditCharged: true,
+        status: GenerationJobStatus.completed,
+        completedAt: new Date(),
+      },
     });
   }
 }

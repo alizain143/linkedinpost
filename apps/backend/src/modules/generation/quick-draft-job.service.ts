@@ -64,7 +64,7 @@ export class QuickDraftJobService {
 
       await this.creditsService.consume(
         userId,
-        1,
+        job.creditCost,
         CreditTransactionType.generation,
         { generationJobId: job.id },
       );

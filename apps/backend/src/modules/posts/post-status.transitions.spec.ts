@@ -53,40 +53,31 @@ describe('post-status.transitions', () => {
       ).not.toThrow();
     });
 
-    it('allows approved to scheduled', () => {
+    it('rejects approved to scheduled via user API', () => {
       expect(() =>
         assertValidTransition(
           PostPackageStatus.approved,
           PostPackageStatus.scheduled,
         ),
-      ).not.toThrow();
+      ).toThrow(ConflictException);
     });
 
-    it('allows scheduled to approved', () => {
-      expect(() =>
-        assertValidTransition(
-          PostPackageStatus.scheduled,
-          PostPackageStatus.approved,
-        ),
-      ).not.toThrow();
-    });
-
-    it('allows approved to publishing', () => {
+    it('rejects approved to publishing via user API', () => {
       expect(() =>
         assertValidTransition(
           PostPackageStatus.approved,
           PostPackageStatus.publishing,
         ),
-      ).not.toThrow();
+      ).toThrow(ConflictException);
     });
 
-    it('allows failed publish retry to publishing', () => {
+    it('rejects failed to publishing via user API', () => {
       expect(() =>
         assertValidTransition(
           PostPackageStatus.failed,
           PostPackageStatus.publishing,
         ),
-      ).not.toThrow();
+      ).toThrow(ConflictException);
     });
 
     it('rejects draft to published', () => {

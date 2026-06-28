@@ -168,10 +168,18 @@ model Subscription {
   @@map("subscriptions")
 }
 
+enum StripeWebhookEventStatus {
+  pending
+  processed
+  failed
+}
+
 model StripeWebhookEvent {
-  id          String   @id
-  type        String
-  processedAt DateTime @default(now()) @db.Timestamptz(6)
+  id           String                    @id
+  type         String
+  status       StripeWebhookEventStatus  @default(pending)
+  errorMessage String?
+  processedAt  DateTime                  @default(now()) @db.Timestamptz(6)
 
   @@map("stripe_webhook_events")
 }
@@ -387,6 +395,7 @@ model CreditTransaction {
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   generationJob GenerationJob? @relation(fields: [generationJobId], references: [id], onDelete: SetNull)
 
+  @@unique([generationJobId, type])
   @@index([userId, createdAt])
   @@index([generationJobId])
   @@map("credit_transactions")

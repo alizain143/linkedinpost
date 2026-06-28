@@ -23,6 +23,7 @@ describe('SchedulingService', () => {
   const workspacesService = { assertMember: jest.fn() };
   const publishJobEnqueueService = {
     isEnabled: jest.fn(() => false),
+    assertRedisAvailable: jest.fn(),
     enqueuePublish: jest.fn(),
     cancelPublish: jest.fn(),
   };
@@ -56,16 +57,27 @@ describe('SchedulingService', () => {
       id: workspaceId,
       ownerId: userId,
     });
-    prisma.postPackage.update.mockResolvedValue({
+    prisma.postPackage.updateMany.mockResolvedValue({ count: 1 });
+    prisma.postPackage.findFirstOrThrow.mockResolvedValue({
       ...approved,
       status: PostPackageStatus.scheduled,
       scheduledAt: validScheduledAt,
       _count: { versions: 1 },
     });
+    publishJobEnqueueService.enqueuePublish.mockResolvedValue(undefined);
 
     const result = await service.schedule(workspaceId, postId, userId, {
       scheduledAt: validScheduledAt,
     });
+
+    expect(publishJobEnqueueService.assertRedisAvailable).toHaveBeenCalled();
+    expect(prisma.postPackage.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          status: PostPackageStatus.approved,
+        }),
+      }),
+    );
 
     expect(workspacesService.assertMember).toHaveBeenCalledWith(
       userId,
@@ -94,10 +106,13 @@ describe('SchedulingService', () => {
       scheduledAt: newTime,
       _count: { versions: 1 },
     });
+    publishJobEnqueueService.enqueuePublish.mockResolvedValue(undefined);
 
     const result = await service.reschedule(workspaceId, postId, userId, {
       scheduledAt: newTime,
     });
+
+    expect(publishJobEnqueueService.assertRedisAvailable).toHaveBeenCalled();
 
     expect(result.scheduledAt).toEqual(newTime);
   });

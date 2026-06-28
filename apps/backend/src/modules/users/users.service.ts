@@ -1,7 +1,11 @@
 import {
+  ConflictException,
+  HttpException,
+  HttpStatus,
   Inject,
   Injectable,
   NotFoundException,
+  UnauthorizedException,
   forwardRef,
 } from '@nestjs/common';
 import { User } from '@prisma/client';
@@ -12,6 +16,7 @@ import { resolveClerkProfileImageUrl } from './clerk-profile-image.util';
 import { CreateFromClerkDto } from './dto/create-from-clerk.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { toUserResponse, UserResponse } from './user.mapper';
+
 @Injectable()
 export class UsersService {
   constructor(
@@ -27,6 +32,17 @@ export class UsersService {
     });
 
     if (!user) {
+      const deleted = await this.prisma.user.findFirst({
+        where: { clerkId, deletedAt: { not: null } },
+      });
+
+      if (deleted) {
+        throw new UnauthorizedException({
+          error: 'Account has been deleted',
+          code: 'ACCOUNT_DELETED',
+        });
+      }
+
       throw new NotFoundException({
         error: 'User not found',
         code: 'RESOURCE_NOT_FOUND',
@@ -79,20 +95,10 @@ export class UsersService {
 
     if (existing) {
       if (existing.deletedAt) {
-        const user = await this.prisma.user.update({
-          where: { id: existing.id },
-          data: {
-            deletedAt: null,
-            email: dto.email,
-            firstName: dto.firstName ?? null,
-            lastName: dto.lastName ?? null,
-            profileImageUrl:
-              profileImageUrl && !existing.profileDocumentId
-                ? profileImageUrl
-                : existing.profileImageUrl,
-          },
+        throw new UnauthorizedException({
+          error: 'Account has been deleted',
+          code: 'ACCOUNT_DELETED',
         });
-        return this.finalizeUser(user);
       }
 
       if (
@@ -115,22 +121,29 @@ export class UsersService {
     });
 
     if (existingByEmail) {
-      const user = await this.prisma.user.update({
-        where: { id: existingByEmail.id },
-        data: {
-          deletedAt: null,
-          clerkId: dto.clerkId,
-          firstName: dto.firstName ?? existingByEmail.firstName,
-          lastName: dto.lastName ?? existingByEmail.lastName,
-          profileImageUrl:
-            profileImageUrl &&
-            !existingByEmail.profileDocumentId &&
-            !existingByEmail.profileImageUrl
-              ? profileImageUrl
-              : existingByEmail.profileImageUrl,
-        },
+      if (existingByEmail.deletedAt) {
+        const user = await this.prisma.user.update({
+          where: { id: existingByEmail.id },
+          data: {
+            deletedAt: null,
+            clerkId: dto.clerkId,
+            firstName: dto.firstName ?? existingByEmail.firstName,
+            lastName: dto.lastName ?? existingByEmail.lastName,
+            profileImageUrl:
+              profileImageUrl &&
+              !existingByEmail.profileDocumentId &&
+              !existingByEmail.profileImageUrl
+                ? profileImageUrl
+                : existingByEmail.profileImageUrl,
+          },
+        });
+        return this.finalizeUser(user);
+      }
+
+      throw new ConflictException({
+        error: 'Email already registered to another account',
+        code: 'EMAIL_ALREADY_REGISTERED',
       });
-      return this.finalizeUser(user);
     }
 
     try {
@@ -177,47 +190,51 @@ export class UsersService {
   }
 
   async updateProfile(userId: string, dto: UpdateUserDto): Promise<User> {
-    const user = await this.findById(userId);
+    await this.findById(userId);
     const { profileDocumentId, notifications, timezone, ...profileFields } =
       dto;
 
-    if (profileDocumentId !== undefined) {
-      const previousDocumentId = user.profileDocumentId;
+    return this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.findUniqueOrThrow({ where: { id: userId } });
 
-      await this.documentsService.attachProfileDocument({
-        documentId: profileDocumentId,
-        userId,
-      });
+      if (profileDocumentId !== undefined) {
+        const previousDocumentId = user.profileDocumentId;
 
-      if (previousDocumentId && previousDocumentId !== profileDocumentId) {
-        await this.documentsService.removeDocument(previousDocumentId, userId);
-      }
-    }
+        await this.documentsService.attachProfileDocument({
+          documentId: profileDocumentId,
+          userId,
+        });
 
-    const notificationData = notifications
-      ? {
-          ...(notifications.weeklyReminders !== undefined
-            ? { emailWeeklyReminders: notifications.weeklyReminders }
-            : {}),
-          ...(notifications.generationComplete !== undefined
-            ? { emailGenerationComplete: notifications.generationComplete }
-            : {}),
-          ...(notifications.productUpdates !== undefined
-            ? { emailProductUpdates: notifications.productUpdates }
-            : {}),
+        if (previousDocumentId && previousDocumentId !== profileDocumentId) {
+          await this.documentsService.removeDocument(previousDocumentId, userId);
         }
-      : {};
+      }
 
-    return this.prisma.user.update({
-      where: { id: userId },
-      data: {
-        ...profileFields,
-        ...(timezone !== undefined ? { timezone } : {}),
-        ...notificationData,
-        ...(profileDocumentId !== undefined
-          ? { profileDocumentId }
-          : undefined),
-      },
+      const notificationData = notifications
+        ? {
+            ...(notifications.weeklyReminders !== undefined
+              ? { emailWeeklyReminders: notifications.weeklyReminders }
+              : {}),
+            ...(notifications.generationComplete !== undefined
+              ? { emailGenerationComplete: notifications.generationComplete }
+              : {}),
+            ...(notifications.productUpdates !== undefined
+              ? { emailProductUpdates: notifications.productUpdates }
+              : {}),
+          }
+        : {};
+
+      return tx.user.update({
+        where: { id: userId },
+        data: {
+          ...profileFields,
+          ...(timezone !== undefined ? { timezone } : {}),
+          ...notificationData,
+          ...(profileDocumentId !== undefined
+            ? { profileDocumentId }
+            : undefined),
+        },
+      });
     });
   }
 

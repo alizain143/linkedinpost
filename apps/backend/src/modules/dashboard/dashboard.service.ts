@@ -7,6 +7,11 @@ import { NOT_DELETED } from '../../common/constants/soft-delete.constants';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreditsService } from '../credits/credits.service';
 import { WorkspacesService } from '../workspaces/workspaces.service';
+import {
+  DEFAULT_TIMEZONE,
+  getLocalDateParts,
+  getMonthQueryRange,
+} from '../calendar/calendar-date.util';
 
 const PREVIEW_LENGTH = 120;
 
@@ -36,12 +41,19 @@ export class DashboardService {
       where: { id: userId },
     });
 
+    const timezone = user.timezone || DEFAULT_TIMEZONE;
     const now = new Date();
-    const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-    const monthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+    const { year, month } = getLocalDateParts(now, timezone);
+    const { rangeStart: monthStart, rangeEnd: monthEnd } = getMonthQueryRange(
+      year,
+      month,
+      timezone,
+    );
 
     const [
       drafts,
+      awaitingApproval,
+      inProgress,
       scheduled,
       publishedThisMonth,
       generatedThisMonth,
@@ -50,6 +62,27 @@ export class DashboardService {
     ] = await Promise.all([
       this.prisma.postPackage.count({
         where: { workspaceId, status: PostPackageStatus.draft, ...NOT_DELETED },
+      }),
+      this.prisma.postPackage.count({
+        where: {
+          workspaceId,
+          ...NOT_DELETED,
+          status: PostPackageStatus.ready_for_approval,
+        },
+      }),
+      this.prisma.postPackage.count({
+        where: {
+          workspaceId,
+          ...NOT_DELETED,
+          status: {
+            in: [
+              PostPackageStatus.text_generating,
+              PostPackageStatus.text_reviewing,
+              PostPackageStatus.media_generating,
+              PostPackageStatus.publishing,
+            ],
+          },
+        },
       }),
       this.prisma.postPackage.count({
         where: {
@@ -65,7 +98,7 @@ export class DashboardService {
           workspaceId,
           ...NOT_DELETED,
           status: PostPackageStatus.published,
-          publishedAt: { gte: monthStart, lt: monthEnd },
+          publishedAt: { gte: monthStart, lte: monthEnd },
         },
       }),
       this.prisma.postPackage.count({
@@ -79,7 +112,7 @@ export class DashboardService {
               PostSource.calendar,
             ],
           },
-          createdAt: { gte: monthStart, lt: monthEnd },
+          createdAt: { gte: monthStart, lte: monthEnd },
         },
       }),
       this.prisma.postPackage.findFirst({
@@ -119,6 +152,8 @@ export class DashboardService {
       },
       counts: {
         drafts,
+        awaitingApproval,
+        inProgress,
         scheduled,
         publishedThisMonth,
         generatedThisMonth,

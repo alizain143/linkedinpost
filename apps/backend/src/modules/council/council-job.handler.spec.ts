@@ -80,4 +80,19 @@ describe('CouncilJobHandler', () => {
       { generationJobId: 'job-2' },
     );
   });
+
+  it('skips work when credits already charged', async () => {
+    prisma.generationJob.findUniqueOrThrow.mockResolvedValue({
+      id: 'job-3',
+      userId,
+      creditCost: 3,
+      creditCharged: true,
+      type: GenerationJobType.council,
+    });
+
+    await handler.handle('job-3');
+
+    expect(councilOrchestrator.run).not.toHaveBeenCalled();
+    expect(creditsService.consume).not.toHaveBeenCalled();
+  });
 });

@@ -1,11 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import {
   GenerationJobType,
   PostPackageStatus,
   PostSource,
   Prisma,
 } from '@prisma/client';
+import { MEDIA_REGEN_CREDIT_COST } from '../../common/constants/media.constants';
 import { PrismaService } from '../../prisma/prisma.service';
+import { CreditsService } from '../credits/credits.service';
 import { GenerationJobEnqueueService } from '../job-queue/generation-job-enqueue.service';
 import { WorkspacesService } from '../workspaces/workspaces.service';
 import { CouncilInput } from '../generation/generation.types';
@@ -25,6 +28,8 @@ export class CouncilJobService {
     private readonly prisma: PrismaService,
     private readonly workspacesService: WorkspacesService,
     private readonly enqueueService: GenerationJobEnqueueService,
+    private readonly creditsService: CreditsService,
+    private readonly configService: ConfigService,
   ) {}
 
   async enqueueCouncil(
@@ -38,6 +43,14 @@ export class CouncilJobService {
 
     const source = options?.source ?? PostSource.generation;
     const creditCost = options?.creditCost ?? 3;
+    const maxMediaRegens = this.configService.get<number>(
+      'council.maxMediaRegens',
+      1,
+    );
+    const maxCreditExposure =
+      creditCost + maxMediaRegens * MEDIA_REGEN_CREDIT_COST;
+
+    await this.creditsService.assertHasCredits(userId, maxCreditExposure);
 
     const input: CouncilInput = {
       workspaceId,

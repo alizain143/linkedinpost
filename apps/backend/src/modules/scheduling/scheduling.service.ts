@@ -58,26 +58,58 @@ export class SchedulingService {
     assertScheduleTransition(existing.status, PostPackageStatus.scheduled);
     validateScheduledAt(dto.scheduledAt, this.validationOptions());
 
-    const post = await this.prisma.postPackage.update({
-      where: { id: postId },
-      data: {
-        status: PostPackageStatus.scheduled,
-        scheduledAt: dto.scheduledAt,
-      },
-      include: { _count: { select: { versions: true } } },
-    });
+    this.publishJobEnqueueService.assertRedisAvailable();
 
     const workspace = await this.prisma.workspace.findUniqueOrThrow({
       where: { id: workspaceId },
     });
 
-    if (this.publishJobEnqueueService.isEnabled()) {
+    const scheduled = await this.prisma.postPackage.updateMany({
+      where: {
+        id: postId,
+        workspaceId,
+        ...NOT_DELETED,
+        status: PostPackageStatus.approved,
+      },
+      data: {
+        status: PostPackageStatus.scheduled,
+        scheduledAt: dto.scheduledAt,
+      },
+    });
+
+    if (scheduled.count === 0) {
+      throw new ConflictException({
+        error: 'Post is no longer approved and cannot be scheduled',
+        code: 'INVALID_STATUS_TRANSITION',
+      });
+    }
+
+    try {
       await this.publishJobEnqueueService.enqueuePublish(
         postId,
         dto.scheduledAt,
         workspace.ownerId,
       );
+    } catch (error) {
+      await this.prisma.postPackage.updateMany({
+        where: {
+          id: postId,
+          workspaceId,
+          status: PostPackageStatus.scheduled,
+          scheduledAt: dto.scheduledAt,
+        },
+        data: {
+          status: PostPackageStatus.approved,
+          scheduledAt: null,
+        },
+      });
+      throw error;
     }
+
+    const post = await this.prisma.postPackage.findFirstOrThrow({
+      where: { id: postId, workspaceId, ...NOT_DELETED },
+      include: { _count: { select: { versions: true } } },
+    });
 
     return toPostPackageResponse(post);
   }
@@ -100,6 +132,9 @@ export class SchedulingService {
 
     validateScheduledAt(dto.scheduledAt, this.validationOptions());
 
+    this.publishJobEnqueueService.assertRedisAvailable();
+
+    const previousScheduledAt = existing.scheduledAt;
     const post = await this.prisma.postPackage.update({
       where: { id: postId },
       data: { scheduledAt: dto.scheduledAt },
@@ -110,12 +145,18 @@ export class SchedulingService {
       where: { id: workspaceId },
     });
 
-    if (this.publishJobEnqueueService.isEnabled()) {
+    try {
       await this.publishJobEnqueueService.enqueuePublish(
         postId,
         dto.scheduledAt,
         workspace.ownerId,
       );
+    } catch (error) {
+      await this.prisma.postPackage.update({
+        where: { id: postId },
+        data: { scheduledAt: previousScheduledAt },
+      });
+      throw error;
     }
 
     return toPostPackageResponse(post);

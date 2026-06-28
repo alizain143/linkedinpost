@@ -1,5 +1,4 @@
 import {
-  ConflictException,
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
@@ -17,7 +16,6 @@ import { createMockPrismaService } from '../../test/prisma.mock';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PlanFeatureService } from '../billing/plan-feature.service';
 import { MediaService } from '../media/media.service';
-import { PostsService } from '../posts/posts.service';
 import { WorkspacesService } from '../workspaces/workspaces.service';
 import {
   generateApprovalRawToken,
@@ -28,9 +26,8 @@ import { ApprovalShareService } from './approval-share.service';
 describe('ApprovalShareService', () => {
   let service: ApprovalShareService;
   const prisma = createMockPrismaService();
-  const workspacesService = { assertMember: jest.fn() };
+  const workspacesService = { assertMember: jest.fn(), assertOwner: jest.fn() };
   const planFeatureService = { assertAllows: jest.fn() };
-  const postsService = { applyApprovalAction: jest.fn() };
   const mediaService = { listForPost: jest.fn().mockResolvedValue([]) };
   const configService = {
     get: jest.fn((key: string) => {
@@ -43,6 +40,7 @@ describe('ApprovalShareService', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     workspacesService.assertMember.mockResolvedValue(undefined);
+    workspacesService.assertOwner.mockResolvedValue(undefined);
     planFeatureService.assertAllows.mockResolvedValue(undefined);
     mediaService.listForPost.mockResolvedValue([]);
 
@@ -53,7 +51,6 @@ describe('ApprovalShareService', () => {
         { provide: ConfigService, useValue: configService },
         { provide: WorkspacesService, useValue: workspacesService },
         { provide: PlanFeatureService, useValue: planFeatureService },
-        { provide: PostsService, useValue: postsService },
         { provide: MediaService, useValue: mediaService },
       ],
     }).compile();
@@ -105,7 +102,7 @@ describe('ApprovalShareService', () => {
 
       await expect(
         service.createLink(workspaceId, postId, userId),
-      ).rejects.toThrow(ConflictException);
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -221,20 +218,26 @@ describe('ApprovalShareService', () => {
         createdById: userId,
         createdAt: new Date(),
       });
-      prisma.postPackage.findFirst.mockResolvedValue(post);
+      prisma.postPackage.findFirst
+        .mockResolvedValueOnce(post)
+        .mockResolvedValueOnce({
+          ...post,
+          status: PostPackageStatus.approved,
+        });
       prisma.workspace.findFirst.mockResolvedValue(buildWorkspace());
-      postsService.applyApprovalAction.mockResolvedValue({
-        id: postId,
+      prisma.postPackage.updateMany.mockResolvedValue({ count: 1 });
+      prisma.approvalToken.updateMany.mockResolvedValue({ count: 1 });
+      prisma.postPackage.findFirstOrThrow.mockResolvedValue({
+        ...post,
         status: PostPackageStatus.approved,
       });
-      prisma.approvalToken.update.mockResolvedValue({});
 
       const result = await service.approve(rawToken);
 
       expect(result.status).toBe(PostPackageStatus.approved);
-      expect(prisma.approvalToken.update).toHaveBeenCalledWith(
+      expect(prisma.approvalToken.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { id: 'token-id' },
+          where: expect.objectContaining({ id: 'token-id' }),
           data: expect.objectContaining({ usedAt: expect.any(Date) }),
         }),
       );
@@ -257,7 +260,7 @@ describe('ApprovalShareService', () => {
       prisma.postPackage.findFirst.mockResolvedValue(post);
       prisma.workspace.findFirst.mockResolvedValue(buildWorkspace());
 
-      await expect(service.approve(rawToken)).rejects.toThrow(ConflictException);
+      await expect(service.approve(rawToken)).rejects.toThrow(NotFoundException);
     });
   });
 

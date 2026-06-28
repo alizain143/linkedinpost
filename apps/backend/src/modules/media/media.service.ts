@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PostMediaType } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { POST_MEDIA_MIME_TYPES } from '../../common/constants/media.constants';
@@ -16,6 +16,8 @@ import {
 
 @Injectable()
 export class MediaService {
+  private readonly logger = new Logger(MediaService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly r2Storage: R2StorageService,
@@ -32,9 +34,13 @@ export class MediaService {
     });
 
     for (const row of existing) {
-      await this.r2Storage
-        .deleteObject(row.storageBucket, row.storageKey)
-        .catch(() => undefined);
+      try {
+        await this.r2Storage.deleteObject(row.storageBucket, row.storageKey);
+      } catch (error) {
+        this.logger.warn(
+          `Failed to delete replaced media ${row.id} from R2: ${error}`,
+        );
+      }
     }
 
     if (existing.length > 0) {
@@ -58,23 +64,34 @@ export class MediaService {
       input.mimeType,
     );
 
-    const media = await this.prisma.postMedia.create({
-      data: {
-        id: postMediaId,
-        postPackageId: input.postPackageId,
-        generationJobId: input.generationJobId,
-        mediaType: input.mediaType,
-        storageKey,
-        storageBucket,
-        mimeType: input.mimeType,
-        sizeBytes: input.imageBuffer.length,
-        altText: input.altText,
-        sortOrder: 0,
-      },
-    });
+    try {
+      const media = await this.prisma.postMedia.create({
+        data: {
+          id: postMediaId,
+          postPackageId: input.postPackageId,
+          generationJobId: input.generationJobId,
+          mediaType: input.mediaType,
+          storageKey,
+          storageBucket,
+          mimeType: input.mimeType,
+          sizeBytes: input.imageBuffer.length,
+          altText: input.altText,
+          sortOrder: 0,
+        },
+      });
 
-    const url = await this.resolveUrl(media.storageBucket, media.storageKey);
-    return toPostMediaResponse(media, url);
+      const url = await this.resolveUrl(media.storageBucket, media.storageKey);
+      return toPostMediaResponse(media, url);
+    } catch (error) {
+      try {
+        await this.r2Storage.deleteObject(storageBucket, storageKey);
+      } catch (cleanupError) {
+        this.logger.warn(
+          `Failed to rollback R2 object after DB error: ${cleanupError}`,
+        );
+      }
+      throw error;
+    }
   }
 
   async listForPost(postPackageId: string): Promise<PostMediaResponse[]> {

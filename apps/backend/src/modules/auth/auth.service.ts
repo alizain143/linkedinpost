@@ -6,6 +6,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { createClerkClient } from '@clerk/backend';
 import { Webhook } from 'svix';
+import { UsersService } from '../users/users.service';
 
 export interface ClerkWebhookEvent {
   type: string;
@@ -21,7 +22,10 @@ export interface ClerkWebhookEvent {
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly configService: ConfigService) {}
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly usersService: UsersService,
+  ) {}
 
   private getClerkClient() {
     return createClerkClient({
@@ -77,6 +81,36 @@ export class AuthService {
         error: 'Invalid webhook signature',
         code: 'WEBHOOK_INVALID',
       });
+    }
+  }
+
+  async handleClerkWebhook(event: ClerkWebhookEvent): Promise<void> {
+    if (event.type === 'user.created' || event.type === 'user.updated') {
+      const email = event.data.email_addresses?.[0]?.email_address;
+
+      if (!email) {
+        if (event.type === 'user.created') {
+          throw new BadRequestException({
+            error: 'User email missing from webhook',
+            code: 'WEBHOOK_INVALID',
+          });
+        }
+        return;
+      }
+
+      await this.usersService.createFromClerk({
+        clerkId: event.data.id,
+        email,
+        firstName: event.data.first_name ?? undefined,
+        lastName: event.data.last_name ?? undefined,
+        profileImageUrl: event.data.image_url ?? undefined,
+        hasClerkProfileImage: event.data.has_image ?? undefined,
+      });
+      return;
+    }
+
+    if (event.type === 'user.deleted') {
+      await this.usersService.softDelete(event.data.id);
     }
   }
 }

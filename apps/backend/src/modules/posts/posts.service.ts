@@ -173,14 +173,30 @@ export class PostsService {
       updateData.scheduledAt = null;
     }
 
-    if (to === PostPackageStatus.published) {
-      updateData.publishedAt = new Date();
+    if (existing.publishedAt && to !== PostPackageStatus.published) {
+      updateData.publishedAt = null;
     }
 
-    const post = await this.prisma.postPackage.update({
-      where: { id: existing.id },
-      data: updateData,
-      include: { _count: { select: { versions: true } } },
+    const post = await this.prisma.$transaction(async (tx) => {
+      if (
+        existing.status === PostPackageStatus.ready_for_approval &&
+        to !== PostPackageStatus.ready_for_approval
+      ) {
+        await tx.approvalToken.updateMany({
+          where: {
+            postPackageId: existing.id,
+            revokedAt: null,
+            usedAt: null,
+          },
+          data: { revokedAt: new Date() },
+        });
+      }
+
+      return tx.postPackage.update({
+        where: { id: existing.id },
+        data: updateData,
+        include: { _count: { select: { versions: true } } },
+      });
     });
 
     return toPostPackageResponse(post);
@@ -350,9 +366,16 @@ export class PostsService {
     postPackageId: string,
     to: PostPackageStatus,
   ) {
-    const post = await this.prisma.postPackage.findUniqueOrThrow({
-      where: { id: postPackageId },
+    const post = await this.prisma.postPackage.findFirst({
+      where: { id: postPackageId, ...NOT_DELETED },
     });
+
+    if (!post) {
+      throw new NotFoundException({
+        error: 'Post not found',
+        code: 'RESOURCE_NOT_FOUND',
+      });
+    }
 
     assertCouncilStatusTransition(post.status, to);
 
@@ -433,27 +456,31 @@ export class PostsService {
 
     const limitPerColumn = query.limitPerColumn ?? 20;
 
-    const columns = await Promise.all(
-      PIPELINE_COLUMN_ORDER.map(async (status) => {
-        const [posts, count] = await Promise.all([
-          this.prisma.postPackage.findMany({
-            where: { workspaceId, status, ...NOT_DELETED },
-            orderBy: { updatedAt: 'desc' },
-            take: limitPerColumn,
-          }),
-          this.prisma.postPackage.count({
-            where: { workspaceId, status, ...NOT_DELETED },
-          }),
-        ]);
-
-        return {
-          status,
-          label: PIPELINE_LABELS[status],
-          count,
-          posts: posts.map(toPostPackageSummary),
-        };
+    const [statusCounts, ...columnPosts] = await Promise.all([
+      this.prisma.postPackage.groupBy({
+        by: ['status'],
+        where: { workspaceId, ...NOT_DELETED },
+        _count: { _all: true },
       }),
+      ...PIPELINE_COLUMN_ORDER.map((status) =>
+        this.prisma.postPackage.findMany({
+          where: { workspaceId, status, ...NOT_DELETED },
+          orderBy: { updatedAt: 'desc' },
+          take: limitPerColumn,
+        }),
+      ),
+    ]);
+
+    const countByStatus = new Map(
+      statusCounts.map((row) => [row.status, row._count._all]),
     );
+
+    const columns = PIPELINE_COLUMN_ORDER.map((status, index) => ({
+      status,
+      label: PIPELINE_LABELS[status],
+      count: countByStatus.get(status) ?? 0,
+      posts: columnPosts[index].map(toPostPackageSummary),
+    }));
 
     return { columns };
   }

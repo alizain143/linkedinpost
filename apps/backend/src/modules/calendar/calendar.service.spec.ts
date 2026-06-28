@@ -162,6 +162,7 @@ describe('CalendarService', () => {
           }),
         }),
       );
+      expect(prisma.postPackage.findMany).toHaveBeenCalledTimes(1);
     });
   });
 });

@@ -185,10 +185,16 @@ export class CouncilOrchestrator {
           },
         });
 
+        const latestVersion = await tx.postVersion.findFirst({
+          where: { postPackageId },
+          orderBy: { versionNumber: 'desc' },
+        });
+        const nextVersion = (latestVersion?.versionNumber ?? 0) + 1;
+
         await tx.postVersion.create({
           data: {
             postPackageId,
-            versionNumber: 1,
+            versionNumber: nextVersion,
             hook: finalCopy.hook,
             body: finalCopy.body,
             cta: finalCopy.cta,
@@ -229,11 +235,9 @@ export class CouncilOrchestrator {
         mediaRegenCount++;
         mediaAttempt++;
 
-        await this.creditsService.consume(
+        await this.creditsService.assertHasCredits(
           job.userId,
           MEDIA_REGEN_CREDIT_COST,
-          CreditTransactionType.media,
-          { generationJobId, reason: 'media regen' },
         );
 
         media = await this.executeMediaCreator(
@@ -247,6 +251,13 @@ export class CouncilOrchestrator {
         );
         completedSteps++;
         lastMediaCreatorEventId = media.eventId;
+
+        await this.creditsService.consume(
+          job.userId,
+          MEDIA_REGEN_CREDIT_COST,
+          CreditTransactionType.media,
+          { generationJobId, reason: 'media regen' },
+        );
 
         mediaReview = await this.executeMediaReviewer(
           generationJobId,
@@ -267,7 +278,7 @@ export class CouncilOrchestrator {
         workspaceId,
         postPackageId,
         generationJobId,
-        mediaType: PostMediaType.quote_card,
+        mediaType: media.spec.mediaType ?? PostMediaType.quote_card,
         altText: media.spec.altText,
         imageBuffer: media.imageBuffer,
         mimeType: media.mimeType,
@@ -293,7 +304,6 @@ export class CouncilOrchestrator {
       await this.prisma.generationJob.update({
         where: { id: generationJobId },
         data: {
-          status: GenerationJobStatus.completed,
           revisionCount,
           mediaRegenCount,
           finalScore: review.overall,
@@ -302,8 +312,14 @@ export class CouncilOrchestrator {
             revisionCount,
             mediaRegenCount,
           } as unknown as Prisma.InputJsonValue,
-          completedAt: new Date(),
           model: job.model,
+          progress: {
+            currentStep: 'completed',
+            currentLabel: 'Council complete',
+            completedSteps: totalSteps,
+            totalSteps,
+            percentComplete: 100,
+          } as unknown as Prisma.InputJsonValue,
         },
       });
     } catch (err) {

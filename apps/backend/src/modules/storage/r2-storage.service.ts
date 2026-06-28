@@ -90,7 +90,11 @@ export class R2StorageService {
     }
 
     const contentType = head.ContentType?.split(';')[0]?.trim();
-    if (contentType && contentType !== expectedMimeType) {
+    if (!contentType) {
+      throw new Error('Uploaded file type missing');
+    }
+
+    if (contentType !== expectedMimeType) {
       throw new Error('Uploaded file type mismatch');
     }
   }

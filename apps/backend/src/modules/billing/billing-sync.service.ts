@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { SubscriptionStatus, UserPlan } from '@prisma/client';
 import Stripe from 'stripe';
 import {
@@ -201,6 +201,26 @@ export class BillingSyncService {
     });
   }
 
+  async syncFromInvoicePayment(invoice: Stripe.Invoice): Promise<void> {
+    const subscriptionRef = invoice.parent?.subscription_details?.subscription;
+    const subscriptionId =
+      typeof subscriptionRef === 'string'
+        ? subscriptionRef
+        : subscriptionRef?.id;
+
+    if (!subscriptionId) {
+      return;
+    }
+
+    const stripe = this.stripeClient.getClient();
+    if (!stripe) {
+      return;
+    }
+
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+    await this.syncFromStripeSubscription(subscription);
+  }
+
   resolvePlanForSubscription(
     stripeStatus: Stripe.Subscription.Status,
     priceId: string | null,
@@ -211,13 +231,19 @@ export class BillingSyncService {
     }
 
     if (!priceId) {
-      return UserPlan.free;
+      throw new InternalServerErrorException({
+        error: 'Active subscription missing price ID',
+        code: 'BILLING_SYNC_ERROR',
+      });
     }
 
     const plan = getPlanForStripePriceId(priceId, prices);
     if (!plan) {
       this.logger.error(`Unknown Stripe price ID: ${priceId}`);
-      return UserPlan.free;
+      throw new InternalServerErrorException({
+        error: `Unknown Stripe price ID: ${priceId}`,
+        code: 'BILLING_SYNC_ERROR',
+      });
     }
 
     return plan;

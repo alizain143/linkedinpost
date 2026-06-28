@@ -1,5 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { StripeWebhookEventStatus } from '@prisma/client';
 import { createMockPrismaService } from '../../test/prisma.mock';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BillingSyncService } from './billing-sync.service';
@@ -14,6 +15,7 @@ describe('StripeWebhookService', () => {
     syncFromStripeSubscription: jest.fn(),
     handleSubscriptionDeleted: jest.fn(),
     handlePaymentFailed: jest.fn(),
+    syncFromInvoicePayment: jest.fn(),
   };
 
   const constructEvent = jest.fn();
@@ -28,6 +30,7 @@ describe('StripeWebhookService', () => {
     jest.clearAllMocks();
     prisma.stripeWebhookEvent.findUnique.mockResolvedValue(null);
     prisma.stripeWebhookEvent.create.mockResolvedValue({});
+    prisma.stripeWebhookEvent.update.mockResolvedValue({});
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -51,7 +54,7 @@ describe('StripeWebhookService', () => {
     ).rejects.toThrow(BadRequestException);
   });
 
-  it('skips duplicate webhook events', async () => {
+  it('skips duplicate processed webhook events', async () => {
     constructEvent.mockReturnValue({
       id: 'evt_1',
       type: 'customer.subscription.updated',
@@ -60,6 +63,7 @@ describe('StripeWebhookService', () => {
     prisma.stripeWebhookEvent.findUnique.mockResolvedValue({
       id: 'evt_1',
       type: 'customer.subscription.updated',
+      status: StripeWebhookEventStatus.processed,
     });
 
     const result = await service.handleWebhook(Buffer.from('{}'), 'sig');
@@ -79,10 +83,22 @@ describe('StripeWebhookService', () => {
     await service.handleWebhook(Buffer.from('{}'), 'sig');
 
     expect(prisma.stripeWebhookEvent.create).toHaveBeenCalledWith({
-      data: { id: 'evt_2', type: 'customer.subscription.updated' },
+      data: {
+        id: 'evt_2',
+        type: 'customer.subscription.updated',
+        status: StripeWebhookEventStatus.pending,
+      },
     });
     expect(billingSync.syncFromStripeSubscription).toHaveBeenCalledWith(
       subscription,
     );
+    expect(prisma.stripeWebhookEvent.update).toHaveBeenCalledWith({
+      where: { id: 'evt_2' },
+      data: {
+        status: StripeWebhookEventStatus.processed,
+        processedAt: expect.any(Date),
+        errorMessage: null,
+      },
+    });
   });
 });

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import {
   CreditTransactionType,
+  GenerationJobStatus,
   GenerationJobType,
   PostSource,
 } from '@prisma/client';
@@ -24,7 +25,13 @@ export class CouncilJobHandler implements JobHandler {
       where: { id: generationJobId },
     });
 
-    await this.councilOrchestrator.run(generationJobId);
+    if (job.creditCharged) {
+      return;
+    }
+
+    if (job.status !== GenerationJobStatus.completed) {
+      await this.councilOrchestrator.run(generationJobId);
+    }
 
     const post = job.postPackageId
       ? await this.prisma.postPackage.findUnique({
@@ -43,7 +50,11 @@ export class CouncilJobHandler implements JobHandler {
 
     await this.prisma.generationJob.update({
       where: { id: generationJobId },
-      data: { creditCharged: true },
+      data: {
+        creditCharged: true,
+        status: GenerationJobStatus.completed,
+        completedAt: new Date(),
+      },
     });
   }
 }

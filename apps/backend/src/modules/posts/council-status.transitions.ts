@@ -24,7 +24,7 @@ export const COUNCIL_STATUS_TRANSITIONS: Record<
   [PostPackageStatus.scheduled]: [],
   [PostPackageStatus.publishing]: [],
   [PostPackageStatus.published]: [],
-  [PostPackageStatus.failed]: [],
+  [PostPackageStatus.failed]: [PostPackageStatus.text_generating],
 };
 
 export function assertCouncilStatusTransition(

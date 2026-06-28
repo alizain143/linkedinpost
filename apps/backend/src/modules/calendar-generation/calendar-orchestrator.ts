@@ -1,10 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import {
-  GenerationJobStatus,
-  PostPackageStatus,
-  PostSource,
-  Prisma,
-} from '@prisma/client';
+import { PostPackageStatus, PostSource, PostType, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   CalendarInput,
@@ -14,6 +9,11 @@ import {
 import { CalendarPlannerService } from './calendar-planner.service';
 import { CalendarSlotService } from './calendar-slot.service';
 import { localDateTimeToUtc } from './calendar-schedule.util';
+import { CalendarPlannerOutput } from './parsers/calendar-planner-output.parser';
+
+type CalendarJobResultPayload = CalendarJobResult & {
+  postPackageIds?: string[];
+};
 
 @Injectable()
 export class CalendarOrchestrator {
@@ -35,30 +35,54 @@ export class CalendarOrchestrator {
     const timezone = job.user.timezone || 'America/New_York';
     const slotCount = input.slotDates.length;
     const totalSteps = 1 + slotCount;
-    const createdPostIds: string[] = [];
+
+    const existingResult = job.result as CalendarJobResultPayload | null;
+    const createdPostIds = [...(existingResult?.postPackageIds ?? [])];
+    const resultSlots: CalendarJobResult['slots'] = [
+      ...(existingResult?.slots ?? []),
+    ];
 
     try {
-      await this.updateProgress(generationJobId, {
-        currentStep: 'planner',
-        currentLabel: 'Planning calendar topics',
-        completedSteps: 0,
-        totalSteps,
-        percentComplete: 0,
-      });
+      let plan: CalendarPlannerOutput | null = existingResult?.slots?.length
+        ? {
+            slots: input.slotDates.map((date, index) => ({
+              date,
+              topic:
+                existingResult!.slots[index]?.topic ?? `Topic ${index + 1}`,
+              pillar: existingResult!.slots[index]?.pillar ?? '',
+              postType: PostType.personal_story,
+              tone: '',
+            })),
+          }
+        : null;
 
-      const plan = await this.calendarPlannerService.plan(input);
+      if (!plan) {
+        await this.updateProgress(generationJobId, {
+          currentStep: 'planner',
+          currentLabel: 'Planning calendar topics',
+          completedSteps: 0,
+          totalSteps,
+          percentComplete: 0,
+        });
 
-      await this.updateProgress(generationJobId, {
-        currentStep: 'planner',
-        currentLabel: 'Calendar plan ready',
-        completedSteps: 1,
-        totalSteps,
-        percentComplete: Math.round((1 / totalSteps) * 100),
-      });
+        plan = await this.calendarPlannerService.plan(input);
 
-      const resultSlots: CalendarJobResult['slots'] = [];
+        await this.updateProgress(generationJobId, {
+          currentStep: 'planner',
+          currentLabel: 'Calendar plan ready',
+          completedSteps: 1,
+          totalSteps,
+          percentComplete: Math.round((1 / totalSteps) * 100),
+        });
+      }
 
-      for (let index = 0; index < plan.slots.length; index++) {
+      if (!plan) {
+        throw new Error(`Calendar job ${generationJobId} missing plan`);
+      }
+
+      const startIndex = createdPostIds.length;
+
+      for (let index = startIndex; index < plan.slots.length; index++) {
         const slot = plan.slots[index];
         const step = index + 2;
 
@@ -121,21 +145,29 @@ export class CalendarOrchestrator {
           topic: slot.topic,
           pillar: slot.pillar || variant.pillar || null,
         });
-      }
 
-      const result: CalendarJobResult = {
-        durationDays: input.durationDays,
-        slotCount,
-        postPackageIds: createdPostIds,
-        slots: resultSlots,
-      };
+        await this.prisma.generationJob.update({
+          where: { id: generationJobId },
+          data: {
+            result: {
+              durationDays: input.durationDays,
+              slotCount,
+              postPackageIds: createdPostIds,
+              slots: resultSlots,
+            } as unknown as Prisma.InputJsonValue,
+          },
+        });
+      }
 
       await this.prisma.generationJob.update({
         where: { id: generationJobId },
         data: {
-          status: GenerationJobStatus.completed,
-          result: result as unknown as Prisma.InputJsonValue,
-          completedAt: new Date(),
+          result: {
+            durationDays: input.durationDays,
+            slotCount,
+            postPackageIds: createdPostIds,
+            slots: resultSlots,
+          } as unknown as Prisma.InputJsonValue,
           progress: {
             currentStep: 'completed',
             currentLabel: 'Calendar generation complete',
@@ -149,8 +181,9 @@ export class CalendarOrchestrator {
       this.logger.error(`Calendar job ${generationJobId} failed`, err);
 
       if (createdPostIds.length > 0) {
-        await this.prisma.postPackage.deleteMany({
+        await this.prisma.postPackage.updateMany({
           where: { id: { in: createdPostIds } },
+          data: { deletedAt: new Date() },
         });
       }
 

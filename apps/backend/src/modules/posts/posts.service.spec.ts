@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   ConflictException,
   NotFoundException,
 } from '@nestjs/common';
@@ -112,7 +111,7 @@ describe('PostsService', () => {
       );
     });
 
-    it('requires scheduledAt when scheduling', async () => {
+    it('rejects scheduling via user status API', async () => {
       prisma.postPackage.findFirst.mockResolvedValue(
         buildPost({ status: PostPackageStatus.approved }),
       );
@@ -121,10 +120,10 @@ describe('PostsService', () => {
         service.transitionStatus(workspaceId, postId, userId, {
           status: PostPackageStatus.scheduled,
         }),
-      ).rejects.toThrow(BadRequestException);
+      ).rejects.toThrow(ConflictException);
     });
 
-    it('rejects past scheduledAt', async () => {
+    it('rejects scheduling with past scheduledAt via user status API', async () => {
       prisma.postPackage.findFirst.mockResolvedValue(
         buildPost({ status: PostPackageStatus.approved }),
       );
@@ -134,27 +133,7 @@ describe('PostsService', () => {
           status: PostPackageStatus.scheduled,
           scheduledAt: new Date('2020-01-01T00:00:00.000Z'),
         }),
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('sets publishedAt when publishing completes', async () => {
-      const publishing = buildPost({ status: PostPackageStatus.publishing });
-      prisma.postPackage.findFirst.mockResolvedValue(publishing);
-      prisma.postPackage.update.mockImplementation(async ({ data }) => ({
-        ...publishing,
-        ...data,
-        _count: { versions: 1 },
-      }));
-
-      const result = await service.transitionStatus(
-        workspaceId,
-        postId,
-        userId,
-        { status: PostPackageStatus.published },
-      );
-
-      expect(result.status).toBe(PostPackageStatus.published);
-      expect(result.publishedAt).toBeInstanceOf(Date);
+      ).rejects.toThrow(ConflictException);
     });
 
     it('clears scheduledAt when cancelling schedule', async () => {
@@ -316,8 +295,8 @@ describe('PostsService', () => {
 
   describe('getPipeline', () => {
     it('returns a column per pipeline stage', async () => {
+      prisma.postPackage.groupBy.mockResolvedValue([]);
       prisma.postPackage.findMany.mockResolvedValue([]);
-      prisma.postPackage.count.mockResolvedValue(0);
 
       const result = await service.getPipeline(workspaceId, userId, {});
 

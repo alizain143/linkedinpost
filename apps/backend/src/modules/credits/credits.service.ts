@@ -23,6 +23,11 @@ export interface ConsumeCreditsOptions {
   reason?: string;
 }
 
+type TransactionClient = Pick<
+  PrismaService,
+  'user' | 'creditTransaction' | '$executeRaw'
+>;
+
 @Injectable()
 export class CreditsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -94,6 +99,21 @@ export class CreditsService {
     }
 
     return this.prisma.$transaction(async (tx) => {
+      await this.lockUserForCredits(userId, tx);
+
+      if (normalizedOptions.generationJobId) {
+        const existing = await tx.creditTransaction.findFirst({
+          where: {
+            generationJobId: normalizedOptions.generationJobId,
+            type,
+          },
+        });
+
+        if (existing) {
+          return this.buildBalanceFromLockedUser(userId, tx);
+        }
+      }
+
       const user = await tx.user.findUniqueOrThrow({
         where: { id: userId },
         include: { subscription: true },
@@ -175,6 +195,41 @@ export class CreditsService {
     });
 
     return this.getBalance(userId);
+  }
+
+  private async lockUserForCredits(
+    userId: string,
+    tx: TransactionClient,
+  ): Promise<void> {
+    await tx.$executeRaw`SELECT id FROM users WHERE id = ${userId}::uuid FOR UPDATE`;
+  }
+
+  private async buildBalanceFromLockedUser(
+    userId: string,
+    tx: TransactionClient,
+  ): Promise<CreditsBalance> {
+    const user = await tx.user.findUniqueOrThrow({
+      where: { id: userId },
+      include: { subscription: true },
+    });
+    const now = new Date();
+    const { periodStart, periodEnd } = resolveCreditPeriod(
+      user.subscription,
+      now,
+    );
+    const used = await this.getUsedCredits(userId, periodStart, periodEnd, tx);
+    const limit = getCreditLimitForPlan(user.plan);
+    const remaining = Math.max(0, limit - used);
+
+    return {
+      plan: user.plan,
+      periodStart,
+      periodEnd,
+      used,
+      limit,
+      remaining,
+      percentUsed: limit > 0 ? Math.round((used / limit) * 100) : 0,
+    };
   }
 
   private async getUsedCredits(

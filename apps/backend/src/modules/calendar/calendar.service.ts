@@ -29,6 +29,7 @@ const POST_SELECT = {
   status: true,
   postType: true,
   scheduledAt: true,
+  publishedAt: true,
 } as const;
 
 @Injectable()
@@ -176,14 +177,16 @@ export class CalendarService {
     );
 
     const items = posts
+      .map((post) => ({ post, instant: this.getCalendarInstant(post) }))
       .filter(
-        (post) =>
-          post.scheduledAt &&
-          post.scheduledAt >= rangeStart &&
-          post.scheduledAt <= rangeEnd,
+        ({ instant }) =>
+          instant &&
+          instant >= rangeStart &&
+          instant <= rangeEnd,
       )
-      .map(toCalendarEvent)
-      .slice(0, limit);
+      .sort((a, b) => a.instant!.getTime() - b.instant!.getTime())
+      .slice(0, limit)
+      .map(({ post }) => toCalendarEvent(post));
 
     return {
       view: CalendarView.list,
@@ -200,20 +203,70 @@ export class CalendarService {
     rangeEnd: Date,
     statuses: PostPackageStatus[],
   ) {
-    return this.prisma.postPackage.findMany({
-      where: {
-        workspaceId,
-        ...NOT_DELETED,
-        scheduledAt: {
-          not: null,
-          gte: rangeStart,
-          lte: rangeEnd,
-        },
-        status: { in: statuses },
-      },
-      orderBy: { scheduledAt: 'asc' },
-      select: POST_SELECT,
-    });
+    const nonPublishedStatuses = statuses.filter(
+      (status) => status !== PostPackageStatus.published,
+    );
+    const queries = [];
+
+    if (nonPublishedStatuses.length > 0) {
+      queries.push(
+        this.prisma.postPackage.findMany({
+          where: {
+            workspaceId,
+            ...NOT_DELETED,
+            scheduledAt: {
+              not: null,
+              gte: rangeStart,
+              lte: rangeEnd,
+            },
+            status: { in: nonPublishedStatuses },
+          },
+          orderBy: { scheduledAt: 'asc' },
+          select: POST_SELECT,
+        }),
+      );
+    }
+
+    if (statuses.includes(PostPackageStatus.published)) {
+      queries.push(
+        this.prisma.postPackage.findMany({
+          where: {
+            workspaceId,
+            ...NOT_DELETED,
+            status: PostPackageStatus.published,
+            publishedAt: {
+              gte: rangeStart,
+              lte: rangeEnd,
+            },
+          },
+          orderBy: { publishedAt: 'asc' },
+          select: POST_SELECT,
+        }),
+      );
+    }
+
+    const results = await Promise.all(queries);
+    const merged = new Map(
+      results.flat().map((post) => [post.id, post]),
+    );
+
+    return [...merged.values()].sort(
+      (a, b) =>
+        (this.getCalendarInstant(a)?.getTime() ?? 0) -
+        (this.getCalendarInstant(b)?.getTime() ?? 0),
+    );
+  }
+
+  private getCalendarInstant(post: {
+    status: PostPackageStatus;
+    scheduledAt: Date | null;
+    publishedAt?: Date | null;
+  }): Date | null {
+    if (post.status === PostPackageStatus.published) {
+      return post.publishedAt ?? post.scheduledAt;
+    }
+
+    return post.scheduledAt;
   }
 
   private groupPostsByLocalDate(
@@ -224,17 +277,19 @@ export class CalendarService {
       status: PostPackageStatus;
       postType: import('@prisma/client').PostType | null;
       scheduledAt: Date | null;
+      publishedAt: Date | null;
     }>,
     timezone: string,
   ) {
     const grouped = new Map<string, ReturnType<typeof toCalendarEvent>[]>();
 
     for (const post of posts) {
-      if (!post.scheduledAt) {
+      const instant = this.getCalendarInstant(post);
+      if (!instant) {
         continue;
       }
 
-      const dateKey = toLocalDateKey(post.scheduledAt, timezone);
+      const dateKey = toLocalDateKey(instant, timezone);
       const events = grouped.get(dateKey) ?? [];
       events.push(toCalendarEvent(post));
       grouped.set(dateKey, events);

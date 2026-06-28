@@ -13,25 +13,14 @@ export const ALLOWED_TRANSITIONS: Record<
     PostPackageStatus.approved,
     PostPackageStatus.draft,
   ],
-  [PostPackageStatus.approved]: [
-    PostPackageStatus.scheduled,
-    PostPackageStatus.publishing,
-  ],
+  [PostPackageStatus.approved]: [],
   [PostPackageStatus.scheduled]: [
     PostPackageStatus.approved,
     PostPackageStatus.draft,
-    PostPackageStatus.publishing,
   ],
-  [PostPackageStatus.publishing]: [
-    PostPackageStatus.published,
-    PostPackageStatus.failed,
-  ],
+  [PostPackageStatus.publishing]: [],
   [PostPackageStatus.published]: [],
-  [PostPackageStatus.failed]: [
-    PostPackageStatus.draft,
-    PostPackageStatus.scheduled,
-    PostPackageStatus.publishing,
-  ],
+  [PostPackageStatus.failed]: [PostPackageStatus.draft],
 };
 
 export const PIPELINE_COLUMN_ORDER: PostPackageStatus[] = [

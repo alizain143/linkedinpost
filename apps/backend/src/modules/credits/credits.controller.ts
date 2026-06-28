@@ -15,7 +15,10 @@ export class CreditsController {
   constructor(private readonly creditsService: CreditsService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Get current user credit balance for the UTC month' })
+  @ApiOperation({
+    summary:
+      'Get current user credit balance (Stripe billing period for paid users, UTC month for free)',
+  })
   @ApiDataResponse(CreditsBalanceResponseDto)
   getBalance(@CurrentUser() user: User) {
     return this.creditsService.getBalance(user.id);

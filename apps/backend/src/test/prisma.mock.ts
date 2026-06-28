@@ -32,6 +32,7 @@ export type MockPrismaService = {
   };
   postPackage: {
     findFirst: jest.Mock;
+    findFirstOrThrow: jest.Mock;
     findMany: jest.Mock;
     findUnique: jest.Mock;
     findUniqueOrThrow: jest.Mock;
@@ -40,6 +41,7 @@ export type MockPrismaService = {
     updateMany: jest.Mock;
     delete: jest.Mock;
     count: jest.Mock;
+    groupBy: jest.Mock;
   };
   postVersion: {
     findFirst: jest.Mock;
@@ -50,6 +52,7 @@ export type MockPrismaService = {
   creditTransaction: {
     aggregate: jest.Mock;
     create: jest.Mock;
+    findFirst: jest.Mock;
   };
   generationJob: {
     create: jest.Mock;
@@ -87,6 +90,7 @@ export type MockPrismaService = {
   stripeWebhookEvent: {
     findUnique: jest.Mock;
     create: jest.Mock;
+    update: jest.Mock;
   };
   approvalToken: {
     findUnique: jest.Mock;
@@ -96,6 +100,7 @@ export type MockPrismaService = {
     updateMany: jest.Mock;
   };
   $transaction: jest.Mock;
+  $executeRaw: jest.Mock;
 };
 
 export function createMockPrismaService(): MockPrismaService {
@@ -133,6 +138,7 @@ export function createMockPrismaService(): MockPrismaService {
     },
     postPackage: {
       findFirst: jest.fn(),
+      findFirstOrThrow: jest.fn(),
       findMany: jest.fn(),
       findUnique: jest.fn(),
       findUniqueOrThrow: jest.fn(),
@@ -141,6 +147,7 @@ export function createMockPrismaService(): MockPrismaService {
       updateMany: jest.fn(),
       delete: jest.fn(),
       count: jest.fn(),
+      groupBy: jest.fn(),
     },
     postVersion: {
       findFirst: jest.fn(),
@@ -151,6 +158,7 @@ export function createMockPrismaService(): MockPrismaService {
     creditTransaction: {
       aggregate: jest.fn(),
       create: jest.fn(),
+      findFirst: jest.fn(),
     },
     generationJob: {
       create: jest.fn(),
@@ -188,6 +196,7 @@ export function createMockPrismaService(): MockPrismaService {
     stripeWebhookEvent: {
       findUnique: jest.fn(),
       create: jest.fn(),
+      update: jest.fn(),
     },
     approvalToken: {
       findUnique: jest.fn(),
@@ -197,6 +206,7 @@ export function createMockPrismaService(): MockPrismaService {
       updateMany: jest.fn(),
     },
     $transaction: jest.fn(),
+    $executeRaw: jest.fn(),
   };
 
   mock.$transaction.mockImplementation(async (arg: unknown) => {

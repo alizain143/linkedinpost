@@ -110,29 +110,7 @@ export class AuthController {
       'svix-signature': svixSignature,
     });
 
-    if (event.type === 'user.created') {
-      const email = event.data.email_addresses?.[0]?.email_address;
-
-      if (!email) {
-        throw new BadRequestException({
-          error: 'User email missing from webhook',
-          code: 'WEBHOOK_INVALID',
-        });
-      }
-
-      await this.usersService.createFromClerk({
-        clerkId: event.data.id,
-        email,
-        firstName: event.data.first_name ?? undefined,
-        lastName: event.data.last_name ?? undefined,
-        profileImageUrl: event.data.image_url ?? undefined,
-        hasClerkProfileImage: event.data.has_image ?? undefined,
-      });
-    }
-
-    if (event.type === 'user.deleted') {
-      await this.usersService.softDelete(event.data.id);
-    }
+    await this.authService.handleClerkWebhook(event);
 
     return { received: true };
   }

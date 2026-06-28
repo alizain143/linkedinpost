@@ -160,9 +160,10 @@ StripeWebhookEvent (idempotency)
 
 Three transition maps govern different subsystems:
 
-- `post-status.transitions.ts` — manual/API transitions
-- `council-status.transitions.ts` — council pipeline
+- `post-status.transitions.ts` — manual/API transitions (**excludes** publish and direct schedule; use scheduling + LinkedIn modules)
+- `council-status.transitions.ts` — council pipeline (includes `failed → text_generating` for retry)
 - `scheduling-status.transitions.ts` — schedule/unschedule
+- `publish-status.transitions.ts` — LinkedIn worker CAS (`approved|scheduled|failed → publishing`)
 
 ---
 
@@ -184,7 +185,7 @@ Council agent pipeline: writer → reviewer → editor → media_creator → med
 | Paid (`active`, `trialing`, `past_due`) | `Subscription.currentPeriodStart` → `currentPeriodEnd` |
 | Free / no subscription | UTC calendar month |
 
-`CreditTransaction.generationJobId` links consumption to the job that triggered it. `CreditsService.grant()` supports positive `adjustment` transactions.
+`CreditTransaction.generationJobId` links consumption to the job that triggered it. Partial unique index on `(generationJobId, type)` prevents double-charge on job retry. `CreditsService.grant()` supports positive `adjustment` transactions.
 
 ---
 
@@ -250,16 +251,20 @@ Cascade soft-delete when an agency client workspace is deleted. Individual post 
 
 ---
 
-## Known remaining items
+## Known remaining items (deferred / tech debt)
 
 | Item | Detail |
-|-------|--------|
-| `PRODUCT_OVERVIEW.md` ER diagram | May reference removed models — see SCHEMA_AUDIT.md |
+|------|--------|
+| `PRODUCT_OVERVIEW.md` ER diagram | May reference removed models (e.g. `CouncilRun`) |
 | `PostPackage.pillar` string not FK | Rename pillar → old posts keep old name |
-| R2 orphan cleanup | Media objects may remain after post delete |
+| R2 orphan cleanup | Media objects may remain in R2 after post soft-delete |
+| `CouncilEvent.output` retention | No TTL; large agent outputs accumulate |
+| Per-workspace LinkedIn connections | LinkedIn tokens/profile stay on `User`, not workspace |
+| Full-text search | Not built |
 | Document enums | Duplicated in Prisma schema and `document.constants.ts` |
+| Quick draft async queue | Sync only today; optional future move to BullMQ |
 
-See [SCHEMA_AUDIT.md](SCHEMA_AUDIT.md) for resolved optimizations and deferred work.
+Schema-level deferred items are also listed in [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md#remaining-schema-notes-deferred).
 
 ---
 

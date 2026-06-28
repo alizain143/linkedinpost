@@ -3,6 +3,7 @@ import {
   Injectable,
   Logger,
 } from '@nestjs/common';
+import { StripeWebhookEventStatus } from '@prisma/client';
 import Stripe from 'stripe';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BillingSyncService } from './billing-sync.service';
@@ -51,18 +52,45 @@ export class StripeWebhookService {
       where: { id: event.id },
     });
 
-    if (existing) {
+    if (existing?.status === StripeWebhookEventStatus.processed) {
       return { received: true, duplicate: true };
     }
 
-    await this.prisma.stripeWebhookEvent.create({
-      data: {
-        id: event.id,
-        type: event.type,
-      },
-    });
+    if (!existing) {
+      await this.prisma.stripeWebhookEvent.create({
+        data: {
+          id: event.id,
+          type: event.type,
+          status: StripeWebhookEventStatus.pending,
+        },
+      });
+    }
 
-    await this.dispatchEvent(event);
+    try {
+      await this.dispatchEvent(event);
+
+      await this.prisma.stripeWebhookEvent.update({
+        where: { id: event.id },
+        data: {
+          status: StripeWebhookEventStatus.processed,
+          processedAt: new Date(),
+          errorMessage: null,
+        },
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Webhook dispatch failed';
+
+      await this.prisma.stripeWebhookEvent.update({
+        where: { id: event.id },
+        data: {
+          status: StripeWebhookEventStatus.failed,
+          errorMessage: message,
+        },
+      });
+
+      throw error;
+    }
 
     return { received: true };
   }
@@ -87,6 +115,11 @@ export class StripeWebhookService {
         break;
       case 'invoice.payment_failed':
         await this.billingSync.handlePaymentFailed(
+          event.data.object as Stripe.Invoice,
+        );
+        break;
+      case 'invoice.payment_succeeded':
+        await this.billingSync.syncFromInvoicePayment(
           event.data.object as Stripe.Invoice,
         );
         break;

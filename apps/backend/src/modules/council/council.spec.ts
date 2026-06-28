@@ -86,7 +86,7 @@ describe('council progress', () => {
   });
 
   it('calculates total steps with revisions', () => {
-    expect(councilTotalSteps(1, 1)).toBe(8);
+    expect(councilTotalSteps(1, 1)).toBe(9);
   });
 });
 

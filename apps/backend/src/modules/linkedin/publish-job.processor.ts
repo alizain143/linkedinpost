@@ -24,7 +24,12 @@ export class PublishJobProcessor extends WorkerHost {
 
     if (!post) return;
     if (post.status === PostPackageStatus.published) return;
-    if (post.status !== PostPackageStatus.scheduled) return;
+    if (
+      post.status !== PostPackageStatus.scheduled &&
+      post.status !== PostPackageStatus.failed
+    ) {
+      return;
+    }
 
     const scheduledAt = post.scheduledAt?.toISOString();
     if (!scheduledAt || scheduledAt !== job.data.scheduledAt) return;

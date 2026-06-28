@@ -22,7 +22,7 @@ import { QuickDraftJobService } from './quick-draft-job.service';
 @ApiTags('generation')
 @ApiBearerAuth('bearer')
 @Controller('workspaces/:workspaceId/generate')
-@UseGuards(ClerkAuthGuard, CreditsGuard)
+@UseGuards(ClerkAuthGuard)
 export class GenerationController {
   constructor(
     private readonly quickDraftJobService: QuickDraftJobService,
@@ -31,6 +31,7 @@ export class GenerationController {
   ) {}
 
   @Post('quick')
+  @UseGuards(CreditsGuard)
   @CreditsCost(1)
   @ApiOperation({ summary: 'Generate 3 quick draft LinkedIn post variants' })
   @ApiParam({ name: 'workspaceId', format: 'uuid' })
@@ -49,6 +50,7 @@ export class GenerationController {
 
   @Post('council')
   @HttpCode(HttpStatus.ACCEPTED)
+  @UseGuards(CreditsGuard)
   @CreditsCost(3)
   @ApiOperation({ summary: 'Start AI council multi-agent generation (async)' })
   @ApiParam({ name: 'workspaceId', format: 'uuid' })

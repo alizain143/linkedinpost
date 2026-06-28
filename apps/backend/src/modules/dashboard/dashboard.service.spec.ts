@@ -48,6 +48,8 @@ describe('DashboardService', () => {
       );
       prisma.postPackage.count
         .mockResolvedValueOnce(5)
+        .mockResolvedValueOnce(0)
+        .mockResolvedValueOnce(0)
         .mockResolvedValueOnce(2)
         .mockResolvedValueOnce(1)
         .mockResolvedValueOnce(0);
@@ -79,6 +81,8 @@ describe('DashboardService', () => {
       expect(creditsService.getBalance).toHaveBeenCalledWith(userId, expect.any(Date));
       expect(result.counts).toEqual({
         drafts: 5,
+        awaitingApproval: 0,
+        inProgress: 0,
         scheduled: 2,
         publishedThisMonth: 1,
         generatedThisMonth: 0,

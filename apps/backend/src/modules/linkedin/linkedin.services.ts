@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ClerkOAuthService } from './clerk-oauth.service';
@@ -8,7 +12,10 @@ import {
 } from './linkedin.types';
 import { buildPostCommentary, LinkedInApiClient } from './linkedin-api.client';
 import { LinkedInPublishError } from './linkedin-publish.error';
-import { assertPublishTransition } from './publish-status.transitions';
+import {
+  assertPublishTransition,
+  PUBLISH_SOURCE_STATUSES,
+} from './publish-status.transitions';
 import { PostPackageStatus } from '@prisma/client';
 import { toPostPackageResponse } from '../posts/post.mapper';
 import { MediaService } from '../media/media.service';
@@ -128,8 +135,11 @@ export class LinkedInPublishService {
       memberId = profile.memberId;
     }
 
-    await this.prisma.postPackage.update({
-      where: { id: post.id },
+    const publishing = await this.prisma.postPackage.updateMany({
+      where: {
+        id: post.id,
+        status: { in: PUBLISH_SOURCE_STATUSES },
+      },
       data: {
         status: PostPackageStatus.publishing,
         publishAttemptedAt: new Date(),
@@ -140,6 +150,13 @@ export class LinkedInPublishService {
           : {}),
       },
     });
+
+    if (publishing.count === 0) {
+      throw new ConflictException({
+        error: `Cannot publish post in status ${post.status}`,
+        code: 'INVALID_STATUS_TRANSITION',
+      });
+    }
 
     try {
       const commentary = buildPostCommentary(post);

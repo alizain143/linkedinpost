@@ -26,5 +26,5 @@ export function councilTotalSteps(
   maxTextRevisions: number,
   maxMediaRegens: number,
 ): number {
-  return 5 + maxTextRevisions * 2 + maxMediaRegens;
+  return 5 + maxTextRevisions * 2 + maxMediaRegens * 2;
 }

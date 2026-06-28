@@ -11,7 +11,12 @@ export interface GenerationJobPayload {
   generationJobId: string;
 }
 
-@Processor(GENERATION_JOBS_QUEUE)
+const queueConcurrency = parseInt(
+  process.env.GENERATION_QUEUE_CONCURRENCY ?? '2',
+  10,
+);
+
+@Processor(GENERATION_JOBS_QUEUE, { concurrency: queueConcurrency })
 export class GenerationJobProcessor extends WorkerHost {
   private readonly logger = new Logger(GenerationJobProcessor.name);
 
@@ -34,14 +39,27 @@ export class GenerationJobProcessor extends WorkerHost {
       return;
     }
 
-    if (generationJob.status === GenerationJobStatus.completed) {
+    if (
+      generationJob.creditCharged ||
+      generationJob.status === GenerationJobStatus.completed
+    ) {
       return;
     }
 
-    await this.prisma.generationJob.update({
-      where: { id: generationJobId },
+    const claim = await this.prisma.generationJob.updateMany({
+      where: {
+        id: generationJobId,
+        creditCharged: false,
+        status: {
+          in: [GenerationJobStatus.pending, GenerationJobStatus.failed],
+        },
+      },
       data: { status: GenerationJobStatus.running },
     });
+
+    if (claim.count === 0) {
+      return;
+    }
 
     const handler = this.handlerRegistry.get(generationJob.type);
 
@@ -55,7 +73,7 @@ export class GenerationJobProcessor extends WorkerHost {
           completedAt: new Date(),
         },
       });
-      return;
+      throw new Error(`No handler for job type ${generationJob.type}`);
     }
 
     try {

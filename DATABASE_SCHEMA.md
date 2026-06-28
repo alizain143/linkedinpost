@@ -1,7 +1,7 @@
 # Database Schema Reference
 
 > **Source of truth:** `apps/backend/prisma/schema.prisma`  
-> **Companion docs:** [CURRENT_ARCHITECTURE.md](CURRENT_ARCHITECTURE.md) · [SCHEMA_AUDIT.md](SCHEMA_AUDIT.md) · [PRODUCT_OVERVIEW.md](PRODUCT_OVERVIEW.md)  
+> **Companion docs:** [CURRENT_ARCHITECTURE.md](CURRENT_ARCHITECTURE.md) · [PRODUCT_OVERVIEW.md](PRODUCT_OVERVIEW.md)  
 > **Last synced:** June 2026 (schema cleanup phases 1–3)
 
 Developer reference for every PostgreSQL table, field, enum, and relationship. Read this before writing Prisma queries, migrations, or API mappers.
@@ -191,6 +191,14 @@ Mirrors Stripe subscription status. Synced in `BillingSyncService`.
 | `incomplete` | Checkout started, not completed (default) |
 | `unpaid` | Stripe unpaid state |
 
+### `StripeWebhookEventStatus`
+
+| Value | Meaning |
+|-------|---------|
+| `pending` | Inserted, handler not yet finished |
+| `processed` | Handler succeeded |
+| `failed` | Handler failed; Stripe replay will retry dispatch |
+
 ---
 
 ## Tables
@@ -256,9 +264,11 @@ Idempotency log for Stripe webhooks.
 |-------|------|------|---------|-------------|
 | `id` | String | No | — | Stripe event id (not UUID) |
 | `type` | String | No | — | Event type e.g. `checkout.session.completed` |
-| `processedAt` | Timestamptz | No | now() | When handler finished |
+| `status` | StripeWebhookEventStatus | No | `processed` | `pending` → dispatch → `processed` or `failed` |
+| `errorMessage` | String | Yes | — | Last handler error when `status=failed` |
+| `processedAt` | Timestamptz | No | now() | When row was last updated |
 
-No relations. Prevents double-processing.
+No relations. Prevents double-processing; failed rows are retried on Stripe replay.
 
 ---
 
@@ -470,7 +480,9 @@ Append-only ledger. Negative amounts = spend.
 | `reason` | String | Yes | — | Optional human note |
 | `createdAt` | Timestamptz | No | now() | Used for credit period filter |
 
-**Indexes:** `(userId, createdAt)`, `generationJobId`
+**Indexes:** `(userId, createdAt)`, `generationJobId`, partial unique `(generationJobId, type) WHERE generationJobId IS NOT NULL`
+
+**Idempotency:** `CreditsService.consume()` uses `SELECT … FOR UPDATE` on the user row and no-ops when a row already exists for the same `(generationJobId, type)`.
 
 **Balance:** `CreditsService` sums negative amounts in the current credit period. Paid users (`active`, `trialing`, `past_due`) use `Subscription.currentPeriodStart/End`; free users use UTC calendar month.
 
@@ -648,15 +660,17 @@ prisma.generationJob.findMany({
 
 ---
 
-## Remaining schema notes
+## Remaining schema notes (deferred)
 
-| Item | Status |
-|------|--------|
-| `PostPackage.pillar` string not FK | Deferred — rename pillar → old posts keep old name |
-| R2 orphan cleanup on post delete | Deferred |
-| JSON retention on `CouncilEvent.output` | Deferred |
-
-See [SCHEMA_AUDIT.md](SCHEMA_AUDIT.md) for full resolved/deferred list.
+| Item | Notes |
+|------|-------|
+| `PostPackage.pillar` string not FK | Pillar stored as snapshot; rename pillar → old posts keep old name |
+| `PostPackage.contentPillarId` FK | Not modeled; pillar is denormalized string on post |
+| R2 orphan cleanup on post delete | Media objects may remain in R2 after post soft-delete |
+| JSON retention / TTL on `CouncilEvent.output` | Large agent outputs accumulate indefinitely |
+| Per-workspace LinkedIn connections | LinkedIn data remains on `User` JSON |
+| Full-text search | Not built |
+| Document enums | Duplicated in Prisma schema and `document.constants.ts` |
 
 ---
 

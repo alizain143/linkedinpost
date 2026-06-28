@@ -17,7 +17,7 @@ Council pipeline: [`COUNCIL.md`](COUNCIL.md)
 | `GET` | `/v1/workspaces/:workspaceId/autopilot/planned` | — | Upcoming autopilot posts |
 | `GET` | `/v1/jobs/:id` | — | Poll progress |
 
-Guards: `ClerkAuthGuard` + `CreditsGuard` on generation endpoints.
+Guards: `ClerkAuthGuard` + `CreditsGuard` on quick draft and council only. Calendar asserts full bundle cost (10/30) in `CalendarJobService` before enqueue.
 
 ### Example
 
@@ -66,10 +66,9 @@ POST /generate/council
     → CouncilJobService.enqueueCouncil()
     → GenerationJob (pending) + PostPackage
     → BullMQ generation-jobs queue
-    → GenerationJobProcessor
-    → CouncilJobHandler → CouncilOrchestrator.run(jobId)
-    → CouncilEvent timeline + job progress updates
-    → CreditsService.consume(3, council, { generationJobId }) on success
+    → GenerationJobProcessor (skips if `creditCharged` or `completed`; conditional claim)
+    → CouncilJobHandler → CouncilOrchestrator.run(jobId) (progress only)
+    → CouncilJobHandler charges credits + sets `completed` + `creditCharged`
 ```
 
 ## Autopilot (Slice 15)

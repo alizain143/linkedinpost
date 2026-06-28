@@ -19,6 +19,8 @@ describe('CreditsService', () => {
     });
     prisma.creditTransaction.aggregate.mockResolvedValue({ _sum: { amount: 0 } });
     prisma.creditTransaction.create.mockResolvedValue({});
+    prisma.creditTransaction.findFirst.mockResolvedValue(null);
+    prisma.$executeRaw.mockResolvedValue(0);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -98,6 +100,32 @@ describe('CreditsService', () => {
       });
       expect(result.used).toBe(3);
       expect(result.remaining).toBe(197);
+    });
+
+    it('is idempotent when generationJobId and type already charged', async () => {
+      prisma.$transaction.mockImplementation(async (arg: unknown) => {
+        if (typeof arg === 'function') {
+          return arg(prisma);
+        }
+        return Promise.all(arg as Promise<unknown>[]);
+      });
+      prisma.creditTransaction.findFirst.mockResolvedValue({
+        id: 'existing',
+        amount: -3,
+      });
+      prisma.creditTransaction.aggregate.mockResolvedValue({
+        _sum: { amount: -3 },
+      });
+
+      const result = await service.consume(
+        userId,
+        3,
+        CreditTransactionType.council,
+        { generationJobId: 'job-1' },
+      );
+
+      expect(prisma.creditTransaction.create).not.toHaveBeenCalled();
+      expect(result.used).toBe(3);
     });
 
     it('rejects non-positive cost', async () => {

@@ -43,7 +43,9 @@ Stored on `User.linkedInProfile` JSON.
 approved | scheduled | failed(publish) → publishing → published | failed
 ```
 
-Scheduled: `SchedulingService` enqueues `publish-jobs` with delay = `scheduledAt - now`.
+Publish uses conditional `updateMany` (`approved|scheduled|failed → publishing`); concurrent publish returns 409. Worker retries from `scheduled` or `failed` when `scheduledAt` matches the job payload.
+
+Scheduled: `SchedulingService` requires Redis **before** DB write, then enqueues `publish-jobs` with delay = `scheduledAt - now`. `PublishReconcileService` re-enqueues scheduled posts on startup.
 
 ## Env
 
