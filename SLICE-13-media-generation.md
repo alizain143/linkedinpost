@@ -15,7 +15,7 @@ Replace the council media stub with real image generation (mock provider in dev)
 
 ## Prisma
 
-Migration `20250627100000_add_post_media`:
+Migration `20250629110000_add_post_media`:
 
 - Enums: `PostMediaType` (`quote_card`), `PostMediaSource` (`council`)
 - Model: `PostMedia` linked to `PostPackage` and optional `CouncilRun`
