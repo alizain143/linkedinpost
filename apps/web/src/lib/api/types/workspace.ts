@@ -1,10 +1,11 @@
-import type { WorkspaceType } from "./enums";
+import type { ChangesApplyMode, WorkspaceType } from "./enums";
 
 export type ApiWorkspace = {
   id: string;
   name: string;
   type: WorkspaceType;
   ownerId: string;
+  changesApplyMode: ChangesApplyMode;
   createdAt: string;
   updatedAt: string;
 };
@@ -33,6 +34,11 @@ export type CreateClientWorkspaceBody = {
 
 export type UpdateClientWorkspaceBody = {
   name: string;
+};
+
+export type UpdateWorkspaceSettingsBody = {
+  name?: string;
+  changesApplyMode?: ChangesApplyMode;
 };
 
 export type DeleteClientWorkspaceResponse = {

@@ -9,10 +9,12 @@ import { Button, filterVariant } from "@/components/ui/button";
 import { MsIcon } from "@/components/ui/ms-icon";
 import { useApprovals } from "@/hooks/api/use-approvals-api";
 import {
+  useApplyPostChangesMutation,
   useApprovePostMutation,
   useRejectPostMutation,
   useRequestChangesPostMutation,
 } from "@/hooks/api/use-posts-api";
+import { trackProductEvent } from "@/lib/product-events";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { getApiErrorMessage } from "@/lib/api-error-messages";
 import type { ApprovalTab } from "@/lib/api/types/approvals";
@@ -70,13 +72,15 @@ export default function Approvals() {
   const approveMutation = useApprovePostMutation(activeWorkspaceId);
   const rejectMutation = useRejectPostMutation(activeWorkspaceId);
   const requestChangesMutation = useRequestChangesPostMutation(activeWorkspaceId);
+  const applyChangesMutation = useApplyPostChangesMutation(activeWorkspaceId);
 
   const tabActions = approvalTabActions(activeTab);
   const isCardPending = (postId: string) =>
     activePostId === postId &&
     (approveMutation.isPending ||
       rejectMutation.isPending ||
-      requestChangesMutation.isPending);
+      requestChangesMutation.isPending ||
+      applyChangesMutation.isPending);
 
   const setTab = useCallback(
     (tab: ApprovalTab) => {
@@ -141,6 +145,20 @@ export default function Approvals() {
           setActivePostId(null);
         });
     });
+  };
+
+  const handleApplyChanges = async (postId: string) => {
+    setActivePostId(postId);
+    try {
+      await applyChangesMutation.mutateAsync({ postId });
+      trackProductEvent("changes_apply_manual");
+      showToast("AI applied the requested changes", "auto_awesome");
+      void refetch();
+    } catch (err) {
+      showToast(getApiErrorMessage(err), "error");
+    } finally {
+      setActivePostId(null);
+    }
   };
 
   return (
@@ -289,6 +307,18 @@ export default function Approvals() {
                     >
                       <MsIcon name="schedule" size={16} />
                       Schedule
+                    </Button>
+                  ) : null}
+                  {tabActions.showApplyChanges ? (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      disabled={pending}
+                      onClick={() => void handleApplyChanges(item.id)}
+                    >
+                      <MsIcon name="auto_awesome" size={16} />
+                      Apply with AI (1 cr)
                     </Button>
                   ) : null}
                 </div>

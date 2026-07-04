@@ -10,10 +10,13 @@ Council pipeline: [`COUNCIL.md`](COUNCIL.md)
 | Method | Route | Cost | Mode |
 |--------|-------|------|------|
 | `POST` | `/v1/workspaces/:workspaceId/generate/quick` | 1 credit | Sync (200) |
+| `POST` | `/v1/workspaces/:workspaceId/generate/quick-single` | 1 credit | Sync (200) — one variant / regen with optional prompt |
 | `POST` | `/v1/workspaces/:workspaceId/generate/suggest-topics` | Free | Sync (200) — 5–8 topic ideas |
+| `POST` | `/v1/workspaces/:workspaceId/generate/compare-pick` | Free | Sync (200) — pick best draft option |
 | `POST` | `/v1/workspaces/:workspaceId/generate/council` | 3 credits | Async (202) — post + unbound image |
 | `POST` | `/v1/workspaces/:workspaceId/generate/calendar` | 10 / 30 credits | Async (202) |
-| `POST` | `/v1/workspaces/:workspaceId/posts/:id/generate-media` | 2 credits | Async (202) — image on existing draft |
+| `POST` | `/v1/workspaces/:workspaceId/posts/:id/apply-changes` | 1 credit | Sync (200) — revise post from feedback / optional prompt |
+| `POST` | `/v1/workspaces/:workspaceId/posts/:id/generate-media` | 2 credits | Async (202) — body `{ mediaCustomPrompt?, replace? }` |
 | `GET` | `/v1/workspaces/:workspaceId/autopilot` | — | Config + next run |
 | `PUT` | `/v1/workspaces/:workspaceId/autopilot` | — | Upsert autopilot config |
 | `GET` | `/v1/workspaces/:workspaceId/autopilot/planned` | — | Upcoming autopilot posts |
@@ -84,12 +87,12 @@ POST /posts/:id/generate-media
     → BullMQ generation-jobs queue
     → MediaJobHandler → MediaOnlyOrchestrator.run(jobId)
     → Post status: draft → media_generating → draft (with PostMedia attached)
-    → MediaJobHandler charges 2 credits (CreditTransactionType.media)
+    → MediaJobHandler charges credits (2 freestyle / 1 template)
 ```
 
-Requires Redis. Blocks if post is not `draft` or already has media.
+Requires Redis. Blocks if post is not `draft`/`ready_for_approval` or already has media (unless `replace`).
 
-Media inputs: post copy + content profile (brand colors) + optional `mediaCustomPrompt`. No media types, templates, or reference images.
+**Lanes:** `mediaMode=freestyle` (default) uses Nano Banana. `mediaMode=template` resolves a `MediaTemplate` (post → profile → workspace → system identity-card), slot-fills headline/subhead via text LLM, renders SVG→PNG with Resvg. See [SLICE-22-media-templates.md](../../SLICE-22-media-templates.md).
 
 
 ## Autopilot (Slice 15)

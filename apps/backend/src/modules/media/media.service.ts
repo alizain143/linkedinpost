@@ -110,6 +110,28 @@ export class MediaService {
     );
   }
 
+  async deleteAllForPost(postPackageId: string): Promise<void> {
+    const rows = await this.prisma.postMedia.findMany({
+      where: { postPackageId },
+    });
+
+    for (const row of rows) {
+      try {
+        await this.r2Storage.deleteObject(row.storageBucket, row.storageKey);
+      } catch (error) {
+        this.logger.warn(
+          `Failed to delete media ${row.id} from R2: ${error}`,
+        );
+      }
+    }
+
+    if (rows.length > 0) {
+      await this.prisma.postMedia.deleteMany({
+        where: { postPackageId },
+      });
+    }
+  }
+
   async resolveUrl(storageBucket: string, storageKey: string): Promise<string> {
     const publicUrl = this.r2BucketService.getPostMediaPublicUrl(storageKey);
 

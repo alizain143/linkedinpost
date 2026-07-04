@@ -7,6 +7,7 @@ import { RequestChangesModal } from "@/components/modals/request-changes-modal";
 import { Button } from "@/components/ui/button";
 import { TextareaField } from "@/components/ui/input";
 import { MsIcon } from "@/components/ui/ms-icon";
+import { PostMediaList } from "@/components/ui/post-media-image";
 import {
   usePublicApprovalPreview,
   usePublicApproveMutation,
@@ -22,7 +23,11 @@ type PublicApprovalPageProps = {
   token: string;
 };
 
-type SuccessAction = "approved" | "changes_requested" | "rejected";
+type SuccessAction =
+  | "approved"
+  | "changes_requested"
+  | "changes_requested_auto"
+  | "rejected";
 
 function PreviewSkeleton() {
   return (
@@ -58,17 +63,23 @@ function SuccessCard({ action }: { action: SuccessAction }) {
           title: "Post approved",
           body: "Thanks for reviewing. Your agency has been notified and can schedule or publish the post.",
         }
-      : action === "changes_requested"
+      : action === "changes_requested_auto"
         ? {
-            icon: "rate_review",
+            icon: "auto_awesome",
             title: "Changes requested",
-            body: "Your feedback was sent back to the agency team for revisions.",
+            body: "Your feedback was sent — the author is applying changes with AI.",
           }
-        : {
-            icon: "cancel",
-            title: "Post rejected",
-            body: "The agency team has been notified. You can close this window.",
-          };
+        : action === "changes_requested"
+          ? {
+              icon: "rate_review",
+              title: "Changes requested",
+              body: "Your feedback was sent back to the agency team for revisions.",
+            }
+          : {
+              icon: "cancel",
+              title: "Post rejected",
+              body: "The agency team has been notified. You can close this window.",
+            };
 
   return (
     <div className="mx-auto w-full max-w-[520px] rounded-2xl border border-[#eceef4] bg-white px-6 py-10 text-center shadow-sm">
@@ -161,10 +172,16 @@ export function PublicApprovalPage({ token }: PublicApprovalPageProps) {
 
     setRequestChangesError(null);
     try {
-      await requestChangesMutation.mutateAsync({ feedback: trimmed });
+      const result = await requestChangesMutation.mutateAsync({
+        feedback: trimmed,
+      });
       setRequestChangesOpen(false);
       setFeedback("");
-      setSuccessAction("changes_requested");
+      setSuccessAction(
+        result.autoApplyStarted
+          ? "changes_requested_auto"
+          : "changes_requested",
+      );
     } catch (err) {
       if (err instanceof ApiError && err.code === "APPROVAL_LINK_INVALID") {
         setRequestChangesOpen(false);
@@ -267,24 +284,7 @@ export function PublicApprovalPage({ token }: PublicApprovalPageProps) {
               ) : null}
 
               {preview.media.length > 0 ? (
-                <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                  {preview.media.map((item, index) => (
-                    <a
-                      key={`${item.url}-${index}`}
-                      href={item.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="overflow-hidden rounded-xl border border-[#eceef4]"
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={item.url}
-                        alt={item.altText ?? "Post media"}
-                        className="h-48 w-full object-cover"
-                      />
-                    </a>
-                  ))}
-                </div>
+                <PostMediaList className="mt-5" items={preview.media} />
               ) : null}
 
               {preview.status === "ready_for_approval" ? (

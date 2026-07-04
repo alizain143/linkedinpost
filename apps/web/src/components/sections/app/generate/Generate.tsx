@@ -12,12 +12,34 @@ import { SelectField } from "@/components/ui/select";
 import { useContentProfiles } from "@/hooks/api/use-content-profiles-api";
 import { useCredits } from "@/hooks/api/use-credits-api";
 import {
+  useComparePickMutation,
   useCouncilMutation,
   useGenerationJob,
   useQuickDraftMutation,
+  useQuickDraftSingleMutation,
   useTopicSuggestionsMutation,
 } from "@/hooks/api/use-generation-api";
-import { useCreatePost, useGeneratePostMediaMutation } from "@/hooks/api/use-posts-api";
+import {
+  useApplyPostChangesMutation,
+  useCreatePost,
+  useDeletePost,
+  useGeneratePostMediaMutation,
+  usePost,
+} from "@/hooks/api/use-posts-api";
+import { updatePost } from "@/lib/api/posts";
+import { CreditConfirmModal } from "@/components/modals/credit-confirm-modal";
+import { PromptModal } from "@/components/modals/prompt-modal";
+import { VoiceMicButton } from "@/components/ui/voice-mic-button";
+import { copyPostToClipboard } from "@/lib/copy-post";
+import { trackProductEvent } from "@/lib/product-events";
+import {
+  isSpeechSynthesisSupported,
+  pauseSpeech,
+  resumeSpeech,
+  speakPost,
+  stopSpeech,
+  type SpeechPlaybackState,
+} from "@/lib/speech/tts";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { getApiErrorMessage } from "@/lib/api-error-messages";
 import { approvePost, fetchPost, transitionPostStatus } from "@/lib/api/posts";
@@ -39,6 +61,7 @@ import {
 } from "@/lib/generation-utils";
 import { CouncilTimeline } from "@/components/sections/app/generate/CouncilTimeline";
 import { LinkedInFeedPreview } from "@/components/sections/app/generate/LinkedInFeedPreview";
+import { PostMediaImage } from "@/components/ui/post-media-image";
 import { GenerationHistoryPanel } from "@/components/sections/app/generate/GenerationHistoryPanel";
 import {
   TopicMagicButton,
@@ -48,6 +71,8 @@ import { useAppUi } from "@/providers/app-ui-provider";
 import { useAuth } from "@clerk/nextjs";
 import {
   addGenerationHistoryEntry,
+  buildTopicFingerprint,
+  isQuickDraftSessionStale,
   loadGenerationSession,
   saveGenerationSession,
   type GenerationHistoryEntry,
@@ -104,10 +129,14 @@ export default function Generate() {
   } = useContentProfiles(activeWorkspaceId);
 
   const quickDraft = useQuickDraftMutation(activeWorkspaceId);
+  const quickDraftSingle = useQuickDraftSingleMutation(activeWorkspaceId);
   const topicSuggestionsMutation = useTopicSuggestionsMutation(activeWorkspaceId);
+  const comparePickMutation = useComparePickMutation(activeWorkspaceId);
   const councilMutation = useCouncilMutation(activeWorkspaceId);
   const generatePostMedia = useGeneratePostMediaMutation(activeWorkspaceId);
+  const applyPostChanges = useApplyPostChangesMutation(activeWorkspaceId);
   const createPost = useCreatePost(activeWorkspaceId);
+  const deletePost = useDeletePost(activeWorkspaceId);
 
   const [mode, setMode] = useState<GenModeId>("quick");
   const [activeCouncilJobId, setActiveCouncilJobId] = useState<string | null>(
@@ -126,12 +155,42 @@ export default function Generate() {
     mediaCustomPrompt: "",
   });
   const [variants, setVariants] = useState<QuickDraftVariant[]>([]);
+  const [originalVariants, setOriginalVariants] = useState<QuickDraftVariant[]>(
+    [],
+  );
   const [generated, setGenerated] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [savedPostIds, setSavedPostIds] = useState<Record<number, string>>({});
   const [dismissedVariantIndices, setDismissedVariantIndices] = useState<number[]>(
     [],
   );
+  const [undoDismissIndex, setUndoDismissIndex] = useState<number | null>(null);
+  const [editingVariantIndex, setEditingVariantIndex] = useState<number | null>(
+    null,
+  );
+  const [speechPlayback, setSpeechPlayback] = useState<{
+    variantIndex: number;
+    state: Exclude<SpeechPlaybackState, "idle">;
+  } | null>(null);
+  const [compareMode, setCompareMode] = useState(false);
+  const [aiPick, setAiPick] = useState<{
+    variantIndex: number;
+    reason: string;
+  } | null>(null);
+  const [topicFingerprint, setTopicFingerprint] = useState<string | null>(null);
+  const [staleSessionBanner, setStaleSessionBanner] = useState(false);
+  const [skipCreditConfirm, setSkipCreditConfirm] = useState(false);
+  const [creditConfirm, setCreditConfirm] = useState<{
+    cost: number;
+    label: string;
+    onConfirm: () => void;
+  } | null>(null);
+  const [promptModal, setPromptModal] = useState<{
+    kind: "regen" | "media" | "council-text" | "council-media";
+    variantIndex?: number;
+    value: string;
+  } | null>(null);
+  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [variantPostStatuses, setVariantPostStatuses] = useState<
     Record<number, string>
   >({});
@@ -163,18 +222,24 @@ export default function Generate() {
     poll: true,
     workspaceId: activeWorkspaceId,
     onCompleted: (job) => {
-      showToast("Council review complete", "check_circle");
       if (!activeWorkspaceId || councilCompletedRef.current === job.id) return;
       councilCompletedRef.current = job.id;
-      addGenerationHistoryEntry(activeWorkspaceId, {
+      const { created } = addGenerationHistoryEntry(activeWorkspaceId, {
         kind: "council",
         label: form.topic.trim() || "AI Council",
         topic: form.topic.trim(),
         councilJobId: job.id,
         councilPostId: job.postPackageId ?? undefined,
       });
+      if (!created) return;
+      showToast("Council review complete", "check_circle");
       setHistory(loadGenerationSession(activeWorkspaceId).history);
     },
+  });
+
+  const councilPostId = councilJob.data?.postPackageId ?? null;
+  const councilPostQuery = usePost(activeWorkspaceId, councilPostId, {
+    pollWhileAwaitingApproval: true,
   });
 
   const mediaJob = useGenerationJob(activeMediaJobId, {
@@ -233,6 +298,7 @@ export default function Generate() {
 
   const restoreQuickDraft = useCallback((snapshot: StoredQuickDraftSession) => {
     setVariants(snapshot.variants);
+    setOriginalVariants(snapshot.originalVariants ?? snapshot.variants);
     setGenerated(snapshot.variants.length > 0);
     setSavedPostIds(snapshot.savedPostIds);
     setDismissedVariantIndices(snapshot.dismissedVariantIndices ?? []);
@@ -246,7 +312,36 @@ export default function Generate() {
     }));
     setMode("quick");
     setGenerateError(null);
+    setStaleSessionBanner(isQuickDraftSessionStale(snapshot));
   }, []);
+
+  const currentTopicFingerprint = useMemo(
+    () =>
+      buildTopicFingerprint({
+        contentProfileId: form.contentProfileId,
+        postType: form.postType,
+        tone: form.useCustomTone ? form.customTone : form.tone,
+        pillar: form.pillar,
+        additionalContext: form.additionalContext,
+      }),
+    [form],
+  );
+
+  const topicsStale =
+    topicSuggestions.length > 0 &&
+    !!topicFingerprint &&
+    topicFingerprint !== currentTopicFingerprint;
+
+  const requestCreditAction = useCallback(
+    (cost: number, label: string, action: () => void) => {
+      if (skipCreditConfirm) {
+        action();
+        return;
+      }
+      setCreditConfirm({ cost, label, onConfirm: action });
+    },
+    [skipCreditConfirm],
+  );
 
   useEffect(() => {
     if (!activeWorkspaceId || !profiles) return;
@@ -255,17 +350,37 @@ export default function Generate() {
       initializedWorkspaceRef.current = activeWorkspaceId;
       const session = loadGenerationSession(activeWorkspaceId);
       setHistory(session.history);
+      // Jobs already in history must not re-fire onCompleted after remount.
+      if (
+        session.activeCouncilJobId &&
+        session.history.some(
+          (entry) => entry.councilJobId === session.activeCouncilJobId,
+        )
+      ) {
+        councilCompletedRef.current = session.activeCouncilJobId;
+      }
       setActiveCouncilJobId(session.activeCouncilJobId);
       setMode(session.mode === "council" ? "council" : "quick");
+      setSkipCreditConfirm(session.skipCreditConfirm ?? false);
+
+      if (session.topicSuggestions) {
+        setTopicSuggestions(session.topicSuggestions.suggestions);
+        setTopicFingerprint(session.topicSuggestions.fingerprint);
+      } else {
+        setTopicSuggestions([]);
+        setTopicFingerprint(null);
+      }
 
       if (session.quickDraft) {
         restoreQuickDraft(session.quickDraft);
       } else {
         setVariants([]);
+        setOriginalVariants([]);
         setGenerated(false);
         setSavedPostIds({});
         setDismissedVariantIndices([]);
         setVariantPostStatuses({});
+        setStaleSessionBanner(false);
       }
 
       setGenerateError(null);
@@ -327,10 +442,13 @@ export default function Generate() {
   useEffect(() => {
     if (!activeWorkspaceId) return;
 
-    const quickDraft: StoredQuickDraftSession | null =
+    const existingSession = loadGenerationSession(activeWorkspaceId);
+    const quickDraftSnapshot: StoredQuickDraftSession | null =
       generated && variants.length > 0
         ? {
             variants,
+            originalVariants:
+              originalVariants.length > 0 ? originalVariants : variants,
             savedPostIds,
             dismissedVariantIndices,
             topic: form.topic,
@@ -338,14 +456,26 @@ export default function Generate() {
             postType: form.postType,
             tone: form.tone,
             pillar: form.pillar,
-            createdAt: new Date().toISOString(),
+            createdAt:
+              existingSession.quickDraft?.createdAt ?? new Date().toISOString(),
           }
-        : loadGenerationSession(activeWorkspaceId).quickDraft;
+        : existingSession.quickDraft;
 
     saveGenerationSession(activeWorkspaceId, {
-      quickDraft,
+      quickDraft: quickDraftSnapshot,
       activeCouncilJobId,
       mode: mode === "council" ? "council" : "quick",
+      topicSuggestions:
+        topicSuggestions.length > 0 && topicFingerprint
+          ? {
+              suggestions: topicSuggestions,
+              fingerprint: topicFingerprint,
+              createdAt:
+                existingSession.topicSuggestions?.createdAt ??
+                new Date().toISOString(),
+            }
+          : existingSession.topicSuggestions,
+      skipCreditConfirm,
     });
   }, [
     activeWorkspaceId,
@@ -360,11 +490,19 @@ export default function Generate() {
     savedPostIds,
     dismissedVariantIndices,
     variants,
+    originalVariants,
+    topicSuggestions,
+    topicFingerprint,
+    skipCreditConfirm,
   ]);
 
   const handleProfileChange = (contentProfileId: string) => {
     const profile = profiles?.find((item) => item.id === contentProfileId);
     setTopicSuggestions([]);
+    setTopicFingerprint(null);
+    if (activeWorkspaceId) {
+      saveGenerationSession(activeWorkspaceId, { topicSuggestions: null });
+    }
     setForm((current) => ({
       ...current,
       contentProfileId,
@@ -387,7 +525,21 @@ export default function Generate() {
         pillar: form.pillar || undefined,
         additionalContext: form.additionalContext.trim() || undefined,
       });
+      const fingerprint = currentTopicFingerprint;
       setTopicSuggestions(result.suggestions);
+      setTopicFingerprint(fingerprint);
+      if (topicSuggestions.length > 0) {
+        trackProductEvent("topic_suggestions_regenerated");
+      }
+      if (activeWorkspaceId) {
+        saveGenerationSession(activeWorkspaceId, {
+          topicSuggestions: {
+            suggestions: result.suggestions,
+            fingerprint,
+            createdAt: new Date().toISOString(),
+          },
+        });
+      }
     } catch (error) {
       showToast(getApiErrorMessage(error), "error");
     }
@@ -479,16 +631,24 @@ export default function Generate() {
       setDismissedVariantIndices([]);
       setVariantPostStatuses({});
       setVariantMediaUrls({});
+      setOriginalVariants([]);
+      setStaleSessionBanner(false);
+      setAiPick(null);
+      setCompareMode(false);
+      stopSpeech();
+      setSpeechPlayback(null);
 
       try {
         const job = await quickDraft.mutateAsync(buildQuickDraftBody());
         const nextVariants =
           job.result && "variants" in job.result ? job.result.variants : [];
         setVariants(nextVariants);
+        setOriginalVariants(nextVariants);
         setGenerated(nextVariants.length > 0);
         if (nextVariants.length > 0 && activeWorkspaceId) {
           const snapshot: StoredQuickDraftSession = {
             variants: nextVariants,
+            originalVariants: nextVariants,
             savedPostIds: {},
             dismissedVariantIndices: [],
             topic: form.topic.trim(),
@@ -579,6 +739,8 @@ export default function Generate() {
     if (entry.kind === "council") {
       setMode("council");
       if (entry.councilJobId) {
+        // Mark handled so remount/onCompleted does not re-append history.
+        councilCompletedRef.current = entry.councilJobId;
         setActiveCouncilJobId(entry.councilJobId);
         if (activeWorkspaceId) {
           saveGenerationSession(activeWorkspaceId, {
@@ -654,16 +816,184 @@ export default function Generate() {
     );
   };
 
+  const rejectVariant = async (variantIndex: number) => {
+    const postId = savedPostIds[variantIndex];
+    if (postId) {
+      try {
+        await deletePost.mutateAsync(postId);
+      } catch (err) {
+        showToast(getApiErrorMessage(err), "error");
+        return;
+      }
+      setSavedPostIds((current) => {
+        const next = { ...current };
+        delete next[variantIndex];
+        return next;
+      });
+    }
+    dismissVariant(variantIndex);
+    if (aiPick?.variantIndex === variantIndex) setAiPick(null);
+    trackProductEvent("variant_rejected");
+    setUndoDismissIndex(variantIndex);
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    undoTimerRef.current = setTimeout(() => setUndoDismissIndex(null), 5000);
+    showToast("1 option discarded · Undo available", "cancel");
+  };
+
+  const undoRejectVariant = () => {
+    if (undoDismissIndex == null) return;
+    setDismissedVariantIndices((current) =>
+      current.filter((index) => index !== undoDismissIndex),
+    );
+    setUndoDismissIndex(null);
+  };
+
+  const handleCopyVariant = async (variantIndex: number) => {
+    const variant = variants[variantIndex];
+    if (!variant) return;
+    try {
+      await copyPostToClipboard(variant);
+      trackProductEvent("variant_copied");
+      showToast("Copied", "content_copy");
+    } catch {
+      showToast("Could not copy", "error");
+    }
+  };
+
+  const handleToggleSpeak = (variantIndex: number) => {
+    if (!isSpeechSynthesisSupported()) {
+      showToast("Read aloud is not supported in this browser", "error");
+      return;
+    }
+    const variant = variants[variantIndex];
+    if (!variant) return;
+
+    if (speechPlayback?.variantIndex === variantIndex) {
+      if (speechPlayback.state === "playing") {
+        pauseSpeech();
+        setSpeechPlayback({ variantIndex, state: "paused" });
+        return;
+      }
+      if (speechPlayback.state === "paused") {
+        resumeSpeech();
+        setSpeechPlayback({ variantIndex, state: "playing" });
+        return;
+      }
+    }
+
+    stopSpeech();
+    // Optimistic UI so the icon flips immediately
+    setSpeechPlayback({ variantIndex, state: "playing" });
+    speakPost(
+      {
+        hook: variant.hook,
+        body: variant.body,
+        cta: variant.cta,
+      },
+      {
+        onStart: () =>
+          setSpeechPlayback({ variantIndex, state: "playing" }),
+        onEnd: () =>
+          setSpeechPlayback((current) =>
+            current?.variantIndex === variantIndex ? null : current,
+          ),
+        onError: () =>
+          setSpeechPlayback((current) =>
+            current?.variantIndex === variantIndex ? null : current,
+          ),
+      },
+    );
+  };
+
+  const handleResetVariant = (variantIndex: number) => {
+    const original = originalVariants[variantIndex];
+    if (!original) return;
+    setVariants((current) =>
+      current.map((variant, index) =>
+        index === variantIndex ? original : variant,
+      ),
+    );
+    setEditingVariantIndex(null);
+  };
+
+  const handleSaveVariantEdits = async (variantIndex: number) => {
+    const variant = variants[variantIndex];
+    const postId = savedPostIds[variantIndex];
+    if (!variant) return;
+    if (postId && activeWorkspaceId) {
+      try {
+        const token = await getToken();
+        if (!token) throw new Error("Not authenticated");
+        await updatePost(token, activeWorkspaceId, postId, {
+          hook: variant.hook,
+          body: variant.body,
+          cta: variant.cta,
+          tags: variant.tags,
+        });
+        showToast("Saved changes", "check_circle");
+      } catch (err) {
+        showToast(getApiErrorMessage(err), "error");
+        return;
+      }
+    }
+    setEditingVariantIndex(null);
+  };
+
+  const runVariantRegen = async (variantIndex: number, revisionPrompt: string) => {
+    const variant = variants[variantIndex];
+    if (!variant) return;
+    try {
+      const job = await quickDraftSingle.mutateAsync({
+        ...buildQuickDraftBody(),
+        revisionPrompt: revisionPrompt.trim() || undefined,
+        previousVariant: {
+          hook: variant.hook,
+          body: variant.body,
+          cta: variant.cta,
+          tags: variant.tags,
+        },
+      });
+      const nextVariant =
+        job.result && "variant" in job.result ? job.result.variant : null;
+      if (!nextVariant) {
+        showToast("Regeneration returned no draft", "error");
+        return;
+      }
+      setVariants((current) =>
+        current.map((item, index) =>
+          index === variantIndex ? nextVariant : item,
+        ),
+      );
+      setOriginalVariants((current) => {
+        const next = [...current];
+        next[variantIndex] = nextVariant;
+        return next;
+      });
+      setSavedPostIds((current) => {
+        const next = { ...current };
+        delete next[variantIndex];
+        return next;
+      });
+      setVariantMediaUrls((current) => {
+        const next = { ...current };
+        delete next[variantIndex];
+        return next;
+      });
+      if (aiPick?.variantIndex === variantIndex) setAiPick(null);
+      trackProductEvent("variant_regenerated");
+      showToast("Option regenerated", "auto_awesome");
+    } catch (err) {
+      showToast(getApiErrorMessage(err), "error");
+      if (isCreditsExhaustedError(err)) router.push("/app/billing");
+    }
+  };
+
   const getGenerateMediaDisabledReason = (
     variantIndex: number,
-    hasMediaPreview: boolean,
   ): string | null => {
-    if (hasMediaPreview) {
-      return "This post already has media attached.";
-    }
     const status = variantPostStatuses[variantIndex];
-    if (status && status !== "draft") {
-      return "Media can only be generated while the post is a draft.";
+    if (status && status !== "draft" && status !== "ready_for_approval") {
+      return "Media can only be generated for draft or ready-for-approval posts.";
     }
     return null;
   };
@@ -736,7 +1066,11 @@ export default function Generate() {
     }
   };
 
-  const handleGenerateMedia = async (variantIndex: number) => {
+  const runGenerateMedia = async (
+    variantIndex: number,
+    mediaCustomPrompt?: string,
+    replace = false,
+  ) => {
     if (!canAfford(MEDIA_GENERATION_CREDIT_COST)) {
       showToast(
         `You need ${MEDIA_GENERATION_CREDIT_COST} credits to generate media.`,
@@ -749,24 +1083,94 @@ export default function Generate() {
     setMediaVariantIndex(variantIndex);
     try {
       const postId = await ensureSavedPost(variantIndex);
-      // #region agent log
-      fetch('http://127.0.0.1:7936/ingest/839fd5aa-975f-4d2f-afc3-4e50b695a8d5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'c1f975'},body:JSON.stringify({sessionId:'c1f975',location:'Generate.tsx:handleGenerateMedia:before',message:'calling generatePostMedia',data:{variantIndex,postId,status:variantPostStatuses[variantIndex]??'unsaved'},timestamp:Date.now(),hypothesisId:'C,D'})}).catch(()=>{});
-      // #endregion
       mediaCompletedRef.current = null;
-      const job = await generatePostMedia.mutateAsync(postId);
-      // #region agent log
-      fetch('http://127.0.0.1:7936/ingest/839fd5aa-975f-4d2f-afc3-4e50b695a8d5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'c1f975'},body:JSON.stringify({sessionId:'c1f975',location:'Generate.tsx:handleGenerateMedia:success',message:'generatePostMedia succeeded',data:{jobId:job.id,postId},timestamp:Date.now(),hypothesisId:'A,D'})}).catch(()=>{});
-      // #endregion
+      const job = await generatePostMedia.mutateAsync({
+        postId,
+        mediaCustomPrompt: mediaCustomPrompt?.trim() || undefined,
+        replace,
+      });
+      if (mediaCustomPrompt?.trim()) {
+        trackProductEvent("media_generated_with_prompt");
+      }
       setActiveMediaJobId(job.id);
     } catch (err) {
-      // #region agent log
-      fetch('http://127.0.0.1:7936/ingest/839fd5aa-975f-4d2f-afc3-4e50b695a8d5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'c1f975'},body:JSON.stringify({sessionId:'c1f975',location:'Generate.tsx:handleGenerateMedia:error',message:'generatePostMedia failed',data:{variantIndex,code:err instanceof Error && 'code' in err ? (err as {code?:string}).code : 'unknown',errorMessage:err instanceof Error ? err.message : String(err)},timestamp:Date.now(),hypothesisId:'A,B,C,D,E'})}).catch(()=>{});
-      // #endregion
       showToast(getApiErrorMessage(err), "error");
       setMediaVariantIndex(null);
       if (isCreditsExhaustedError(err)) {
         router.push("/app/billing");
       }
+    }
+  };
+
+  const handleGenerateMedia = (variantIndex: number) => {
+    setPromptModal({ kind: "media", variantIndex, value: "" });
+  };
+
+  const confirmPromptModal = async () => {
+    if (!promptModal) return;
+    const value = promptModal.value;
+    const variantIndex = promptModal.variantIndex;
+    const kind = promptModal.kind;
+    setPromptModal(null);
+
+    if (kind === "regen" && variantIndex != null) {
+      requestCreditAction(QUICK_DRAFT_CREDIT_COST, "Regenerate this option", () => {
+        void runVariantRegen(variantIndex, value);
+      });
+      return;
+    }
+
+    if (kind === "media" && variantIndex != null) {
+      const replace = !!variantMediaUrls[variantIndex];
+      requestCreditAction(
+        MEDIA_GENERATION_CREDIT_COST,
+        replace ? "Regenerate image" : "Generate media",
+        () => {
+          void runGenerateMedia(variantIndex, value, replace);
+        },
+      );
+      return;
+    }
+
+    if (kind === "council-text" && councilPostId) {
+      requestCreditAction(QUICK_DRAFT_CREDIT_COST, "Regenerate text", () => {
+        void (async () => {
+          try {
+            await applyPostChanges.mutateAsync({
+              postId: councilPostId,
+              additionalFeedback: value.trim() || undefined,
+            });
+            trackProductEvent("council_text_regenerated");
+            showToast("Text regenerated", "auto_awesome");
+            void councilPostQuery.refetch();
+          } catch (err) {
+            showToast(getApiErrorMessage(err), "error");
+            if (isCreditsExhaustedError(err)) router.push("/app/billing");
+          }
+        })();
+      });
+      return;
+    }
+
+    if (kind === "council-media" && councilPostId) {
+      requestCreditAction(MEDIA_GENERATION_CREDIT_COST, "Regenerate image", () => {
+        void (async () => {
+          try {
+            mediaCompletedRef.current = null;
+            const job = await generatePostMedia.mutateAsync({
+              postId: councilPostId,
+              mediaCustomPrompt: value.trim() || undefined,
+              replace: true,
+            });
+            trackProductEvent("council_media_regenerated");
+            setActiveMediaJobId(job.id);
+            void councilPostQuery.refetch();
+          } catch (err) {
+            showToast(getApiErrorMessage(err), "error");
+            if (isCreditsExhaustedError(err)) router.push("/app/billing");
+          }
+        })();
+      });
     }
   };
 
@@ -803,6 +1207,54 @@ export default function Generate() {
         .filter(({ index }) => !dismissedVariantIndices.includes(index)),
     [dismissedVariantIndices, variants],
   );
+
+  const enterCompareMode = () => {
+    setCompareMode(true);
+  };
+
+  const exitCompareMode = () => {
+    setCompareMode(false);
+    setAiPick(null);
+  };
+
+  const handleSelectForMe = async () => {
+    if (visibleVariants.length < 2) {
+      showToast("Need at least two options to compare", "error");
+      return;
+    }
+    try {
+      const result = await comparePickMutation.mutateAsync({
+        variants: visibleVariants.map(({ variant }) => ({
+          hook: variant.hook,
+          body: variant.body,
+          cta: variant.cta,
+          tags: variant.tags,
+        })),
+        contentProfileId: form.contentProfileId || undefined,
+        topic: form.topic.trim() || undefined,
+      });
+      const picked = visibleVariants[result.recommendedIndex];
+      if (!picked) {
+        showToast("Could not map AI recommendation", "error");
+        return;
+      }
+      setAiPick({
+        variantIndex: picked.index,
+        reason: result.reason,
+      });
+      if (!compareMode) setCompareMode(true);
+      showToast(`AI recommends Option ${picked.index + 1}`, "auto_awesome");
+    } catch (err) {
+      showToast(getApiErrorMessage(err), "error");
+    }
+  };
+
+  const compareGridClass =
+    visibleVariants.length <= 1
+      ? "grid grid-cols-1 gap-4"
+      : visibleVariants.length === 2
+        ? "grid grid-cols-1 gap-4 md:grid-cols-2"
+        : "grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3";
 
   const formPanel = (
     <>
@@ -953,6 +1405,7 @@ export default function Generate() {
             onClick={() => void handleSuggestTopics()}
             loading={topicSuggestionsMutation.isPending}
             disabled={!form.contentProfileId || formDisabled}
+            hasSuggestions={topicSuggestions.length > 0}
           />
         }
         onChange={(event) =>
@@ -965,6 +1418,8 @@ export default function Generate() {
         suggestions={topicSuggestions}
         onSelect={handleSelectTopicSuggestion}
         disabled={formDisabled}
+        stale={topicsStale}
+        onRefresh={() => void handleSuggestTopics()}
       />
 
       <SelectField
@@ -979,21 +1434,35 @@ export default function Generate() {
         disabled={(pillarOptions.length <= 1 && !form.pillar) || formDisabled}
       />
 
-      <TextareaField
-        label="Notes"
-        hint="(optional)"
-        fieldClassName="mb-4"
-        className="h-16"
-        value={form.additionalContext}
-        placeholder="Drop a rough idea, a bullet, or paste a note to repurpose…"
-        onChange={(event) =>
-          setForm((current) => ({
-            ...current,
-            additionalContext: event.target.value,
-          }))
-        }
-        disabled={formDisabled}
-      />
+      <div className="relative mb-4">
+        <div className="absolute right-0 top-0 z-[1]">
+          <VoiceMicButton
+            disabled={formDisabled}
+            value={form.additionalContext}
+            onChange={(text) =>
+              setForm((current) => ({
+                ...current,
+                additionalContext: text,
+              }))
+            }
+          />
+        </div>
+        <TextareaField
+          label="Notes"
+          hint="(optional)"
+          fieldClassName="mb-0"
+          className="h-16"
+          value={form.additionalContext}
+          placeholder="Drop a rough idea, a bullet, or paste a note to repurpose…"
+          onChange={(event) =>
+            setForm((current) => ({
+              ...current,
+              additionalContext: event.target.value,
+            }))
+          }
+          disabled={formDisabled}
+        />
+      </div>
 
       {mode === "council" ? (
         <TextareaField
@@ -1016,7 +1485,15 @@ export default function Generate() {
         variant="gradient"
         size="lg"
         fullWidth
-        onClick={() => void runGenerate()}
+        onClick={() =>
+          requestCreditAction(
+            modeCost,
+            `Generate with ${selectedMode.label}`,
+            () => {
+              void runGenerate();
+            },
+          )
+        }
         disabled={!canSubmitGenerate}
       >
         <MsIcon name="auto_awesome" size={19} />
@@ -1032,51 +1509,53 @@ export default function Generate() {
   );
 
   return (
-    <div className="pp-gen">
-      <div className="sticky top-[90px] rounded-[18px] border border-[#eceef4] bg-white p-[22px]">
-        <div className="mb-[18px] flex items-center gap-2.5">
-          <div className="flex h-[38px] w-[38px] items-center justify-center rounded-[11px] bg-gradient-to-br from-[#4f46e5] to-[#7c3aed]">
-            <MsIcon name="auto_awesome" size={21} className="text-white" />
-          </div>
-          <div>
-            <h2 className="font-display text-[17px] font-bold">Post generator</h2>
-            <p className="text-[12.5px] text-[#94a3b8]">
-              {mode === "council"
-                ? "Run the AI Council for a reviewed post with image."
-                : "Pick a mode, then generate polished drafts."}
-            </p>
-          </div>
-        </div>
-
-        <QueryState
-          isLoading={profilesLoading}
-          error={profilesError}
-          isEmpty={(profiles?.length ?? 0) === 0}
-          empty={
-            <div className="rounded-[12px] border border-dashed border-[#d8dce8] bg-[#fbfbfd] px-4 py-5 text-center">
-              <p className="mb-3 text-[13px] leading-relaxed text-[#64748b]">
-                Create a content profile before generating posts.
-              </p>
-              <Link
-                href="/app/profile"
-                className="inline-flex items-center gap-1 text-[13px] font-semibold text-[#4f46e5]"
-              >
-                Set up content profile
-                <MsIcon name="arrow_forward" size={16} />
-              </Link>
+    <div className={compareMode ? "block" : "pp-gen"}>
+      {!compareMode ? (
+        <div className="sticky top-[90px] rounded-[18px] border border-[#eceef4] bg-white p-[22px]">
+          <div className="mb-[18px] flex items-center gap-2.5">
+            <div className="flex h-[38px] w-[38px] items-center justify-center rounded-[11px] bg-gradient-to-br from-[#4f46e5] to-[#7c3aed]">
+              <MsIcon name="auto_awesome" size={21} className="text-white" />
             </div>
-          }
-          onRetry={() => void refetchProfiles()}
-        >
-          {formPanel}
-          <GenerationHistoryPanel
-            history={history}
-            onRestore={handleRestoreHistory}
-          />
-        </QueryState>
-      </div>
+            <div>
+              <h2 className="font-display text-[17px] font-bold">Post generator</h2>
+              <p className="text-[12.5px] text-[#94a3b8]">
+                {mode === "council"
+                  ? "Run the AI Council for a reviewed post with image."
+                  : "Pick a mode, then generate polished drafts."}
+              </p>
+            </div>
+          </div>
 
-      <div>
+          <QueryState
+            isLoading={profilesLoading}
+            error={profilesError}
+            isEmpty={(profiles?.length ?? 0) === 0}
+            empty={
+              <div className="rounded-[12px] border border-dashed border-[#d8dce8] bg-[#fbfbfd] px-4 py-5 text-center">
+                <p className="mb-3 text-[13px] leading-relaxed text-[#64748b]">
+                  Create a content profile before generating posts.
+                </p>
+                <Link
+                  href="/app/profile"
+                  className="inline-flex items-center gap-1 text-[13px] font-semibold text-[#4f46e5]"
+                >
+                  Set up content profile
+                  <MsIcon name="arrow_forward" size={16} />
+                </Link>
+              </div>
+            }
+            onRetry={() => void refetchProfiles()}
+          >
+            {formPanel}
+            <GenerationHistoryPanel
+              history={history}
+              onRestore={handleRestoreHistory}
+            />
+          </QueryState>
+        </div>
+      ) : null}
+
+      <div className={compareMode ? "w-full min-w-0" : undefined}>
         {generateError && !generating && !generated && !activeCouncilJobId ? (
           <div className="mb-4 rounded-[11px] border border-[#fecaca] bg-[#fef2f2] px-3 py-2.5 text-[13px] text-[#b91c1c]">
             {generateError}
@@ -1105,6 +1584,171 @@ export default function Generate() {
                 errorMessage={councilJob.data.errorMessage}
                 postPackageId={councilJob.data.postPackageId}
               />
+              {councilPostQuery.data ? (
+                <div className="overflow-hidden rounded-2xl border border-[#eceef4] bg-white shadow-[0_1px_3px_rgba(24,28,64,0.05)]">
+                  <div className="flex items-center justify-between border-b border-[#f1f3f8] bg-[#fbfbfd] px-[18px] py-3">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#eef2ff] px-2 py-1 text-[10.5px] font-bold tracking-wide text-[#4f46e5]">
+                      <MsIcon name="groups" size={13} />
+                      COUNCIL POST
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        type="button"
+                        variant="icon"
+                        size="icon"
+                        aria-label="Copy post"
+                        onClick={() =>
+                          void copyPostToClipboard({
+                            hook: councilPostQuery.data.hook,
+                            body: councilPostQuery.data.body,
+                            cta: councilPostQuery.data.cta,
+                            tags: councilPostQuery.data.tags,
+                          }).then(() => showToast("Copied", "content_copy"))
+                        }
+                      >
+                        <MsIcon
+                          name="content_copy"
+                          size={16}
+                          className="text-[#475569]"
+                        />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="icon"
+                        size="icon"
+                        href={`/app/posts/${councilPostQuery.data.id}`}
+                        aria-label="Open full page"
+                      >
+                        <MsIcon
+                          name="open_in_new"
+                          size={16}
+                          className="text-[#475569]"
+                        />
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="p-[18px]">
+                    {councilPostQuery.data.media[0]?.url ? (
+                      <PostMediaImage
+                        className="mb-4"
+                        src={councilPostQuery.data.media[0].url}
+                        alt={
+                          councilPostQuery.data.media[0].altText ?? "Post media"
+                        }
+                      />
+                    ) : null}
+                    <p className="mb-3 font-display text-[16.5px] font-bold leading-snug text-[#0f172a]">
+                      {councilPostQuery.data.hook}
+                    </p>
+                    <p className="mb-3.5 whitespace-pre-wrap text-sm leading-relaxed text-[#3f4a5e]">
+                      {councilPostQuery.data.body}
+                    </p>
+                    {councilPostQuery.data.cta ? (
+                      <div className="mb-4 rounded-[11px] border-l-[3px] border-[#4f46e5] bg-[#f6f7fb] px-3.5 py-3 text-[13.5px] font-medium text-[#1e293b]">
+                        {councilPostQuery.data.cta}
+                      </div>
+                    ) : null}
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        href={`/app/posts/${councilPostQuery.data.id}`}
+                      >
+                        <MsIcon name="edit" size={16} />
+                        Edit
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        disabled={applyPostChanges.isPending}
+                        onClick={() =>
+                          setPromptModal({
+                            kind: "council-text",
+                            value: "",
+                          })
+                        }
+                      >
+                        <MsIcon name="refresh" size={16} />
+                        Regenerate text (1 cr)
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        disabled={generatePostMedia.isPending || mediaJobActive}
+                        onClick={() =>
+                          setPromptModal({
+                            kind: "council-media",
+                            value: "",
+                          })
+                        }
+                      >
+                        <MsIcon name="image" size={16} />
+                        Regenerate image (2 cr)
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="success"
+                        size="sm"
+                        onClick={() =>
+                          openSchedule({
+                            postId: councilPostQuery.data.id,
+                            hook: councilPostQuery.data.hook,
+                            mode: "schedule",
+                          })
+                        }
+                      >
+                        <MsIcon name="event_available" size={16} />
+                        Schedule
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="linkedin"
+                        size="sm"
+                        onClick={() =>
+                          confirmPublishNow({
+                            postId: councilPostQuery.data.id,
+                            hook: councilPostQuery.data.hook,
+                          })
+                        }
+                      >
+                        <MsIcon name="send" size={16} />
+                        Post now
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="destructive-outline"
+                        size="sm"
+                        onClick={() => {
+                          void deletePost
+                            .mutateAsync(councilPostQuery.data.id)
+                            .then(() => {
+                              trackProductEvent("council_post_rejected");
+                              setActiveCouncilJobId(null);
+                              if (activeWorkspaceId) {
+                                saveGenerationSession(activeWorkspaceId, {
+                                  activeCouncilJobId: null,
+                                });
+                              }
+                              showToast("Council post discarded", "cancel");
+                            })
+                            .catch((err) =>
+                              showToast(getApiErrorMessage(err), "error"),
+                            );
+                        }}
+                      >
+                        Reject
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ) : councilPostId ? (
+                <div className="rounded-2xl border border-dashed border-[#d8dce8] bg-white px-4 py-8 text-center text-[13px] text-[#64748b]">
+                  Loading post preview…
+                </div>
+              ) : null}
             </div>
           ) : (
             <div className="flex flex-col items-center rounded-[18px] border border-dashed border-[#d8dce8] bg-white px-8 py-14 text-center">
@@ -1174,35 +1818,179 @@ export default function Generate() {
           </div>
         ) : generated && visibleVariants.length > 0 ? (
           <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm font-semibold text-[#16a34a]">
-                <MsIcon name="check_circle" size={19} />
-                {visibleVariants.length} posts ready
+            {staleSessionBanner ? (
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-[11px] border border-[#fde68a] bg-[#fffbeb] px-3 py-2.5 text-[13px] text-[#92400e]">
+                <span>This session is older than 24 hours.</span>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="xs"
+                    onClick={() => setStaleSessionBanner(false)}
+                  >
+                    Keep
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="muted"
+                    size="xs"
+                    onClick={() => {
+                      setVariants([]);
+                      setOriginalVariants([]);
+                      setGenerated(false);
+                      setSavedPostIds({});
+                      setDismissedVariantIndices([]);
+                      setStaleSessionBanner(false);
+                      if (activeWorkspaceId) {
+                        saveGenerationSession(activeWorkspaceId, {
+                          quickDraft: null,
+                        });
+                      }
+                    }}
+                  >
+                    Clear
+                  </Button>
+                </div>
               </div>
-              <Button
-                type="button"
-                variant="muted"
-                size="xs"
-                onClick={() => void runGenerate()}
-                disabled={!canSubmitGenerate}
-              >
-                <MsIcon name="refresh" size={16} />
-                Regenerate ({QUICK_DRAFT_CREDIT_COST} credit)
-              </Button>
-            </div>
+            ) : null}
+            {undoDismissIndex != null ? (
+              <div className="flex items-center justify-between rounded-[11px] border border-[#e3e6ef] bg-white px-3 py-2 text-[13px]">
+                <span>1 option discarded</span>
+                <Button type="button" variant="ghost" size="xs" onClick={undoRejectVariant}>
+                  Undo
+                </Button>
+              </div>
+            ) : null}
+            {compareMode ? (
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-[14px] border border-[#ddd6fe] bg-[#f5f3ff] px-4 py-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="xs"
+                    onClick={exitCompareMode}
+                  >
+                    <MsIcon name="arrow_back" size={16} />
+                    Exit compare
+                  </Button>
+                  <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#4338ca]">
+                    <MsIcon name="view_kanban" size={18} />
+                    Comparing {visibleVariants.length} options side by side
+                  </span>
+                </div>
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="xs"
+                  disabled={
+                    visibleVariants.length < 2 || comparePickMutation.isPending
+                  }
+                  onClick={() => void handleSelectForMe()}
+                >
+                  <MsIcon
+                    name={
+                      comparePickMutation.isPending
+                        ? "progress_activity"
+                        : "auto_awesome"
+                    }
+                    size={16}
+                    className={
+                      comparePickMutation.isPending ? "animate-ppspin" : undefined
+                    }
+                  />
+                  {comparePickMutation.isPending
+                    ? "Choosing…"
+                    : "Select for me"}
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 text-sm font-semibold text-[#16a34a]">
+                  <MsIcon name="check_circle" size={19} />
+                  {visibleVariants.length} posts ready
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="muted"
+                    size="xs"
+                    onClick={enterCompareMode}
+                    disabled={visibleVariants.length < 2}
+                  >
+                    <MsIcon name="view_kanban" size={16} />
+                    Compare
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="muted"
+                    size="xs"
+                    disabled={
+                      visibleVariants.length < 2 || comparePickMutation.isPending
+                    }
+                    onClick={() => void handleSelectForMe()}
+                  >
+                    <MsIcon
+                      name={
+                        comparePickMutation.isPending
+                          ? "progress_activity"
+                          : "auto_awesome"
+                      }
+                      size={16}
+                      className={
+                        comparePickMutation.isPending
+                          ? "animate-ppspin"
+                          : undefined
+                      }
+                    />
+                    {comparePickMutation.isPending
+                      ? "Choosing…"
+                      : "Select for me"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="muted"
+                    size="xs"
+                    onClick={() =>
+                      requestCreditAction(
+                        QUICK_DRAFT_CREDIT_COST,
+                        "Regenerate all options",
+                        () => {
+                          void runGenerate();
+                        },
+                      )
+                    }
+                    disabled={!canSubmitGenerate}
+                  >
+                    <MsIcon name="refresh" size={16} />
+                    Regenerate ({QUICK_DRAFT_CREDIT_COST} credit)
+                  </Button>
+                </div>
+              </div>
+            )}
+            {aiPick ? (
+              <div className="rounded-[11px] border border-[#c7d2fe] bg-[#eef2ff] px-3.5 py-3 text-[13px] leading-relaxed text-[#312e81]">
+                <span className="font-semibold">
+                  AI recommends Option {aiPick.variantIndex + 1}:{" "}
+                </span>
+                {aiPick.reason}
+              </div>
+            ) : null}
+            <div
+              className={
+                compareMode ? compareGridClass : "flex flex-col gap-4"
+              }
+            >
             {visibleVariants.map(({ variant, index: i }) => {
               const wordCount = countWords(variant.hook, variant.body, variant.cta);
               const isSaving = savingVariantIndex === i;
               const isActing = actionVariantIndex === i;
               const isSendingToReview = reviewVariantIndex === i;
+              const isEditing = editingVariantIndex === i;
               const isGeneratingMedia =
                 mediaVariantIndex === i &&
                 (generatePostMedia.isPending || mediaJobActive);
               const mediaPreviewUrl = variantMediaUrls[i];
-              const generateMediaDisabledReason = getGenerateMediaDisabledReason(
-                i,
-                !!mediaPreviewUrl,
-              );
+              const generateMediaDisabledReason = getGenerateMediaDisabledReason(i);
               const generateMediaDisabled =
                 isSaving ||
                 isActing ||
@@ -1210,19 +1998,86 @@ export default function Generate() {
                 !!generateMediaDisabledReason ||
                 createPost.isPending;
 
+              const isAiPick = aiPick?.variantIndex === i;
+
               return (
                 <div
                   key={`${variant.hook}-${i}`}
-                  className="animate-ppscale overflow-hidden rounded-2xl border border-[#eceef4] bg-white shadow-[0_1px_3px_rgba(24,28,64,0.05)]"
+                  className={`animate-ppscale overflow-hidden rounded-2xl border bg-white shadow-[0_1px_3px_rgba(24,28,64,0.05)] ${
+                    isAiPick
+                      ? "border-[#4f46e5] ring-2 ring-[#4f46e5]/ring-offset-2"
+                      : "border-[#eceef4]"
+                  }`}
                 >
                   <div className="flex items-center justify-between border-b border-[#f1f3f8] bg-[#fbfbfd] px-[18px] py-3">
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#eef2ff] px-2 py-1 text-[10.5px] font-bold tracking-wide text-[#4f46e5]">
-                      <MsIcon name="auto_awesome" size={13} />
-                      AI DRAFT · OPTION {i + 1}
+                    <span className="inline-flex flex-wrap items-center gap-1.5">
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-[#eef2ff] px-2 py-1 text-[10.5px] font-bold tracking-wide text-[#4f46e5]">
+                        <MsIcon name="auto_awesome" size={13} />
+                        AI DRAFT · OPTION {i + 1}
+                      </span>
+                      {isAiPick ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-[#4f46e5] px-2 py-1 text-[10.5px] font-bold tracking-wide text-white">
+                          <MsIcon name="check_circle" size={13} />
+                          AI PICK
+                        </span>
+                      ) : null}
                     </span>
-                    <span className="text-[11.5px] text-[#94a3b8]">
-                      {wordCount} words
-                    </span>
+                    <div className="flex items-center gap-1">
+                      <span className="mr-1 text-[11.5px] text-[#94a3b8]">
+                        {wordCount} words
+                      </span>
+                      <Button
+                        type="button"
+                        variant="icon"
+                        size="icon"
+                        aria-label="Copy post"
+                        onClick={() => void handleCopyVariant(i)}
+                      >
+                        <MsIcon
+                          name="content_copy"
+                          size={16}
+                          className="text-[#475569]"
+                        />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="icon"
+                        size="icon"
+                        aria-label={
+                          speechPlayback?.variantIndex === i
+                            ? speechPlayback.state === "playing"
+                              ? "Pause read aloud"
+                              : "Resume read aloud"
+                            : "Read aloud"
+                        }
+                        onClick={() => handleToggleSpeak(i)}
+                      >
+                        <MsIcon
+                          name={
+                            speechPlayback?.variantIndex === i
+                              ? speechPlayback.state === "playing"
+                                ? "pause"
+                                : "play_arrow"
+                              : "volume_up"
+                          }
+                          size={16}
+                          className={
+                            speechPlayback?.variantIndex === i
+                              ? "text-[#4f46e5]"
+                              : "text-[#475569]"
+                          }
+                        />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="icon"
+                        size="icon"
+                        aria-label="Reject option"
+                        onClick={() => void rejectVariant(i)}
+                      >
+                        <MsIcon name="close" size={16} className="text-[#475569]" />
+                      </Button>
+                    </div>
                   </div>
                   <div className="p-[18px]">
                     <div className="mb-3 flex flex-wrap gap-1.5">
@@ -1242,39 +2097,120 @@ export default function Generate() {
                         </span>
                       ) : null}
                     </div>
-                    <p className="mb-3 font-display text-[16.5px] font-bold leading-snug tracking-[-0.01em] text-[#0f172a]">
-                      {variant.hook}
-                    </p>
-                    <p className="mb-3.5 whitespace-pre-wrap text-sm leading-relaxed text-[#3f4a5e]">
-                      {variant.body}
-                    </p>
-                    <div className="mb-3.5 rounded-[11px] border-l-[3px] border-[#4f46e5] bg-[#f6f7fb] px-3.5 py-3">
-                      <span className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-[#4f46e5]">
-                        Call to action
-                      </span>
-                      <span className="text-[13.5px] font-medium leading-snug text-[#1e293b]">
-                        {variant.cta}
-                      </span>
-                    </div>
-                    <div className="mb-4 flex flex-wrap gap-1.5">
-                      {variant.tags.map((tag) => (
-                        <span
-                          key={tag}
-                          className="text-[12.5px] font-semibold text-[#0891b2]"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                    {mediaPreviewUrl ? (
-                      <div className="mb-4 overflow-hidden rounded-xl border border-[#eceef4]">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={mediaPreviewUrl}
-                          alt="Generated media"
-                          className="h-40 w-full object-cover"
+                    {isEditing ? (
+                      <div className="mb-4 space-y-3">
+                        <InputField
+                          label="Hook"
+                          value={variant.hook}
+                          onChange={(event) =>
+                            setVariants((current) =>
+                              current.map((item, index) =>
+                                index === i
+                                  ? { ...item, hook: event.target.value }
+                                  : item,
+                              ),
+                            )
+                          }
                         />
+                        <TextareaField
+                          label="Body"
+                          className="min-h-28"
+                          value={variant.body}
+                          onChange={(event) =>
+                            setVariants((current) =>
+                              current.map((item, index) =>
+                                index === i
+                                  ? { ...item, body: event.target.value }
+                                  : item,
+                              ),
+                            )
+                          }
+                        />
+                        <InputField
+                          label="CTA"
+                          value={variant.cta}
+                          onChange={(event) =>
+                            setVariants((current) =>
+                              current.map((item, index) =>
+                                index === i
+                                  ? { ...item, cta: event.target.value }
+                                  : item,
+                              ),
+                            )
+                          }
+                        />
+                        <InputField
+                          label="Tags"
+                          value={variant.tags.join(", ")}
+                          onChange={(event) =>
+                            setVariants((current) =>
+                              current.map((item, index) =>
+                                index === i
+                                  ? {
+                                      ...item,
+                                      tags: event.target.value
+                                        .split(",")
+                                        .map((tag) => tag.trim())
+                                        .filter(Boolean),
+                                    }
+                                  : item,
+                              ),
+                            )
+                          }
+                        />
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            type="button"
+                            variant="primary"
+                            size="sm"
+                            onClick={() => void handleSaveVariantEdits(i)}
+                          >
+                            Done
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => handleResetVariant(i)}
+                          >
+                            Reset
+                          </Button>
+                        </div>
                       </div>
+                    ) : (
+                      <>
+                        <p className="mb-3 font-display text-[16.5px] font-bold leading-snug tracking-[-0.01em] text-[#0f172a]">
+                          {variant.hook}
+                        </p>
+                        <p className="mb-3.5 whitespace-pre-wrap text-sm leading-relaxed text-[#3f4a5e]">
+                          {variant.body}
+                        </p>
+                        <div className="mb-3.5 rounded-[11px] border-l-[3px] border-[#4f46e5] bg-[#f6f7fb] px-3.5 py-3">
+                          <span className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-[#4f46e5]">
+                            Call to action
+                          </span>
+                          <span className="text-[13.5px] font-medium leading-snug text-[#1e293b]">
+                            {variant.cta}
+                          </span>
+                        </div>
+                        <div className="mb-4 flex flex-wrap gap-1.5">
+                          {variant.tags.map((tag) => (
+                            <span
+                              key={tag}
+                              className="text-[12.5px] font-semibold text-[#0891b2]"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                    {mediaPreviewUrl ? (
+                      <PostMediaImage
+                        className="mb-4"
+                        src={mediaPreviewUrl}
+                        alt="Generated media"
+                      />
                     ) : isGeneratingMedia ? (
                       <div className="mb-4 flex items-center gap-2 rounded-xl border border-dashed border-[#d8dce8] bg-[#fbfbfd] px-4 py-6 text-[13px] font-semibold text-[#0891b2]">
                         <MsIcon name="progress_activity" size={18} className="animate-ppspin" />
@@ -1282,6 +2218,32 @@ export default function Generate() {
                       </div>
                     ) : null}
                     <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        disabled={isSaving || isActing}
+                        onClick={() =>
+                          setEditingVariantIndex(isEditing ? null : i)
+                        }
+                      >
+                        <MsIcon name="edit" size={16} />
+                        {isEditing ? "Editing" : "Edit"}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        disabled={
+                          isSaving || isActing || quickDraftSingle.isPending
+                        }
+                        onClick={() =>
+                          setPromptModal({ kind: "regen", variantIndex: i, value: "" })
+                        }
+                      >
+                        <MsIcon name="refresh" size={16} />
+                        Regenerate (1 cr)
+                      </Button>
                       <Button
                         type="button"
                         variant="secondary"
@@ -1318,7 +2280,9 @@ export default function Generate() {
                           <MsIcon name="image" size={16} style={{ color: "#c026d3" }} />
                           {isGeneratingMedia
                             ? "Generating…"
-                            : `Generate Media (${MEDIA_GENERATION_CREDIT_COST} cr)`}
+                            : mediaPreviewUrl
+                              ? `Regenerate Media (${MEDIA_GENERATION_CREDIT_COST} cr)`
+                              : `Generate Media (${MEDIA_GENERATION_CREDIT_COST} cr)`}
                         </Button>
                       </span>
                       <Button
@@ -1346,6 +2310,7 @@ export default function Generate() {
                 </div>
               );
             })}
+            </div>
           </div>
         ) : (
           <div className="flex flex-col items-center rounded-[18px] border border-dashed border-[#d8dce8] bg-white px-8 py-14 text-center">
@@ -1372,6 +2337,53 @@ export default function Generate() {
           </div>
         )}
       </div>
+
+      <CreditConfirmModal
+        open={!!creditConfirm}
+        cost={creditConfirm?.cost ?? 1}
+        actionLabel={creditConfirm?.label ?? "This action"}
+        onClose={() => setCreditConfirm(null)}
+        onConfirm={(skipFuture) => {
+          if (skipFuture && activeWorkspaceId) {
+            setSkipCreditConfirm(true);
+            saveGenerationSession(activeWorkspaceId, {
+              skipCreditConfirm: true,
+            });
+          }
+          const action = creditConfirm?.onConfirm;
+          setCreditConfirm(null);
+          action?.();
+        }}
+      />
+
+      <PromptModal
+        open={!!promptModal}
+        title={
+          promptModal?.kind === "media" || promptModal?.kind === "council-media"
+            ? "Image direction"
+            : "What should change?"
+        }
+        description="Optional. Leave blank to let AI decide."
+        confirmLabel="Continue"
+        value={promptModal?.value ?? ""}
+        onChange={(value) =>
+          setPromptModal((current) =>
+            current ? { ...current, value } : current,
+          )
+        }
+        onClose={() => setPromptModal(null)}
+        onConfirm={() => void confirmPromptModal()}
+        isSubmitting={
+          quickDraftSingle.isPending ||
+          generatePostMedia.isPending ||
+          applyPostChanges.isPending
+        }
+        creditCost={
+          promptModal?.kind === "media" || promptModal?.kind === "council-media"
+            ? MEDIA_GENERATION_CREDIT_COST
+            : QUICK_DRAFT_CREDIT_COST
+        }
+      />
     </div>
   );
 }

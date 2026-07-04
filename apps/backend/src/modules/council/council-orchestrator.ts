@@ -280,7 +280,10 @@ export class CouncilOrchestrator {
         workspaceId,
         postPackageId,
         generationJobId,
-        mediaType: PostMediaType.generated,
+        mediaType:
+          media.mediaType === 'template'
+            ? PostMediaType.template
+            : PostMediaType.generated,
         altText: media.spec.altText,
         imageBuffer: media.imageBuffer,
         mimeType: media.mimeType,

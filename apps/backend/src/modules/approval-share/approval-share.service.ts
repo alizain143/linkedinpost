@@ -10,6 +10,7 @@ import {
 import { NOT_DELETED } from '../../common/constants/soft-delete.constants';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PlanFeatureService } from '../billing/plan-feature.service';
+import { ReviseDraftJobService } from '../generation/revise-draft-job.service';
 import { MediaService } from '../media/media.service';
 import { NotificationEventService } from '../notifications/notification-event.service';
 import { WorkspacesService } from '../workspaces/workspaces.service';
@@ -40,6 +41,7 @@ export class ApprovalShareService {
     private readonly planFeatureService: PlanFeatureService,
     private readonly mediaService: MediaService,
     private readonly notificationEvents: NotificationEventService,
+    private readonly reviseDraftJobService: ReviseDraftJobService,
   ) {}
 
   private getFrontendUrl(): string {
@@ -251,7 +253,7 @@ export class ApprovalShareService {
     action: 'approve' | 'request-changes' | 'reject',
     feedback?: string,
   ): Promise<PublicApprovalActionResponseDto> {
-    const { token, post } = await this.resolveToken(rawToken);
+    const { token, post, workspace } = await this.resolveToken(rawToken);
     assertPostAwaitingApproval(post);
 
     const to =
@@ -301,7 +303,22 @@ export class ApprovalShareService {
       });
     }
 
-    return { id: updated.id, status: updated.status };
+    let autoApplyStarted = false;
+    if (action === 'request-changes') {
+      // Charge workspace owner for public share-link auto-apply
+      const job = await this.reviseDraftJobService.tryAutoApplyChanges(
+        post.workspaceId,
+        workspace.ownerId,
+        updated.id,
+      );
+      autoApplyStarted = job !== null;
+    }
+
+    return {
+      id: updated.id,
+      status: updated.status,
+      ...(action === 'request-changes' ? { autoApplyStarted } : {}),
+    };
   }
 
   private buildApprovalUpdateData(

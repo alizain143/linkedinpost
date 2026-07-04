@@ -47,7 +47,10 @@ export type PostMediaType =
   | "tip_card"
   | "infographic"
   | "photo_illustration"
-  | "generated";
+  | "generated"
+  | "template";
+
+export type MediaMode = "freestyle" | "template";
 
 export type GenerationJobStatus =
   | "pending"
@@ -55,4 +58,12 @@ export type GenerationJobStatus =
   | "completed"
   | "failed";
 
-export type GenerationJobType = "quick_draft" | "council" | "calendar" | "media";
+export type GenerationJobType =
+  | "quick_draft"
+  | "quick_draft_single"
+  | "revise_draft"
+  | "council"
+  | "calendar"
+  | "media";
+
+export type ChangesApplyMode = "review_first" | "auto_apply";

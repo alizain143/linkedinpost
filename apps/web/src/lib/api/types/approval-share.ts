@@ -37,7 +37,8 @@ export type ApiPublicApprovalPreview = {
 export type ApiPublicApprovalAction = {
   id: string;
   status: PostPackageStatus;
-};
+  autoApplyStarted?: boolean;
+}
 
 export type PublicRejectBody = {
   feedback?: string;

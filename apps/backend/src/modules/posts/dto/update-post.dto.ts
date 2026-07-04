@@ -61,4 +61,10 @@ export class UpdatePostDto {
   @IsOptional()
   @IsUUID()
   contentProfileId?: string;
+
+  @ApiPropertyOptional({ maxLength: 500 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  mediaCustomPrompt?: string;
 }

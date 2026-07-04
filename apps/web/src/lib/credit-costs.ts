@@ -3,6 +3,7 @@ import type { ApiCreditsBalance } from "@/lib/api/types/credits";
 export const QUICK_DRAFT_CREDIT_COST = 1;
 export const COUNCIL_CREDIT_COST = 3;
 export const MEDIA_GENERATION_CREDIT_COST = 2;
+export const MEDIA_TEMPLATE_CREDIT_COST = 1;
 export const CALENDAR_7_DAY_CREDIT_COST = 10;
 export const CALENDAR_30_DAY_CREDIT_COST = 30;
 export const AUTOPILOT_CREDIT_COST = 3;

@@ -1,5 +1,7 @@
 "use client";
 
+import { PostMediaImage } from "@/components/ui/post-media-image";
+
 type LinkedInFeedPreviewProps = {
   authorName: string;
   roleTitle?: string | null;
@@ -34,11 +36,10 @@ export function LinkedInFeedPreview({
         {previewBody}
       </p>
       {mediaUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <PostMediaImage
+          className="mt-3 rounded-lg border-gray-200"
           src={mediaUrl}
           alt="Post media preview"
-          className="mt-3 w-full rounded-lg border border-gray-200"
         />
       ) : null}
       <div className="mt-3 flex gap-4 text-xs text-gray-500">

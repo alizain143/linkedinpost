@@ -23,7 +23,7 @@ export function getApprovalEmptyMessage(tab: ApprovalTab): string {
     case "client":
       return "No client posts waiting for approval.";
     case "changes":
-      return "No posts with requested changes.";
+      return "No posts waiting for changes. Feedback lands here until you apply AI or edit manually.";
     case "approved":
       return "No approved posts yet.";
   }
@@ -34,6 +34,7 @@ export function approvalTabActions(tab: ApprovalTab): {
   showRequestChanges: boolean;
   showReject: boolean;
   showSchedule: boolean;
+  showApplyChanges: boolean;
 } {
   switch (tab) {
     case "mine":
@@ -43,6 +44,7 @@ export function approvalTabActions(tab: ApprovalTab): {
         showRequestChanges: true,
         showReject: true,
         showSchedule: false,
+        showApplyChanges: false,
       };
     case "changes":
       return {
@@ -50,6 +52,7 @@ export function approvalTabActions(tab: ApprovalTab): {
         showRequestChanges: false,
         showReject: false,
         showSchedule: false,
+        showApplyChanges: true,
       };
     case "approved":
       return {
@@ -57,6 +60,7 @@ export function approvalTabActions(tab: ApprovalTab): {
         showRequestChanges: false,
         showReject: false,
         showSchedule: true,
+        showApplyChanges: false,
       };
   }
 }

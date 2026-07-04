@@ -32,7 +32,10 @@ function NavLinks({
   return (
     <>
       {APP_NAV.map((item) => {
-        const active = pathname === item.href;
+        const active =
+          pathname === item.href ||
+          (item.href !== "/app/dashboard" &&
+            pathname.startsWith(`${item.href}/`));
         return (
           <Link
             key={item.id}

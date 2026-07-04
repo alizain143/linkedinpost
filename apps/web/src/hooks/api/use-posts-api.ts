@@ -4,6 +4,7 @@ import { useAuth } from "@clerk/nextjs";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import {
+  applyPostChanges,
   approvePost,
   createPost,
   deletePost,
@@ -128,15 +129,65 @@ export function useGeneratePostMediaMutation(
   const { getToken } = useAuth();
   const queryClient = useQueryClient();
 
-  return useMutation<ApiGenerationJob, Error, string>({
-    mutationFn: async (postId) => {
+  return useMutation<
+    ApiGenerationJob,
+    Error,
+    {
+      postId: string;
+      mediaCustomPrompt?: string;
+      replace?: boolean;
+      mediaMode?: "freestyle" | "template";
+      mediaTemplateId?: string;
+    }
+  >({
+    mutationFn: async ({
+      postId,
+      mediaCustomPrompt,
+      replace,
+      mediaMode,
+      mediaTemplateId,
+    }) => {
       const token = await getToken();
       if (!token || !workspaceId) throw new Error("Not authenticated");
-      return generatePostMedia(token, workspaceId, postId);
+      return generatePostMedia(token, workspaceId, postId, {
+        mediaCustomPrompt,
+        replace,
+        mediaMode,
+        mediaTemplateId,
+      });
     },
     onSuccess: (job) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.credits });
       void queryClient.setQueryData(queryKeys.jobs.detail(job.id), job);
+    },
+  });
+}
+
+export function useApplyPostChangesMutation(
+  workspaceId: string | null | undefined,
+) {
+  const { getToken } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    ApiGenerationJob,
+    Error,
+    { postId: string; additionalFeedback?: string }
+  >({
+    mutationFn: async ({ postId, additionalFeedback }) => {
+      const token = await getToken();
+      if (!token || !workspaceId) throw new Error("Not authenticated");
+      return applyPostChanges(token, workspaceId, postId, {
+        additionalFeedback,
+      });
+    },
+    onSuccess: (job, { postId }) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.credits });
+      void queryClient.setQueryData(queryKeys.jobs.detail(job.id), job);
+      if (workspaceId) {
+        invalidatePostQueries(queryClient, workspaceId, postId);
+      }
+      invalidateNotificationQueries(queryClient);
     },
   });
 }

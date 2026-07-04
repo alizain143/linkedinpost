@@ -1,11 +1,14 @@
 import {
   ConflictException,
+  Inject,
   Injectable,
   NotFoundException,
+  forwardRef,
 } from '@nestjs/common';
 import { PostPackage, PostPackageStatus } from '@prisma/client';
 import { NOT_DELETED } from '../../common/constants/soft-delete.constants';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ReviseDraftJobService } from '../generation/revise-draft-job.service';
 import { WorkspacesService } from '../workspaces/workspaces.service';
 import { CreatePostDto } from './dto/create-post.dto';
 import { ListPostsQueryDto } from './dto/list-posts-query.dto';
@@ -34,6 +37,8 @@ export class PostsService {
     private readonly prisma: PrismaService,
     private readonly workspacesService: WorkspacesService,
     private readonly mediaService: MediaService,
+    @Inject(forwardRef(() => ReviseDraftJobService))
+    private readonly reviseDraftJobService: ReviseDraftJobService,
   ) {}
 
   private async findPostInWorkspace(workspaceId: string, id: string) {
@@ -52,10 +57,25 @@ export class PostsService {
     return post;
   }
 
-  private assertEditable(post: PostPackage) {
-    if (post.status !== PostPackageStatus.draft) {
+  private assertContentEditable(post: PostPackage) {
+    if (
+      post.status !== PostPackageStatus.draft &&
+      post.status !== PostPackageStatus.ready_for_approval
+    ) {
       throw new ConflictException({
-        error: 'Only draft posts can be edited or deleted',
+        error: 'Only draft or ready-for-approval posts can be edited',
+        code: 'POST_NOT_EDITABLE',
+      });
+    }
+  }
+
+  private assertDeletable(post: PostPackage) {
+    if (
+      post.status !== PostPackageStatus.draft &&
+      post.status !== PostPackageStatus.ready_for_approval
+    ) {
+      throw new ConflictException({
+        error: 'Only draft or ready-for-approval posts can be deleted',
         code: 'POST_NOT_EDITABLE',
       });
     }
@@ -279,7 +299,7 @@ export class PostsService {
   ) {
     await this.workspacesService.assertMember(userId, workspaceId);
     const existing = await this.findPostInWorkspace(workspaceId, id);
-    this.assertEditable(existing);
+    this.assertContentEditable(existing);
 
     if (dto.contentProfileId !== undefined) {
       await this.validateContentProfile(workspaceId, dto.contentProfileId);
@@ -301,6 +321,9 @@ export class PostsService {
           ...(dto.pillar !== undefined ? { pillar: dto.pillar } : {}),
           ...(dto.contentProfileId !== undefined
             ? { contentProfileId: dto.contentProfileId }
+            : {}),
+          ...(dto.mediaCustomPrompt !== undefined
+            ? { mediaCustomPrompt: dto.mediaCustomPrompt }
             : {}),
         },
       });
@@ -338,7 +361,7 @@ export class PostsService {
   async remove(workspaceId: string, id: string, userId: string) {
     await this.workspacesService.assertMember(userId, workspaceId);
     const post = await this.findPostInWorkspace(workspaceId, id);
-    this.assertEditable(post);
+    this.assertDeletable(post);
 
     await this.prisma.postPackage.update({
       where: { id },
@@ -412,7 +435,17 @@ export class PostsService {
   ) {
     await this.workspacesService.assertMember(userId, workspaceId);
     const existing = await this.findPostInWorkspace(workspaceId, id);
-    return this.applyApprovalAction(existing, 'request-changes', feedback);
+    const updated = await this.applyApprovalAction(
+      existing,
+      'request-changes',
+      feedback,
+    );
+    await this.reviseDraftJobService.tryAutoApplyChanges(
+      workspaceId,
+      userId,
+      id,
+    );
+    return updated;
   }
 
   async rejectPost(

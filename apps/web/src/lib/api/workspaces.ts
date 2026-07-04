@@ -5,6 +5,7 @@ import type {
   CreateClientWorkspaceBody,
   DeleteClientWorkspaceResponse,
   UpdateClientWorkspaceBody,
+  UpdateWorkspaceSettingsBody,
 } from "@/lib/api/types/workspace";
 
 export async function fetchWorkspaces(token: string): Promise<ApiWorkspace[]> {
@@ -38,6 +39,17 @@ export async function updateClientWorkspace(
   token: string,
   workspaceId: string,
   body: UpdateClientWorkspaceBody,
+): Promise<ApiWorkspaceDetail> {
+  return apiFetch<ApiWorkspaceDetail>(token, `/workspaces/${workspaceId}`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function updateWorkspaceSettings(
+  token: string,
+  workspaceId: string,
+  body: UpdateWorkspaceSettingsBody,
 ): Promise<ApiWorkspaceDetail> {
   return apiFetch<ApiWorkspaceDetail>(token, `/workspaces/${workspaceId}`, {
     method: "PATCH",

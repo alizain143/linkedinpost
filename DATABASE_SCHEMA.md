@@ -2,7 +2,7 @@
 
 > **Source of truth:** `apps/backend/prisma/schema.prisma`  
 > **Companion docs:** [CURRENT_ARCHITECTURE.md](CURRENT_ARCHITECTURE.md) · [PRODUCT_OVERVIEW.md](PRODUCT_OVERVIEW.md)  
-> **Last synced:** July 2026 (XPay billing replaces Stripe)
+> **Last synced:** July 2026 (Slice 24 — changesApplyMode, revise/quick_draft_single job types)
 
 Developer reference for every PostgreSQL table, field, enum, and relationship. Read this before writing Prisma queries, migrations, or API mappers.
 
@@ -166,21 +166,38 @@ Council jobs use this status exclusively (no separate run status).
 | Value | Sync/async | Creates PostPackage? |
 |-------|------------|----------------------|
 | `quick_draft` | Sync | No |
+| `quick_draft_single` | Sync | No (single variant / regen) |
+| `revise_draft` | Sync | Updates existing post |
 | `council` | Async (BullMQ) | Yes |
 | `calendar` | Async | Yes (many) |
-| `media` | Async | No (existing draft) |
+| `media` | Async | No (existing draft; supports replace) |
+
+### `ChangesApplyMode`
+
+| Value | Meaning |
+|-------|---------|
+| `review_first` | Request-changes stores feedback; user applies AI manually |
+| `auto_apply` | Request-changes immediately runs revise-draft (1 credit) |
 
 ### `PostMediaType`
 
 | Value | Meaning |
 |-------|---------|
-| `generated` | **Current.** Unbound AI feed image (all new media) |
+| `generated` | Unbound AI feed image (freestyle lane) |
+| `template` | Deterministic layout render (template lane) |
 | `quote_card` | Legacy — historical rows only |
 | `branded_quote_card` | Legacy template — historical rows only |
 | `stat_highlight` | Legacy template — historical rows only |
 | `tip_card` | Legacy template — historical rows only |
 | `infographic` | Legacy — historical rows only |
 | `photo_illustration` | Legacy — historical rows only |
+
+### `MediaMode`
+
+| Value | Meaning |
+|-------|---------|
+| `freestyle` | AI image model invents the full visual |
+| `template` | Layout JSON + slot-fill → SVG/PNG |
 
 ### `CouncilAgentRole`
 
@@ -361,6 +378,9 @@ Content container. All posts and profiles belong to a workspace.
 | `name` | String | No | — | Display name ("My Workspace" or client name) |
 | `type` | WorkspaceType | No | `personal` | `personal` or `client` |
 | `ownerId` | UUID | No | — | FK → `users.id` CASCADE. Billing user / LinkedIn publisher |
+| `changesApplyMode` | ChangesApplyMode | No | `review_first` | Auto vs manual AI apply when changes are requested |
+| `defaultMediaMode` | MediaMode | No | `freestyle` | Default media lane for council / generate-media |
+| `defaultMediaTemplateId` | UUID | Yes | — | FK → `media_templates.id` SET NULL. Workspace default template |
 | `createdAt` | Timestamptz | No | now() | |
 | `updatedAt` | Timestamptz | No | auto | |
 | `deletedAt` | Timestamptz | Yes | — | Soft delete; cascades to child rows |
@@ -369,7 +389,7 @@ Content container. All posts and profiles belong to a workspace.
 
 **Rules:** One active `personal` workspace per user. Max 5 `client` workspaces for agency plan. `ensurePersonalWorkspace()` on signup handles race via unique violation re-fetch.
 
-**Module:** `workspaces`
+**Module:** `workspaces`, `media-templates`
 
 ---
 
@@ -407,13 +427,14 @@ Voice and strategy input for AI generation. Multiple per workspace; one may be `
 | `writingSample` | Text | Yes | — | Example post for style matching |
 | `avoidWords` | String | Yes | — | Comma-separated or free text |
 | `isDefault` | Boolean | No | `false` | Used when generation omits `contentProfileId` |
+| `defaultMediaTemplateId` | UUID | Yes | — | FK → `media_templates.id` SET NULL. Profile-level template default |
 | `createdAt` | Timestamptz | No | now() | |
 | `updatedAt` | Timestamptz | No | auto | |
 | `deletedAt` | Timestamptz | Yes | — | Soft delete |
 
 **Indexes:** `workspaceId`, `(workspaceId, deletedAt)`
 
-**Module:** `content-profiles`, `generation` (context provider)
+**Module:** `content-profiles`, `generation` (context provider), `media-templates`
 
 ---
 
@@ -449,7 +470,9 @@ Named themes under a content profile. Autopilot rotates through pillars.
 | `postType` | PostType | Yes | — | Format enum |
 | `tone` | String | Yes | — | Generation input (free text) |
 | `pillar` | String | Yes | — | Pillar **name** snapshot (not FK) |
-| `mediaCustomPrompt` | Text | Yes | — | Optional user direction for unbound image generation |
+| `mediaCustomPrompt` | Text | Yes | — | Optional user direction for media generation |
+| `mediaMode` | MediaMode | Yes | — | Per-post override; null inherits workspace default |
+| `mediaTemplateId` | UUID | Yes | — | FK → `media_templates.id` SET NULL. Per-post template override |
 | `source` | PostSource | No | `manual` | Origin of post |
 | `status` | PostPackageStatus | No | `draft` | Pipeline state |
 | `score` | Int | Yes | — | 0–100 council reviewer score. Shown in approvals |
@@ -504,7 +527,7 @@ Generated media assets (AI feed images) on a post.
 | `id` | UUID | No | uuid() | |
 | `postPackageId` | UUID | No | — | FK → `post_packages.id` CASCADE |
 | `generationJobId` | UUID | Yes | — | FK → `generation_jobs.id` SET NULL. Which council job produced this |
-| `mediaType` | PostMediaType | No | — | New rows: `generated` |
+| `mediaType` | PostMediaType | No | — | New rows: `generated` or `template` |
 | `storageKey` | String | No | — | R2 key |
 | `storageBucket` | String | No | — | R2 bucket |
 | `mimeType` | String | No | — | e.g. `image/png` |
@@ -514,7 +537,33 @@ Generated media assets (AI feed images) on a post.
 | `createdAt` | Timestamptz | No | now() | |
 | `updatedAt` | Timestamptz | No | auto | |
 
-**Module:** `media`, `council`, `linkedin` (publish with media)
+**Module:** `media`, `council`, `linkedin` (publish with media), `media-templates`
+
+---
+
+### `media_templates` → `MediaTemplate`
+
+Workspace-owned layout definitions for the template media lane (scene graph JSON).
+
+| Field | Type | Null | Default | Description |
+|-------|------|------|---------|-------------|
+| `id` | UUID | No | uuid() | |
+| `workspaceId` | UUID | No | — | FK → `workspaces.id` CASCADE |
+| `name` | String | No | — | Display name |
+| `description` | String | Yes | — | Optional blurb |
+| `width` | Int | No | `1080` | Canvas width (px) |
+| `height` | Int | No | `1080` | Canvas height (px) |
+| `layout` | Json | No | — | Scene graph: background + elements (text, avatar, post_headline, …) |
+| `isSystem` | Boolean | No | `false` | Reserved; system presets are code-defined, not rows |
+| `createdAt` | Timestamptz | No | now() | |
+| `updatedAt` | Timestamptz | No | auto | |
+| `deletedAt` | Timestamptz | Yes | — | Soft delete |
+
+**Indexes:** `(workspaceId, deletedAt)`
+
+**Defaults resolution:** post `mediaTemplateId` → content profile default → workspace default → system identity-card preset
+
+**Module:** `media-templates`
 
 ---
 

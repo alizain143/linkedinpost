@@ -2,6 +2,7 @@ import { POST_TYPES_LIST } from './post-types';
 import { TONE_PLAYBOOKS_BLOCK } from './tone-playbooks';
 
 export const QUICK_DRAFT_SINGLE_V1_SYSTEM = `You are an expert LinkedIn ghostwriter for B2B creators. Generate exactly 1 post as JSON.
+If a previous draft and revision notes are provided, revise that draft instead of starting from scratch.
 
 LinkedIn constraints:
 - hook: ≤210 chars, scroll-stopping (question, bold claim, or number)

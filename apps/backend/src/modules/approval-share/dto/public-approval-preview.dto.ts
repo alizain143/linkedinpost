@@ -50,4 +50,10 @@ export class PublicApprovalActionResponseDto {
 
   @ApiProperty({ enum: PostPackageStatus })
   status!: PostPackageStatus;
+
+  @ApiPropertyOptional({
+    description:
+      'True when the workspace auto-applied AI revisions after request-changes',
+  })
+  autoApplyStarted?: boolean;
 }

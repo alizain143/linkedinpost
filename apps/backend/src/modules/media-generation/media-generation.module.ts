@@ -6,6 +6,7 @@ import { CreditsModule } from '../credits/credits.module';
 import { CouncilModule } from '../council/council.module';
 import { GenerationModule } from '../generation/generation.module';
 import { MediaModule } from '../media/media.module';
+import { MediaTemplatesModule } from '../media-templates/media-templates.module';
 import { PostsModule } from '../posts/posts.module';
 import { WorkspacesModule } from '../workspaces/workspaces.module';
 import { MediaJobHandler } from './media-job.handler';
@@ -22,6 +23,7 @@ import { MediaRenderService } from './media-render.service';
     CreditsModule,
     forwardRef(() => PostsModule),
     MediaModule,
+    MediaTemplatesModule,
     forwardRef(() => CouncilModule),
     forwardRef(() => GenerationModule),
   ],

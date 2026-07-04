@@ -40,6 +40,12 @@ import {
 } from "@/lib/linkedin-utils";
 import { useAppUi } from "@/providers/app-ui-provider";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
+import { useWorkspace } from "@/hooks/use-workspace";
+import {
+  useUpdateWorkspaceSettings,
+  useWorkspaceDetail,
+} from "@/hooks/api/use-workspaces-api";
+import type { ChangesApplyMode } from "@/lib/api/types/enums";
 
 type NotificationKey = keyof ApiUser["notifications"];
 
@@ -106,6 +112,9 @@ export default function Settings() {
   const syncLinkedInProfile = useSyncLinkedInProfile();
   const { enablePush, disablePush, permission, isConfigured } =
     usePushNotifications();
+  const { activeWorkspaceId } = useWorkspace();
+  const { data: workspaceDetail } = useWorkspaceDetail(activeWorkspaceId);
+  const updateWorkspaceSettings = useUpdateWorkspaceSettings();
   const linkedInProfileSubtitle = getLinkedInProfileSubtitle(linkedInProfile);
 
   const [fullName, setFullName] = useState("");
@@ -401,6 +410,76 @@ export default function Settings() {
                 </Button>
               )}
             </div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-[#eceef4] bg-white p-6">
+          <h2 className="font-display text-lg font-bold">Workflow</h2>
+          <p className="mt-1 text-sm text-[#64748b]">
+            How this workspace handles approval feedback. Public share-link
+            auto-apply charges the workspace owner.
+          </p>
+          <div className="mt-4 space-y-3">
+            {(
+              [
+                {
+                  value: "review_first" as ChangesApplyMode,
+                  label: "Review feedback first",
+                  desc: "Changes land on the Changes tab. You choose when to apply AI.",
+                },
+                {
+                  value: "auto_apply" as ChangesApplyMode,
+                  label: "Apply changes with AI automatically",
+                  desc: "When changes are requested, AI revises the post immediately (1 credit).",
+                },
+              ] as const
+            ).map((option) => {
+              const active =
+                (workspaceDetail?.changesApplyMode ?? "review_first") ===
+                option.value;
+              return (
+                <label
+                  key={option.value}
+                  className={`flex cursor-pointer gap-3 rounded-[12px] border p-3 ${
+                    active
+                      ? "border-[#4f46e5] bg-[#eef2ff]"
+                      : "border-[#e3e6ef] bg-white"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="changesApplyMode"
+                    className="mt-1"
+                    checked={active}
+                    disabled={
+                      !activeWorkspaceId || updateWorkspaceSettings.isPending
+                    }
+                    onChange={() => {
+                      if (!activeWorkspaceId) return;
+                      void updateWorkspaceSettings
+                        .mutateAsync({
+                          workspaceId: activeWorkspaceId,
+                          body: { changesApplyMode: option.value },
+                        })
+                        .then(() =>
+                          showToast("Workflow preference saved", "check_circle"),
+                        )
+                        .catch((err) =>
+                          showToast(getApiErrorMessage(err), "error"),
+                        );
+                    }}
+                  />
+                  <span>
+                    <span className="block text-sm font-semibold text-[#1e293b]">
+                      {option.label}
+                    </span>
+                    <span className="mt-0.5 block text-xs text-[#64748b]">
+                      {option.desc}
+                    </span>
+                  </span>
+                </label>
+              );
+            })}
           </div>
         </div>
 

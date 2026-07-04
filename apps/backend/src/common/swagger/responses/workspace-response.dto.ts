@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { WorkspaceType } from '@prisma/client';
+import { ChangesApplyMode, WorkspaceType } from '@prisma/client';
 
 export class WorkspaceResponseDto {
   @ApiProperty({ format: 'uuid' })
@@ -13,6 +13,12 @@ export class WorkspaceResponseDto {
 
   @ApiProperty({ format: 'uuid' })
   ownerId!: string;
+
+  @ApiProperty({
+    enum: ChangesApplyMode,
+    example: ChangesApplyMode.review_first,
+  })
+  changesApplyMode!: ChangesApplyMode;
 
   @ApiProperty({ type: String, format: 'date-time' })
   createdAt!: Date;

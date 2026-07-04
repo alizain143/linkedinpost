@@ -36,6 +36,18 @@ export class GenerationInputContextProvider implements ContextProvider {
     if (input.mediaCustomPrompt !== undefined) {
       slice.input!.mediaCustomPrompt = input.mediaCustomPrompt;
     }
+    if (input.revisionPrompt !== undefined) {
+      slice.input!.revisionPrompt = input.revisionPrompt;
+    }
+    if (input.approvalFeedback !== undefined) {
+      slice.input!.approvalFeedback = input.approvalFeedback;
+    }
+    if (input.previousVariant) {
+      slice.input!.previousHook = input.previousVariant.hook;
+      slice.input!.previousBody = input.previousVariant.body;
+      slice.input!.previousCta = input.previousVariant.cta;
+      slice.input!.previousTags = input.previousVariant.tags;
+    }
     if ('brief' in input && input.brief !== undefined) {
       slice.input!.brief = input.brief as string;
     }

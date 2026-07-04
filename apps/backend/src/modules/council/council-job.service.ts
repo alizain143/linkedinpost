@@ -54,6 +54,8 @@ export class CouncilJobService {
       additionalContext: dto.additionalContext,
       brief: dto.brief,
       mediaCustomPrompt: dto.mediaCustomPrompt,
+      mediaMode: dto.mediaMode,
+      mediaTemplateId: dto.mediaTemplateId,
     };
 
     const placeholderHook = dto.topic?.trim() || 'Generating…';
@@ -68,6 +70,8 @@ export class CouncilJobService {
         tone: dto.tone,
         pillar: dto.pillar,
         mediaCustomPrompt: dto.mediaCustomPrompt,
+        mediaMode: dto.mediaMode,
+        mediaTemplateId: dto.mediaTemplateId,
         source,
         status: PostPackageStatus.text_generating,
         ...(options?.scheduledAt ? { scheduledAt: options.scheduledAt } : {}),

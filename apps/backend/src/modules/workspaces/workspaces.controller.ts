@@ -17,6 +17,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ClerkAuthGuard } from '../../common/guards/clerk-auth.guard';
 import { CreateClientWorkspaceDto } from './dto/create-client-workspace.dto';
 import { UpdateClientWorkspaceDto } from './dto/update-client-workspace.dto';
+import { UpdateWorkspaceSettingsDto } from './dto/update-workspace-settings.dto';
 import { WorkspacesService } from './workspaces.service';
 
 @ApiTags('workspaces')
@@ -55,18 +56,16 @@ export class WorkspacesController {
   }
 
   @Patch(':workspaceId')
-  @ApiOperation({ summary: 'Rename a client workspace' })
+  @ApiOperation({
+    summary: 'Update workspace settings (name, changes-apply mode)',
+  })
   @ApiDataResponse(WorkspaceDetailResponseDto)
   update(
     @CurrentUser() user: User,
     @Param('workspaceId') workspaceId: string,
-    @Body() dto: UpdateClientWorkspaceDto,
+    @Body() dto: UpdateWorkspaceSettingsDto,
   ) {
-    return this.workspacesService.updateClientWorkspace(
-      workspaceId,
-      user.id,
-      dto,
-    );
+    return this.workspacesService.updateSettings(workspaceId, user.id, dto);
   }
 
   @Delete(':workspaceId')

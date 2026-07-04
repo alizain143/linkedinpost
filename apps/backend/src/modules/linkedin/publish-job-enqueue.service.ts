@@ -1,11 +1,12 @@
 import {
   Inject,
   Injectable,
+  Logger,
   Optional,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
+import { Job, Queue } from 'bullmq';
 import { REDIS_ENABLED } from '../job-queue/job-queue.constants';
 import { PUBLISH_JOBS_QUEUE } from './linkedin.constants';
 
@@ -17,6 +18,8 @@ export interface PublishJobPayload {
 
 @Injectable()
 export class PublishJobEnqueueService {
+  private readonly logger = new Logger(PublishJobEnqueueService.name);
+
   constructor(
     @Inject(REDIS_ENABLED) private readonly redisEnabled: boolean,
     @Optional()
@@ -30,26 +33,6 @@ export class PublishJobEnqueueService {
 
   assertRedisAvailable() {
     if (!this.isEnabled()) {
-      // #region agent log
-      fetch('http://127.0.0.1:7936/ingest/839fd5aa-975f-4d2f-afc3-4e50b695a8d5', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Debug-Session-Id': 'c80d58',
-        },
-        body: JSON.stringify({
-          sessionId: 'c80d58',
-          location: 'publish-job-enqueue.service.ts:assertRedisAvailable',
-          message: 'Redis not available for publish jobs',
-          data: {
-            redisEnabled: this.redisEnabled,
-            hasQueue: Boolean(this.queue),
-          },
-          timestamp: Date.now(),
-          hypothesisId: 'A',
-        }),
-      }).catch(() => {});
-      // #endregion
       throw new ServiceUnavailableException({
         error: 'Redis is required for scheduled publish jobs',
         code: 'REDIS_UNAVAILABLE',
@@ -59,6 +42,32 @@ export class PublishJobEnqueueService {
 
   private jobId(postPackageId: string) {
     return `publish-${postPackageId}`;
+  }
+
+  private isLockedJobError(error: unknown): boolean {
+    return (
+      error instanceof Error &&
+      error.message.toLowerCase().includes('locked by another worker')
+    );
+  }
+
+  /** Remove a job if present and not actively locked. Returns false if locked/active. */
+  private async tryRemoveJob(job: Job | undefined): Promise<boolean> {
+    if (!job) return true;
+
+    try {
+      const state = await job.getState();
+      if (state === 'active') {
+        return false;
+      }
+      await job.remove();
+      return true;
+    } catch (error) {
+      if (this.isLockedJobError(error)) {
+        return false;
+      }
+      throw error;
+    }
   }
 
   async enqueuePublish(
@@ -75,11 +84,18 @@ export class PublishJobEnqueueService {
       scheduledAt: scheduledAt.toISOString(),
     };
 
-    const existing = await this.queue!.getJob(this.jobId(postPackageId));
-    await existing?.remove();
+    const jobId = this.jobId(postPackageId);
+    const existing = await this.queue!.getJob(jobId);
+    const removed = await this.tryRemoveJob(existing);
+    if (!removed) {
+      this.logger.warn(
+        `Skipping re-enqueue for ${jobId}; job is active or locked by another worker`,
+      );
+      return;
+    }
 
     await this.queue!.add('publish', payload, {
-      jobId: this.jobId(postPackageId),
+      jobId,
       delay: delayMs,
     });
   }
@@ -87,6 +103,11 @@ export class PublishJobEnqueueService {
   async cancelPublish(postPackageId: string) {
     if (!this.isEnabled()) return;
     const existing = await this.queue!.getJob(this.jobId(postPackageId));
-    await existing?.remove();
+    const removed = await this.tryRemoveJob(existing);
+    if (!removed) {
+      this.logger.warn(
+        `Could not cancel ${this.jobId(postPackageId)}; job is active or locked`,
+      );
+    }
   }
 }

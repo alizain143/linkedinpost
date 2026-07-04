@@ -25,6 +25,27 @@ export type TopicSuggestionsResult = {
   model: string;
 };
 
+export type ComparePickVariantBody = {
+  hook: string;
+  body: string;
+  cta: string;
+  tags?: string[];
+};
+
+export type ComparePickRequestBody = {
+  variants: ComparePickVariantBody[];
+  contentProfileId?: string;
+  topic?: string;
+};
+
+export type ComparePickResult = {
+  recommendedIndex: number;
+  reason: string;
+  promptId: string;
+  promptVersion: string;
+  model: string;
+};
+
 export type QuickDraftVariant = {
   hook: string;
   body: string;
@@ -39,6 +60,11 @@ export type QuickDraftJobResult = {
   variants: QuickDraftVariant[];
 };
 
+export type QuickDraftSingleJobResult = {
+  variant: QuickDraftVariant;
+  postPackageId?: string;
+};
+
 export type QuickDraftRequestBody = {
   topic: string;
   postType?: PostType;
@@ -47,6 +73,29 @@ export type QuickDraftRequestBody = {
   contentProfileId?: string;
   additionalContext?: string;
   mediaCustomPrompt?: string;
+  mediaMode?: "freestyle" | "template";
+  mediaTemplateId?: string;
+};
+
+export type QuickDraftSingleRequestBody = QuickDraftRequestBody & {
+  revisionPrompt?: string;
+  previousVariant?: {
+    hook: string;
+    body: string;
+    cta: string;
+    tags: string[];
+  };
+};
+
+export type ApplyChangesRequestBody = {
+  additionalFeedback?: string;
+};
+
+export type GenerateMediaRequestBody = {
+  mediaCustomPrompt?: string;
+  replace?: boolean;
+  mediaMode?: "freestyle" | "template";
+  mediaTemplateId?: string;
 };
 
 export type GenerationJobProgress = {
@@ -127,7 +176,13 @@ export type ApiGenerationJob = {
   postPackageId: string | null;
   progress: GenerationJobProgress | null;
   events: CouncilEvent[] | null;
-  result: QuickDraftJobResult | CouncilJobResult | CalendarJobResult | MediaJobResult | null;
+  result:
+    | QuickDraftJobResult
+    | QuickDraftSingleJobResult
+    | CouncilJobResult
+    | CalendarJobResult
+    | MediaJobResult
+    | null;
   createdAt: string;
   updatedAt: string;
   completedAt: string | null;

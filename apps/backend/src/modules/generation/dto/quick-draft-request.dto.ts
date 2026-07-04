@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { PostType } from '@prisma/client';
+import { MediaMode, PostType } from '@prisma/client';
 import { IsEnum, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 
 export class QuickDraftRequestDto {
@@ -41,4 +41,14 @@ export class QuickDraftRequestDto {
   @IsString()
   @MaxLength(500)
   mediaCustomPrompt?: string;
+
+  @ApiPropertyOptional({ enum: MediaMode })
+  @IsOptional()
+  @IsEnum(MediaMode)
+  mediaMode?: MediaMode;
+
+  @ApiPropertyOptional({ format: 'uuid' })
+  @IsOptional()
+  @IsUUID()
+  mediaTemplateId?: string;
 }

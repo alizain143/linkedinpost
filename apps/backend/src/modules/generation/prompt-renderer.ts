@@ -17,6 +17,7 @@ import {
   buildPostBlock,
   buildProfileBlock,
   buildRequestBlock,
+  buildRevisionBlock,
 } from './prompts/shared-profile-block';
 
 export interface RenderFlowOptions {
@@ -32,6 +33,32 @@ export class PromptRenderer {
 
   renderQuickDraftSingleV1(context: GenerationContext): LlmMessage[] {
     return this.renderFlow('quick-draft-single', 1, context);
+  }
+
+  renderReviseDraftV1(context: GenerationContext): LlmMessage[] {
+    return this.renderFlow('revise-draft', 1, context);
+  }
+
+  renderComparePickV1(
+    context: GenerationContext,
+    optionsBlock: string,
+  ): LlmMessage[] {
+    const template = getPromptTemplate('compare-pick', 1);
+    const values = {
+      ...this.buildPlaceholderValues(context),
+      'compare.options': optionsBlock,
+    };
+
+    return [
+      {
+        role: 'system',
+        content: this.renderTemplate(template.system, values),
+      },
+      {
+        role: 'user',
+        content: this.renderTemplate(template.user, values),
+      },
+    ];
   }
 
   renderFlow(
@@ -196,6 +223,14 @@ export class PromptRenderer {
         pillar: input?.pillar ?? '',
         additionalContext,
         documentsLine,
+      }),
+      'revision.block': buildRevisionBlock({
+        previousHook: input?.previousHook,
+        previousBody: input?.previousBody,
+        previousCta: input?.previousCta,
+        previousTags: input?.previousTags,
+        revisionPrompt: input?.revisionPrompt,
+        approvalFeedback: input?.approvalFeedback,
       }),
       'post.block': buildPostBlock({
         hook: String(editorStep?.output.hook ?? ''),

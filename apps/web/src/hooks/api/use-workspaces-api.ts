@@ -15,6 +15,7 @@ import type {
   CreateClientWorkspaceBody,
   DeleteClientWorkspaceResponse,
   UpdateClientWorkspaceBody,
+  UpdateWorkspaceSettingsBody,
 } from "@/lib/api/types/workspace";
 import { filterClientWorkspaces } from "@/lib/client-workspace-utils";
 import {
@@ -23,6 +24,7 @@ import {
   fetchWorkspace,
   fetchWorkspaces,
   updateClientWorkspace,
+  updateWorkspaceSettings,
 } from "@/lib/api/workspaces";
 
 export function useWorkspaces() {
@@ -147,6 +149,27 @@ export function useUpdateClientWorkspace() {
       const token = await getToken();
       if (!token) throw new Error("Not authenticated");
       return updateClientWorkspace(token, workspaceId, body);
+    },
+    onSuccess: (detail) => {
+      queryClient.setQueryData(queryKeys.workspaces.detail(detail.id), detail);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.all });
+    },
+  });
+}
+
+export function useUpdateWorkspaceSettings() {
+  const { getToken } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    ApiWorkspaceDetail,
+    Error,
+    { workspaceId: string; body: UpdateWorkspaceSettingsBody }
+  >({
+    mutationFn: async ({ workspaceId, body }) => {
+      const token = await getToken();
+      if (!token) throw new Error("Not authenticated");
+      return updateWorkspaceSettings(token, workspaceId, body);
     },
     onSuccess: (detail) => {
       queryClient.setQueryData(queryKeys.workspaces.detail(detail.id), detail);

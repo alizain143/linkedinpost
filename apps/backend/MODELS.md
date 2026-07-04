@@ -26,7 +26,9 @@ Verify the exact OpenAI API model slug in the dashboard when upgrading.
 
 `ConfigModelRouter.image()` uses mock when `MEDIA_GENERATION_MOCK=true` or no Google creds; otherwise `GoogleImageGenerationProvider`.
 
-**Image prompt assembly:** Media Creator outputs freeform `imagePrompt` (+ optional `styleNotes`) from post copy, profile brand colors, and optional `mediaCustomPrompt`. `MediaRenderService` merges brand colors and user direction, then Nano Banana renders. No media types or templates.
+**Freestyle:** Media Creator outputs freeform `imagePrompt`; Nano Banana renders.
+
+**Template lane (Slice 22):** text LLM fills headline/subhead + `visualPrompt`; image model fills each `visual_zone`; layout JSON → SVG (chrome + inset) → PNG via `@resvg/resvg-js` (`imageModel: template-svg-resvg+…`).
 
 ### Env
 

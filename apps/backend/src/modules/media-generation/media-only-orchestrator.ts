@@ -43,7 +43,24 @@ export class MediaOnlyOrchestrator {
     }
 
     const post = job.postPackage;
-    const input = toCouncilInputFromPost(post, job.userId);
+    const jobInput = (job.input ?? {}) as {
+      mediaCustomPrompt?: string;
+      mediaMode?: 'freestyle' | 'template';
+      mediaTemplateId?: string | null;
+      previousStatus?: PostPackageStatus;
+    };
+    const previousStatus =
+      jobInput.previousStatus ?? PostPackageStatus.draft;
+    const input = {
+      ...toCouncilInputFromPost(
+        post,
+        job.userId,
+        jobInput.mediaCustomPrompt,
+      ),
+      mediaMode: jobInput.mediaMode ?? post.mediaMode ?? undefined,
+      mediaTemplateId:
+        jobInput.mediaTemplateId ?? post.mediaTemplateId ?? undefined,
+    };
     const priorSteps = buildMediaPriorStepsFromPost(post);
     const maxMediaRegens = this.configService.get<number>(
       'council.maxMediaRegens',
@@ -134,7 +151,10 @@ export class MediaOnlyOrchestrator {
         workspaceId: post.workspaceId,
         postPackageId: post.id,
         generationJobId,
-        mediaType: PostMediaType.generated,
+        mediaType:
+          media.mediaType === 'template'
+            ? PostMediaType.template
+            : PostMediaType.generated,
         altText: media.spec.altText,
         imageBuffer: media.imageBuffer,
         mimeType: media.mimeType,
@@ -154,7 +174,9 @@ export class MediaOnlyOrchestrator {
 
       await this.postsService.applyCouncilPipelineStatus(
         post.id,
-        PostPackageStatus.draft,
+        previousStatus === PostPackageStatus.ready_for_approval
+          ? PostPackageStatus.ready_for_approval
+          : PostPackageStatus.draft,
       );
 
       const result: MediaJobResult = {
@@ -182,7 +204,9 @@ export class MediaOnlyOrchestrator {
 
       await this.postsService.applyCouncilPipelineStatus(
         post.id,
-        PostPackageStatus.failed,
+        previousStatus === PostPackageStatus.ready_for_approval
+          ? PostPackageStatus.ready_for_approval
+          : PostPackageStatus.draft,
       );
 
       await this.prisma.generationJob.update({

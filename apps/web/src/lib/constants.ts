@@ -30,6 +30,7 @@ export const APP_NAV = [
   { id: "calendar", href: "/app/calendar", icon: "calendar_month", label: "Calendar" },
   { id: "approvals", href: "/app/approvals", icon: "fact_check", label: "Approvals" },
   { id: "clients", href: "/app/clients", icon: "groups", label: "Clients" },
+  { id: "templates", href: "/app/templates", icon: "dashboard_customize", label: "Templates" },
   { id: "profile", href: "/app/profile", icon: "badge", label: "Profile" },
   { id: "billing", href: "/app/billing", icon: "credit_card", label: "Billing" },
   { id: "settings", href: "/app/settings", icon: "settings", label: "Settings" },

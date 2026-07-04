@@ -100,9 +100,16 @@ enum GenerationJobStatus {
 
 enum GenerationJobType {
   quick_draft
+  quick_draft_single
+  revise_draft
   council
   calendar
   media
+}
+
+enum ChangesApplyMode {
+  review_first
+  auto_apply
 }
 
 enum PostMediaType {
@@ -113,6 +120,12 @@ enum PostMediaType {
   infographic
   photo_illustration
   generated
+  template
+}
+
+enum MediaMode {
+  freestyle
+  template
 }
 
 enum CouncilAgentRole {
@@ -260,21 +273,26 @@ model Document {
 }
 
 model Workspace {
-  id        String        @id @default(uuid()) @db.Uuid
-  name      String
-  type      WorkspaceType @default(personal)
-  ownerId   String        @db.Uuid
-  createdAt DateTime      @default(now()) @db.Timestamptz(6)
-  updatedAt DateTime      @updatedAt @db.Timestamptz(6)
-  deletedAt DateTime?     @db.Timestamptz(6)
+  id                     String           @id @default(uuid()) @db.Uuid
+  name                   String
+  type                   WorkspaceType    @default(personal)
+  ownerId                String           @db.Uuid
+  changesApplyMode       ChangesApplyMode @default(review_first)
+  defaultMediaMode       MediaMode        @default(freestyle)
+  defaultMediaTemplateId String?          @db.Uuid
+  createdAt              DateTime         @default(now()) @db.Timestamptz(6)
+  updatedAt              DateTime         @updatedAt @db.Timestamptz(6)
+  deletedAt              DateTime?        @db.Timestamptz(6)
 
-  owner           User              @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  members         WorkspaceMember[]
-  contentProfiles ContentProfile[]
-  postPackages    PostPackage[]
-  generationJobs  GenerationJob[]
-  autopilotConfig AutopilotConfig?
-  notifications   Notification[]
+  owner                User              @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members              WorkspaceMember[]
+  contentProfiles      ContentProfile[]
+  postPackages         PostPackage[]
+  generationJobs       GenerationJob[]
+  autopilotConfig      AutopilotConfig?
+  notifications        Notification[]
+  mediaTemplates       MediaTemplate[]
+  defaultMediaTemplate MediaTemplate?    @relation("WorkspaceDefaultMediaTemplate", fields: [defaultMediaTemplateId], references: [id], onDelete: SetNull)
 
   @@index([ownerId])
   @@index([ownerId, type, deletedAt])
@@ -317,32 +335,56 @@ model WorkspaceMember {
 }
 
 model ContentProfile {
-  id               String      @id @default(uuid()) @db.Uuid
-  workspaceId      String      @db.Uuid
-  name             String
-  roleTitle        String?
-  industry         String?
-  targetAudience   String?
-  contentGoal      ContentGoal @default(build_authority)
-  preferredTone    String?
-  brandPrimary     String?
-  brandAccent      String?
-  offerDescription String?
-  writingSample    String?     @db.Text
-  avoidWords       String?
-  isDefault        Boolean     @default(false)
-  createdAt        DateTime    @default(now()) @db.Timestamptz(6)
-  updatedAt        DateTime    @updatedAt @db.Timestamptz(6)
-  deletedAt        DateTime?   @db.Timestamptz(6)
+  id                     String      @id @default(uuid()) @db.Uuid
+  workspaceId            String      @db.Uuid
+  name                   String
+  roleTitle              String?
+  industry               String?
+  targetAudience         String?
+  contentGoal            ContentGoal @default(build_authority)
+  preferredTone          String?
+  brandPrimary           String?
+  brandAccent            String?
+  offerDescription       String?
+  writingSample          String?     @db.Text
+  avoidWords             String?
+  isDefault              Boolean     @default(false)
+  defaultMediaTemplateId String?     @db.Uuid
+  createdAt              DateTime    @default(now()) @db.Timestamptz(6)
+  updatedAt              DateTime    @updatedAt @db.Timestamptz(6)
+  deletedAt              DateTime?   @db.Timestamptz(6)
 
-  workspace Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  pillars   ContentPillar[]
-  posts     PostPackage[]
-  autopilotConfigs AutopilotConfig[]
+  workspace            Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  pillars              ContentPillar[]
+  posts                PostPackage[]
+  autopilotConfigs     AutopilotConfig[]
+  defaultMediaTemplate MediaTemplate?  @relation("ContentProfileDefaultMediaTemplate", fields: [defaultMediaTemplateId], references: [id], onDelete: SetNull)
 
   @@index([workspaceId])
   @@index([workspaceId, deletedAt])
   @@map("content_profiles")
+}
+
+model MediaTemplate {
+  id          String    @id @default(uuid()) @db.Uuid
+  workspaceId String    @db.Uuid
+  name        String
+  description String?
+  width       Int       @default(1080)
+  height      Int       @default(1080)
+  layout      Json
+  isSystem    Boolean   @default(false)
+  createdAt   DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @db.Timestamptz(6)
+  deletedAt   DateTime? @db.Timestamptz(6)
+
+  workspace                   Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  posts                       PostPackage[]
+  workspaceDefaults           Workspace[]      @relation("WorkspaceDefaultMediaTemplate")
+  contentProfileDefaults      ContentProfile[] @relation("ContentProfileDefaultMediaTemplate")
+
+  @@index([workspaceId, deletedAt])
+  @@map("media_templates")
 }
 
 model ContentPillar {
@@ -371,6 +413,8 @@ model PostPackage {
   tone                String?
   pillar              String?
   mediaCustomPrompt   String?           @db.Text
+  mediaMode           MediaMode?
+  mediaTemplateId     String?           @db.Uuid
   source              PostSource        @default(manual)
   status           PostPackageStatus @default(draft)
   score            Int?
@@ -389,6 +433,7 @@ model PostPackage {
 
   workspace      Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   contentProfile ContentProfile? @relation(fields: [contentProfileId], references: [id], onDelete: SetNull)
+  mediaTemplate  MediaTemplate?  @relation(fields: [mediaTemplateId], references: [id], onDelete: SetNull)
   versions       PostVersion[]
   generationJobs GenerationJob[]
   media          PostMedia[]

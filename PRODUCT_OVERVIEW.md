@@ -73,6 +73,7 @@ Update this section as features land. Tell the agent to mark items `[x]` when do
 - [x] Credit deduct on generation
 - [x] Topic suggestions magic button — `POST /generate/suggest-topics` ([SLICE-22](SLICE-22-topic-suggestions.md))
 - [x] AI content profile suggestions — suggest free, 1 credit per approve ([SLICE-23](SLICE-23-ai-content-profiles.md))
+- [x] Draft UX toolkit, apply-changes agent, council inline result ([SLICE-24](SLICE-24-draft-ux-and-apply-changes.md))
 
 ### Phase 4 — LinkedIn publish
 
@@ -89,6 +90,7 @@ Update this section as features land. Tell the agent to mark items `[x]` when do
 - [x] Bulk calendar (Slice 14)
 - [x] `AutopilotConfig` + cron engine (Slice 15)
 - [x] Media generation + attach to post — [SLICE-13](SLICE-13-media-generation.md)
+- [x] Media templates (layout JSON, editor, template lane) — [SLICE-22](SLICE-22-media-templates.md)
 - [x] Bulk calendar generation job — [SLICE-14](SLICE-14-bulk-calendar-generation.md)
 - [x] Real image generation (Nano Banana 2) — [SLICE-17](SLICE-17-nano-banana-image-generation.md)
 
@@ -171,6 +173,7 @@ Core promise: generate authentic LinkedIn posts, plan a content calendar, run an
 | **Calendar** | Week / month / list views, filters | Calendar entries, statuses |
 | **Drafts** | List/filter drafts, copy, schedule, delete | Post CRUD |
 | **Scheduled** | Upcoming/published/failed posts | Scheduling + publish jobs |
+| **Templates** | Media template library + Figma-lite editor | MediaTemplate CRUD, AI draft, defaults |
 | **Profile** | Content profile (voice, pillars, sample, avoid-words) | ContentProfile CRUD |
 | **Autopilot** | Frequency, strategy, approval mode, planned posts | Cron jobs, strategy config, AI pipeline |
 | **Pipeline** | Kanban by production stage | PostPackage status machine |
@@ -484,7 +487,7 @@ Beyond current `User` / `Document`:
 - `/workspaces/:id/switch`
 - `/posts/:id/approve`, `/reject`, `/request-changes`
 - `/posts/:id/schedule`, `/publish`
-- `/generate/quick`, `/generate/council`, `/generate/calendar`
+- `/generate/quick`, `/generate/quick-single`, `/generate/compare-pick`, `/generate/council`, `/generate/calendar`
 - `/jobs/:id`
 - `/calendar`, `/approvals`
 - `/autopilot`

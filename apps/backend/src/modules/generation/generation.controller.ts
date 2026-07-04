@@ -25,9 +25,13 @@ import { CouncilJobService } from '../council/council-job.service';
 import { CalendarGenerateRequestDto } from '../calendar-generation/dto/calendar-generate-request.dto';
 import { CalendarJobService } from '../calendar-generation/calendar-job.service';
 import { QuickDraftRequestDto } from './dto/quick-draft-request.dto';
+import { QuickDraftSingleRequestDto } from './dto/quick-draft-single-request.dto';
 import { TopicSuggestionsRequestDto } from './dto/topic-suggestions-request.dto';
+import { ComparePickRequestDto } from './dto/compare-pick-request.dto';
 import { QuickDraftJobService } from './quick-draft-job.service';
+import { QuickDraftSingleJobService } from './quick-draft-single-job.service';
 import { TopicSuggestionsService } from './topic-suggestions.service';
+import { ComparePickService } from './compare-pick.service';
 
 @ApiTags('generation')
 @ApiBearerAuth('bearer')
@@ -36,9 +40,11 @@ import { TopicSuggestionsService } from './topic-suggestions.service';
 export class GenerationController {
   constructor(
     private readonly quickDraftJobService: QuickDraftJobService,
+    private readonly quickDraftSingleJobService: QuickDraftSingleJobService,
     private readonly councilJobService: CouncilJobService,
     private readonly calendarJobService: CalendarJobService,
     private readonly topicSuggestionsService: TopicSuggestionsService,
+    private readonly comparePickService: ComparePickService,
   ) {}
 
   @Post('quick')
@@ -53,6 +59,26 @@ export class GenerationController {
     @Body() dto: QuickDraftRequestDto,
   ) {
     return this.quickDraftJobService.runQuickDraft(workspaceId, user.id, dto);
+  }
+
+  @Post('quick-single')
+  @UseGuards(CreditsGuard)
+  @CreditsCost(1)
+  @ApiOperation({
+    summary: 'Generate or regenerate a single LinkedIn post variant',
+  })
+  @ApiParam({ name: 'workspaceId', format: 'uuid' })
+  @ApiDataResponse(GenerationJobResponseDto, { status: 201 })
+  quickDraftSingle(
+    @CurrentUser() user: User,
+    @Param('workspaceId') workspaceId: string,
+    @Body() dto: QuickDraftSingleRequestDto,
+  ) {
+    return this.quickDraftSingleJobService.runQuickDraftSingle(
+      workspaceId,
+      user.id,
+      dto,
+    );
   }
 
   @Post('council')
@@ -100,5 +126,18 @@ export class GenerationController {
       user.id,
       dto,
     );
+  }
+
+  @Post('compare-pick')
+  @ApiOperation({
+    summary: 'Pick the best draft option among quick-draft variants',
+  })
+  @ApiParam({ name: 'workspaceId', format: 'uuid' })
+  comparePick(
+    @CurrentUser() user: User,
+    @Param('workspaceId') workspaceId: string,
+    @Body() dto: ComparePickRequestDto,
+  ) {
+    return this.comparePickService.pickBest(workspaceId, user.id, dto);
   }
 }

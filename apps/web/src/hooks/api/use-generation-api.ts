@@ -4,18 +4,23 @@ import { useAuth } from "@clerk/nextjs";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import {
+  comparePick,
   fetchGenerationJob,
   generateCalendar,
   generateCouncil,
   generateQuickDraft,
+  generateQuickDraftSingle,
   suggestTopics,
 } from "@/lib/api/generation";
 import { queryKeys } from "@/lib/api/query-keys";
 import type {
   ApiGenerationJob,
   CalendarGenerateRequestBody,
+  ComparePickRequestBody,
+  ComparePickResult,
   CouncilRequestBody,
   QuickDraftRequestBody,
+  QuickDraftSingleRequestBody,
   TopicSuggestionsRequestBody,
   TopicSuggestionsResult,
 } from "@/lib/api/types/generation";
@@ -51,6 +56,38 @@ export function useTopicSuggestionsMutation(
       const token = await getToken();
       if (!token || !workspaceId) throw new Error("Not authenticated");
       return suggestTopics(token, workspaceId, body);
+    },
+  });
+}
+
+export function useComparePickMutation(
+  workspaceId: string | null | undefined,
+) {
+  const { getToken } = useAuth();
+
+  return useMutation<ComparePickResult, Error, ComparePickRequestBody>({
+    mutationFn: async (body) => {
+      const token = await getToken();
+      if (!token || !workspaceId) throw new Error("Not authenticated");
+      return comparePick(token, workspaceId, body);
+    },
+  });
+}
+
+export function useQuickDraftSingleMutation(
+  workspaceId: string | null | undefined,
+) {
+  const { getToken } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation<ApiGenerationJob, Error, QuickDraftSingleRequestBody>({
+    mutationFn: async (body) => {
+      const token = await getToken();
+      if (!token || !workspaceId) throw new Error("Not authenticated");
+      return generateQuickDraftSingle(token, workspaceId, body);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.credits });
     },
   });
 }

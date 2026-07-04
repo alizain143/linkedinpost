@@ -1,10 +1,12 @@
-import type { QuickDraftVariant } from "@/lib/api/types/generation";
+import type { QuickDraftVariant, TopicSuggestion } from "@/lib/api/types/generation";
 
 const STORAGE_KEY = "pp-generation-sessions";
 const MAX_HISTORY = 8;
+const STALE_SESSION_MS = 24 * 60 * 60 * 1000;
 
 export type StoredQuickDraftSession = {
   variants: QuickDraftVariant[];
+  originalVariants?: QuickDraftVariant[];
   savedPostIds: Record<number, string>;
   dismissedVariantIndices: number[];
   topic: string;
@@ -12,6 +14,12 @@ export type StoredQuickDraftSession = {
   postType: string;
   tone: string;
   pillar: string;
+  createdAt: string;
+};
+
+export type StoredTopicSuggestions = {
+  suggestions: TopicSuggestion[];
+  fingerprint: string;
   createdAt: string;
 };
 
@@ -31,10 +39,12 @@ export type GenerationHistoryEntry = {
 
 export type WorkspaceGenerationSession = {
   quickDraft: StoredQuickDraftSession | null;
+  topicSuggestions: StoredTopicSuggestions | null;
   activeCouncilJobId: string | null;
   activeCalendarJobId: string | null;
   mode: "quick" | "council";
   history: GenerationHistoryEntry[];
+  skipCreditConfirm?: boolean;
 };
 
 type SessionStore = Record<string, WorkspaceGenerationSession>;
@@ -42,17 +52,20 @@ type SessionStore = Record<string, WorkspaceGenerationSession>;
 function emptySession(): WorkspaceGenerationSession {
   return {
     quickDraft: null,
+    topicSuggestions: null,
     activeCouncilJobId: null,
     activeCalendarJobId: null,
     mode: "quick",
     history: [],
+    skipCreditConfirm: false,
   };
 }
 
 function readStore(): SessionStore {
   if (typeof window === "undefined") return {};
   try {
-    const raw = sessionStorage.getItem(STORAGE_KEY);
+    const raw =
+      localStorage.getItem(STORAGE_KEY) ?? sessionStorage.getItem(STORAGE_KEY);
     if (!raw) return {};
     return JSON.parse(raw) as SessionStore;
   } catch {
@@ -63,9 +76,13 @@ function readStore(): SessionStore {
 function writeStore(store: SessionStore): void {
   if (typeof window === "undefined") return;
   try {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
   } catch {
-    // ignore quota errors
+    try {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+    } catch {
+      // ignore quota errors
+    }
   }
 }
 
@@ -73,7 +90,12 @@ export function loadGenerationSession(
   workspaceId: string | null | undefined,
 ): WorkspaceGenerationSession {
   if (!workspaceId) return emptySession();
-  return readStore()[workspaceId] ?? emptySession();
+  const session = readStore()[workspaceId] ?? emptySession();
+  return {
+    ...emptySession(),
+    ...session,
+    topicSuggestions: session.topicSuggestions ?? null,
+  };
 }
 
 export function saveGenerationSession(
@@ -94,9 +116,26 @@ export function addGenerationHistoryEntry(
     id?: string;
     createdAt?: string;
   },
-): GenerationHistoryEntry {
+): { entry: GenerationHistoryEntry; created: boolean } {
   const store = readStore();
   const current = store[workspaceId] ?? emptySession();
+
+  // Re-opening a completed job remounts Generate and re-fires onCompleted;
+  // treat the same job id as the same history row.
+  const existing = current.history.find((item) => {
+    if (entry.id && item.id === entry.id) return true;
+    if (entry.councilJobId && item.councilJobId === entry.councilJobId) {
+      return true;
+    }
+    if (entry.calendarJobId && item.calendarJobId === entry.calendarJobId) {
+      return true;
+    }
+    return false;
+  });
+  if (existing) {
+    return { entry: existing, created: false };
+  }
+
   const full: GenerationHistoryEntry = {
     id: entry.id ?? `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
     createdAt: entry.createdAt ?? new Date().toISOString(),
@@ -114,7 +153,32 @@ export function addGenerationHistoryEntry(
   const next = { ...current, history };
   store[workspaceId] = next;
   writeStore(store);
-  return full;
+  return { entry: full, created: true };
+}
+
+export function buildTopicFingerprint(input: {
+  contentProfileId: string;
+  postType: string;
+  tone: string;
+  pillar: string;
+  additionalContext: string;
+}): string {
+  return [
+    input.contentProfileId,
+    input.postType,
+    input.tone,
+    input.pillar,
+    input.additionalContext.trim().toLowerCase(),
+  ].join("|");
+}
+
+export function isQuickDraftSessionStale(
+  session: StoredQuickDraftSession | null | undefined,
+): boolean {
+  if (!session?.createdAt) return false;
+  const created = Date.parse(session.createdAt);
+  if (Number.isNaN(created)) return false;
+  return Date.now() - created > STALE_SESSION_MS;
 }
 
 export function buildCalendarHighlightUrl(

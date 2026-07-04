@@ -11,11 +11,16 @@ export interface MediaJobInput {
   tone?: string | null;
   pillar?: string | null;
   contentProfileId?: string | null;
+  mediaCustomPrompt?: string;
+  mediaMode?: PostPackage['mediaMode'];
+  mediaTemplateId?: string | null;
+  previousStatus?: PostPackage['status'];
 }
 
 export function toCouncilInputFromPost(
   post: PostPackage,
   userId: string,
+  mediaCustomPrompt?: string,
 ): CouncilInput {
   return {
     workspaceId: post.workspaceId,
@@ -25,7 +30,10 @@ export function toCouncilInputFromPost(
     tone: post.tone ?? undefined,
     pillar: post.pillar ?? undefined,
     contentProfileId: post.contentProfileId ?? undefined,
-    mediaCustomPrompt: post.mediaCustomPrompt ?? undefined,
+    mediaCustomPrompt:
+      mediaCustomPrompt ?? post.mediaCustomPrompt ?? undefined,
+    mediaMode: post.mediaMode ?? undefined,
+    mediaTemplateId: post.mediaTemplateId ?? undefined,
   };
 }
 

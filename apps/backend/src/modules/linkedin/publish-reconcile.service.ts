@@ -1,10 +1,12 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { PostPackageStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PublishJobEnqueueService } from './publish-job-enqueue.service';
 
 @Injectable()
 export class PublishReconcileService implements OnModuleInit {
+  private readonly logger = new Logger(PublishReconcileService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly publishJobEnqueueService: PublishJobEnqueueService,
@@ -25,11 +27,19 @@ export class PublishReconcileService implements OnModuleInit {
 
     for (const post of scheduledPosts) {
       if (!post.scheduledAt) continue;
-      await this.publishJobEnqueueService.enqueuePublish(
-        post.id,
-        post.scheduledAt,
-        post.workspace.ownerId,
-      );
+      try {
+        await this.publishJobEnqueueService.enqueuePublish(
+          post.id,
+          post.scheduledAt,
+          post.workspace.ownerId,
+        );
+      } catch (error) {
+        this.logger.warn(
+          `Failed to reconcile publish job for post ${post.id}: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
     }
   }
 }

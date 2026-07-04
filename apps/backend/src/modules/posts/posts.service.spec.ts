@@ -14,6 +14,7 @@ import {
 import { createMockPrismaService } from '../../test/prisma.mock';
 import { WorkspacesService } from '../workspaces/workspaces.service';
 import { MediaService } from '../media/media.service';
+import { ReviseDraftJobService } from '../generation/revise-draft-job.service';
 import { PostsService } from './posts.service';
 
 describe('PostsService', () => {
@@ -25,11 +26,15 @@ describe('PostsService', () => {
   const mediaService = {
     listForPost: jest.fn().mockResolvedValue([]),
   };
+  const reviseDraftJobService = {
+    tryAutoApplyChanges: jest.fn().mockResolvedValue(null),
+  };
 
   beforeEach(async () => {
     jest.clearAllMocks();
     workspacesService.assertMember.mockResolvedValue(buildPost());
     mediaService.listForPost.mockResolvedValue([]);
+    reviseDraftJobService.tryAutoApplyChanges.mockResolvedValue(null);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -37,6 +42,7 @@ describe('PostsService', () => {
         { provide: PrismaService, useValue: prisma },
         { provide: WorkspacesService, useValue: workspacesService },
         { provide: MediaService, useValue: mediaService },
+        { provide: ReviseDraftJobService, useValue: reviseDraftJobService },
       ],
     }).compile();
 

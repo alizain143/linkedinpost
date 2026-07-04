@@ -66,4 +66,9 @@ export const queryKeys = {
     infinite: (params?: object) => ["notifications", "infinite", params] as const,
     unreadCount: ["notifications", "unreadCount"] as const,
   },
+  mediaTemplates: {
+    list: (workspaceId: string) => ["mediaTemplates", workspaceId] as const,
+    detail: (workspaceId: string, id: string) =>
+      ["mediaTemplates", workspaceId, id] as const,
+  },
 };

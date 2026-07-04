@@ -33,6 +33,14 @@ export class QuickDraftJobResultDto {
   variants!: QuickDraftVariantDto[];
 }
 
+export class QuickDraftSingleJobResultDto {
+  @ApiProperty({ type: QuickDraftVariantDto })
+  variant!: QuickDraftVariantDto;
+
+  @ApiPropertyOptional({ format: 'uuid' })
+  postPackageId?: string;
+}
+
 export class CouncilJobResultDto {
   @ApiProperty({ format: 'uuid' })
   postPackageId!: string;
@@ -175,7 +183,11 @@ export class GenerationJobResponseDto {
 
   @ApiPropertyOptional()
   result!:
-    QuickDraftJobResultDto | CouncilJobResultDto | CalendarJobResultDto | null;
+    | QuickDraftJobResultDto
+    | QuickDraftSingleJobResultDto
+    | CouncilJobResultDto
+    | CalendarJobResultDto
+    | null;
 
   @ApiProperty({ type: String, format: 'date-time' })
   createdAt!: Date;

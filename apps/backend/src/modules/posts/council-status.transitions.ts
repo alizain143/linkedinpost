@@ -25,7 +25,9 @@ export const COUNCIL_STATUS_TRANSITIONS: Record<
     PostPackageStatus.draft,
     PostPackageStatus.failed,
   ],
-  [PostPackageStatus.ready_for_approval]: [],
+  [PostPackageStatus.ready_for_approval]: [
+    PostPackageStatus.media_generating,
+  ],
   [PostPackageStatus.approved]: [],
   [PostPackageStatus.scheduled]: [],
   [PostPackageStatus.publishing]: [],

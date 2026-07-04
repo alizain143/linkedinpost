@@ -16,6 +16,10 @@ import { CALENDAR_PLANNER_V1_SYSTEM } from '../../calendar-generation/prompts/ca
 import { CALENDAR_PLANNER_V1_USER } from '../../calendar-generation/prompts/calendar-planner.v1.user';
 import { TOPIC_SUGGESTIONS_V1_SYSTEM } from './topic-suggestions.v1.system';
 import { TOPIC_SUGGESTIONS_V1_USER } from './topic-suggestions.v1.user';
+import { REVISE_DRAFT_V1_SYSTEM } from './revise-draft.v1.system';
+import { REVISE_DRAFT_V1_USER } from './revise-draft.v1.user';
+import { COMPARE_PICK_V1_SYSTEM } from './compare-pick.v1.system';
+import { COMPARE_PICK_V1_USER } from './compare-pick.v1.user';
 
 export interface PromptTemplate {
   id: string;
@@ -78,6 +82,18 @@ export const PROMPT_REGISTRY: Record<string, PromptTemplate> = {
     version: 1,
     system: TOPIC_SUGGESTIONS_V1_SYSTEM,
     user: TOPIC_SUGGESTIONS_V1_USER,
+  },
+  'revise-draft': {
+    id: 'revise-draft',
+    version: 1,
+    system: REVISE_DRAFT_V1_SYSTEM,
+    user: REVISE_DRAFT_V1_USER,
+  },
+  'compare-pick': {
+    id: 'compare-pick',
+    version: 1,
+    system: COMPARE_PICK_V1_SYSTEM,
+    user: COMPARE_PICK_V1_USER,
   },
 };
 

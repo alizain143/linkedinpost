@@ -34,6 +34,7 @@ import { LinkedInModule } from './modules/linkedin/linkedin.module';
 import { WorkspacesModule } from './modules/workspaces/workspaces.module';
 import { ApprovalShareModule } from './modules/approval-share/approval-share.module';
 import { MediaGenerationModule } from './modules/media-generation/media-generation.module';
+import { MediaTemplatesModule } from './modules/media-templates/media-templates.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { HealthController } from './health.controller';
 
@@ -75,6 +76,7 @@ import { HealthController } from './health.controller';
     CalendarGenerationModule,
     CouncilModule,
     MediaGenerationModule,
+    MediaTemplatesModule,
     AutopilotModule,
     BillingModule,
     ApprovalShareModule,

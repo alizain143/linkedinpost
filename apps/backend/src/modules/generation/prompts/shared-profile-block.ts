@@ -79,6 +79,46 @@ context: ${fields.additionalContext}${documents}
 </request>`;
 }
 
+export function buildRevisionBlock(fields: {
+  previousHook?: string;
+  previousBody?: string;
+  previousCta?: string;
+  previousTags?: string[];
+  revisionPrompt?: string;
+  approvalFeedback?: string;
+}): string {
+  const hasPrevious =
+    !!fields.previousHook ||
+    !!fields.previousBody ||
+    !!fields.previousCta ||
+    (fields.previousTags?.length ?? 0) > 0;
+  const hasFeedback =
+    !!fields.revisionPrompt?.trim() || !!fields.approvalFeedback?.trim();
+
+  if (!hasPrevious && !hasFeedback) {
+    return '';
+  }
+
+  const parts: string[] = ['<revision>'];
+  if (hasPrevious) {
+    parts.push('previous_draft:');
+    if (fields.previousHook) parts.push(`hook: ${fields.previousHook}`);
+    if (fields.previousBody) parts.push(`body: ${fields.previousBody}`);
+    if (fields.previousCta) parts.push(`cta: ${fields.previousCta}`);
+    if (fields.previousTags?.length) {
+      parts.push(`tags: ${fields.previousTags.join(', ')}`);
+    }
+  }
+  if (fields.approvalFeedback?.trim()) {
+    parts.push(`approval_feedback: ${fields.approvalFeedback.trim()}`);
+  }
+  if (fields.revisionPrompt?.trim()) {
+    parts.push(`revision_notes: ${fields.revisionPrompt.trim()}`);
+  }
+  parts.push('</revision>');
+  return parts.join('\n');
+}
+
 export function buildPostBlock(fields: {
   hook: string;
   body: string;

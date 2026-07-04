@@ -2,8 +2,11 @@ import { apiFetch } from "@/lib/api/fetch";
 import type {
   ApiGenerationJob,
   CalendarGenerateRequestBody,
+  ComparePickRequestBody,
+  ComparePickResult,
   CouncilRequestBody,
   QuickDraftRequestBody,
+  QuickDraftSingleRequestBody,
   TopicSuggestionsRequestBody,
   TopicSuggestionsResult,
 } from "@/lib/api/types/generation";
@@ -16,6 +19,21 @@ export async function generateQuickDraft(
   return apiFetch<ApiGenerationJob>(
     token,
     `/workspaces/${workspaceId}/generate/quick`,
+    {
+      method: "POST",
+      body: JSON.stringify(body),
+    },
+  );
+}
+
+export async function generateQuickDraftSingle(
+  token: string,
+  workspaceId: string,
+  body: QuickDraftSingleRequestBody,
+): Promise<ApiGenerationJob> {
+  return apiFetch<ApiGenerationJob>(
+    token,
+    `/workspaces/${workspaceId}/generate/quick-single`,
     {
       method: "POST",
       body: JSON.stringify(body),
@@ -68,6 +86,21 @@ export async function suggestTopics(
   return apiFetch<TopicSuggestionsResult>(
     token,
     `/workspaces/${workspaceId}/generate/suggest-topics`,
+    {
+      method: "POST",
+      body: JSON.stringify(body),
+    },
+  );
+}
+
+export async function comparePick(
+  token: string,
+  workspaceId: string,
+  body: ComparePickRequestBody,
+): Promise<ComparePickResult> {
+  return apiFetch<ComparePickResult>(
+    token,
+    `/workspaces/${workspaceId}/generate/compare-pick`,
     {
       method: "POST",
       body: JSON.stringify(body),

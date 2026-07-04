@@ -82,6 +82,7 @@ export type UpdatePostBody = {
   tone?: string;
   pillar?: string;
   contentProfileId?: string;
+  mediaCustomPrompt?: string;
 };
 
 export type ListPostsParams = {

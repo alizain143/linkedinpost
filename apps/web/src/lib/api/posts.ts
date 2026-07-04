@@ -128,11 +128,36 @@ export async function generatePostMedia(
   token: string,
   workspaceId: string,
   postId: string,
+  body: {
+    mediaCustomPrompt?: string;
+    replace?: boolean;
+    mediaMode?: "freestyle" | "template";
+    mediaTemplateId?: string;
+  } = {},
 ): Promise<ApiGenerationJob> {
   return apiFetch<ApiGenerationJob>(
     token,
     postsPath(workspaceId, postId, "generate-media"),
-    { method: "POST" },
+    {
+      method: "POST",
+      body: JSON.stringify(body),
+    },
+  );
+}
+
+export async function applyPostChanges(
+  token: string,
+  workspaceId: string,
+  postId: string,
+  body: { additionalFeedback?: string } = {},
+): Promise<ApiGenerationJob> {
+  return apiFetch<ApiGenerationJob>(
+    token,
+    postsPath(workspaceId, postId, "apply-changes"),
+    {
+      method: "POST",
+      body: JSON.stringify(body),
+    },
   );
 }
 

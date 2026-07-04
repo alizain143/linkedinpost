@@ -20,6 +20,7 @@ import { useCouncilHistory } from "@/hooks/api/use-council-api";
 import { useGenerationJob } from "@/hooks/api/use-generation-api";
 import {
   useDeletePost,
+  useApplyPostChangesMutation,
   useGeneratePostMediaMutation,
   usePost,
   usePostVersions,
@@ -27,6 +28,8 @@ import {
   useTransitionPostStatus,
   useUpdatePost,
 } from "@/hooks/api/use-posts-api";
+import { PromptModal } from "@/components/modals/prompt-modal";
+import { trackProductEvent } from "@/lib/product-events";
 import { useCancelScheduleMutation } from "@/hooks/api/use-scheduling-api";
 import { useCredits } from "@/hooks/api/use-credits-api";
 import { useWorkspace } from "@/hooks/use-workspace";
@@ -43,8 +46,8 @@ import { getPostSourceLabel } from "@/lib/post-source";
 import { POST_TYPE_SELECT_OPTIONS } from "@/lib/post-types";
 import { TONE_OPTIONS } from "@/lib/form-options";
 import { CouncilTimeline } from "@/components/sections/app/generate/CouncilTimeline";
-import { LinkedInFeedPreview } from "@/components/sections/app/generate/LinkedInFeedPreview";
 import { ApprovalSharePanel } from "@/components/sections/app/posts/ApprovalSharePanel";
+import { PostMediaList } from "@/components/ui/post-media-image";
 import { useAppUi } from "@/providers/app-ui-provider";
 import { usePpToast } from "@/providers/pp-toast-provider";
 
@@ -134,10 +137,13 @@ export default function PostDetail({ postId }: PostDetailProps) {
   const transitionStatus = useTransitionPostStatus(activeWorkspaceId, postId);
   const approvePostMutation = useApprovePostMutation(activeWorkspaceId);
   const generatePostMedia = useGeneratePostMediaMutation(activeWorkspaceId);
+  const applyPostChanges = useApplyPostChangesMutation(activeWorkspaceId);
   const cancelSchedule = useCancelScheduleMutation(activeWorkspaceId);
   const { canAfford } = useCredits();
 
   const [activeMediaJobId, setActiveMediaJobId] = useState<string | null>(null);
+  const [mediaPromptOpen, setMediaPromptOpen] = useState(false);
+  const [mediaPrompt, setMediaPrompt] = useState("");
 
   useGenerationJob(activeMediaJobId, {
     poll: true,
@@ -151,11 +157,13 @@ export default function PostDetail({ postId }: PostDetailProps) {
 
   const [form, setForm] = useState<PostFormState | null>(null);
   const isDraft = post?.status === "draft";
+  const isReadyForApproval = post?.status === "ready_for_approval";
   const isMediaGenerating =
     post?.status === "media_generating" ||
     generatePostMedia.isPending ||
     !!activeMediaJobId;
-  const isEditable = isDraft && !isMediaGenerating;
+  const isEditable =
+    (isDraft || isReadyForApproval) && !isMediaGenerating;
 
   useEffect(() => {
     if (post) setForm(postToForm(post));
@@ -200,7 +208,12 @@ export default function PostDetail({ postId }: PostDetailProps) {
     }
   };
 
-  const handleGenerateMedia = async () => {
+  const handleGenerateMedia = () => {
+    setMediaPrompt("");
+    setMediaPromptOpen(true);
+  };
+
+  const confirmGenerateMedia = async () => {
     if (!canAfford(MEDIA_GENERATION_CREDIT_COST)) {
       showToast(
         `You need ${MEDIA_GENERATION_CREDIT_COST} credits to generate an image.`,
@@ -210,7 +223,16 @@ export default function PostDetail({ postId }: PostDetailProps) {
     }
 
     try {
-      const job = await generatePostMedia.mutateAsync(postId);
+      const hasMedia = (post?.media.length ?? 0) > 0;
+      const job = await generatePostMedia.mutateAsync({
+        postId,
+        mediaCustomPrompt: mediaPrompt.trim() || undefined,
+        replace: hasMedia,
+      });
+      if (mediaPrompt.trim()) {
+        trackProductEvent("media_generated_with_prompt");
+      }
+      setMediaPromptOpen(false);
       setActiveMediaJobId(job.id);
       void refetch();
     } catch (err) {
@@ -465,9 +487,31 @@ export default function PostDetail({ postId }: PostDetailProps) {
             </div>
 
             {post.approvalFeedback ? (
-              <div className="rounded-2xl border border-[#fde68a] bg-[#fffbeb] px-4 py-3 text-[13px] text-[#92400e]">
-                <span className="font-semibold">Approval feedback: </span>
-                {post.approvalFeedback}
+              <div className="flex flex-wrap items-start justify-between gap-3 rounded-2xl border border-[#fde68a] bg-[#fffbeb] px-4 py-3 text-[13px] text-[#92400e]">
+                <div>
+                  <span className="font-semibold">Approval feedback: </span>
+                  {post.approvalFeedback}
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={applyPostChanges.isPending}
+                  onClick={() => {
+                    void applyPostChanges
+                      .mutateAsync({ postId })
+                      .then(() => {
+                        trackProductEvent("changes_apply_manual");
+                        showToast("AI applied the requested changes", "auto_awesome");
+                        void refetch();
+                        void refetchVersions();
+                      })
+                      .catch((err) => showToast(getApiErrorMessage(err), "error"));
+                  }}
+                >
+                  <MsIcon name="auto_awesome" size={16} />
+                  Apply with AI (1 cr)
+                </Button>
               </div>
             ) : null}
 
@@ -605,42 +649,7 @@ export default function PostDetail({ postId }: PostDetailProps) {
             {post.media.length > 0 ? (
               <div className={`${appCard} p-5`}>
                 <h3 className={`${appSectionTitle} mb-3`}>Media</h3>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {post.media.map((item) => (
-                    <a
-                      key={item.id}
-                      href={item.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="overflow-hidden rounded-xl border border-[#eceef4]"
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={item.url}
-                        alt={item.altText}
-                        className="h-40 w-full object-cover"
-                      />
-                    </a>
-                  ))}
-                </div>
-                <div className="mt-4">
-                  <h4 className="mb-2 text-sm font-semibold text-[#64748b]">
-                    LinkedIn feed preview
-                  </h4>
-                  <LinkedInFeedPreview
-                    authorName={
-                      profiles?.find((p) => p.id === post.contentProfileId)?.name ??
-                      "You"
-                    }
-                    roleTitle={
-                      profiles?.find((p) => p.id === post.contentProfileId)
-                        ?.roleTitle
-                    }
-                    hook={post.hook}
-                    body={post.body}
-                    mediaUrl={post.media[0]?.url}
-                  />
-                </div>
+                <PostMediaList items={post.media} />
               </div>
             ) : null}
 
@@ -698,6 +707,19 @@ export default function PostDetail({ postId }: PostDetailProps) {
           </div>
         ) : null}
       </QueryState>
+
+      <PromptModal
+        open={mediaPromptOpen}
+        title="Image direction"
+        description="Optional. Leave blank to let AI decide."
+        confirmLabel="Generate"
+        value={mediaPrompt}
+        onChange={setMediaPrompt}
+        onClose={() => setMediaPromptOpen(false)}
+        onConfirm={() => void confirmGenerateMedia()}
+        isSubmitting={generatePostMedia.isPending}
+        creditCost={MEDIA_GENERATION_CREDIT_COST}
+      />
     </div>
   );
 }

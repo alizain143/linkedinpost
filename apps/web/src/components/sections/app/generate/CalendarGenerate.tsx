@@ -89,18 +89,19 @@ export default function CalendarGenerate() {
     poll: true,
     workspaceId: activeWorkspaceId,
     onCompleted: (job) => {
-      showToast("Calendar generated", "event_available");
       if (!activeWorkspaceId || calendarCompletedRef.current === job.id) return;
       calendarCompletedRef.current = job.id;
       const result =
         job.result && "slotCount" in job.result ? job.result : null;
-      addGenerationHistoryEntry(activeWorkspaceId, {
+      const { created } = addGenerationHistoryEntry(activeWorkspaceId, {
         kind: "calendar",
         label: result ? `${result.slotCount} posts` : "Calendar",
         topic: `${form.durationDays}-day calendar`,
         calendarJobId: job.id,
         calendarSlotCount: result?.slotCount,
       });
+      if (!created) return;
+      showToast("Calendar generated", "event_available");
       setHistory(loadGenerationSession(activeWorkspaceId).history);
     },
   });
@@ -121,6 +122,15 @@ export default function CalendarGenerate() {
       initializedWorkspaceRef.current = activeWorkspaceId;
       const session = loadGenerationSession(activeWorkspaceId);
       setHistory(session.history);
+      // Jobs already in history must not re-fire onCompleted after remount.
+      if (
+        session.activeCalendarJobId &&
+        session.history.some(
+          (entry) => entry.calendarJobId === session.activeCalendarJobId,
+        )
+      ) {
+        calendarCompletedRef.current = session.activeCalendarJobId;
+      }
       setActiveCalendarJobId(session.activeCalendarJobId);
       setGenerateError(null);
 
@@ -148,6 +158,8 @@ export default function CalendarGenerate() {
 
   const handleRestoreHistory = (entry: GenerationHistoryEntry) => {
     if (entry.kind === "calendar" && entry.calendarJobId) {
+      // Mark handled so remount/onCompleted does not re-append history.
+      calendarCompletedRef.current = entry.calendarJobId;
       setActiveCalendarJobId(entry.calendarJobId);
       if (activeWorkspaceId) {
         saveGenerationSession(activeWorkspaceId, {

@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  ChangesApplyMode,
   PostPackageStatus,
   Workspace,
   WorkspaceType,
@@ -23,6 +24,7 @@ export interface WorkspaceResponse {
   name: string;
   type: WorkspaceType;
   ownerId: string;
+  changesApplyMode: ChangesApplyMode;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -56,6 +58,7 @@ export class WorkspacesService {
       name: workspace.name,
       type: workspace.type,
       ownerId: workspace.ownerId,
+      changesApplyMode: workspace.changesApplyMode,
       createdAt: workspace.createdAt,
       updatedAt: workspace.updatedAt,
     };
@@ -195,6 +198,46 @@ export class WorkspacesService {
     const updated = await this.prisma.workspace.update({
       where: { id: workspaceId },
       data: { name: dto.name },
+    });
+
+    const stats = await this.getWorkspaceStats(workspaceId);
+
+    return {
+      ...this.toWorkspaceResponse(updated),
+      stats,
+    };
+  }
+
+  async updateSettings(
+    workspaceId: string,
+    userId: string,
+    dto: {
+      name?: string;
+      changesApplyMode?: ChangesApplyMode;
+    },
+  ): Promise<WorkspaceDetailResponse> {
+    const workspace = await this.assertOwner(userId, workspaceId);
+
+    if (dto.name !== undefined && workspace.type === WorkspaceType.client) {
+      this.assertClientWorkspaceMutable(workspace);
+    }
+
+    if (
+      dto.name !== undefined &&
+      workspace.type === WorkspaceType.personal &&
+      dto.changesApplyMode === undefined
+    ) {
+      // personal rename is allowed via settings
+    }
+
+    const updated = await this.prisma.workspace.update({
+      where: { id: workspaceId },
+      data: {
+        ...(dto.name !== undefined ? { name: dto.name } : {}),
+        ...(dto.changesApplyMode !== undefined
+          ? { changesApplyMode: dto.changesApplyMode }
+          : {}),
+      },
     });
 
     const stats = await this.getWorkspaceStats(workspaceId);

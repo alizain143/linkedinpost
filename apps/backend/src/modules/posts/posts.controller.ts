@@ -29,6 +29,9 @@ import { ClerkAuthGuard } from '../../common/guards/clerk-auth.guard';
 import { CreditsCost } from '../credits/credits.decorator';
 import { CreditsGuard } from '../credits/credits.guard';
 import { GenerationJobResponseDto } from '../../common/swagger/responses/generation-job-response.dto';
+import { ApplyChangesRequestDto } from '../generation/dto/apply-changes-request.dto';
+import { GenerateMediaRequestDto } from '../generation/dto/generate-media-request.dto';
+import { ReviseDraftJobService } from '../generation/revise-draft-job.service';
 import { MediaJobService } from '../media-generation/media-job.service';
 import {
   RejectPostDto,
@@ -48,6 +51,7 @@ export class PostsController {
   constructor(
     private readonly postsService: PostsService,
     private readonly mediaJobService: MediaJobService,
+    private readonly reviseDraftJobService: ReviseDraftJobService,
   ) {}
 
   @Get()
@@ -174,11 +178,37 @@ export class PostsController {
     return this.postsService.remove(workspaceId, id, user.id);
   }
 
+  @Post(':id/apply-changes')
+  @UseGuards(CreditsGuard)
+  @CreditsCost(1)
+  @ApiOperation({
+    summary: 'Apply approval feedback or regenerate post text with AI (1 credit)',
+  })
+  @ApiParam({ name: 'workspaceId', format: 'uuid' })
+  @ApiParam({ name: 'id', format: 'uuid' })
+  @ApiDataResponse(GenerationJobResponseDto, { status: 201 })
+  applyChanges(
+    @CurrentUser() user: User,
+    @Param('workspaceId') workspaceId: string,
+    @Param('id') id: string,
+    @Body() dto: ApplyChangesRequestDto,
+  ) {
+    return this.reviseDraftJobService.applyChanges(
+      workspaceId,
+      user.id,
+      id,
+      dto,
+    );
+  }
+
   @Post(':id/generate-media')
   @HttpCode(HttpStatus.ACCEPTED)
   @UseGuards(CreditsGuard)
-  @CreditsCost(2)
-  @ApiOperation({ summary: 'Generate media image for a draft post (async)' })
+  @CreditsCost(1)
+  @ApiOperation({
+    summary:
+      'Generate or replace media image for a post (async; 1 credit template / 2 freestyle)',
+  })
   @ApiParam({ name: 'workspaceId', format: 'uuid' })
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiDataResponse(GenerationJobResponseDto, { status: 202 })
@@ -186,8 +216,9 @@ export class PostsController {
     @CurrentUser() user: User,
     @Param('workspaceId') workspaceId: string,
     @Param('id') id: string,
+    @Body() dto: GenerateMediaRequestDto,
   ) {
-    return this.mediaJobService.enqueueMedia(workspaceId, user.id, id);
+    return this.mediaJobService.enqueueMedia(workspaceId, user.id, id, dto);
   }
 
   @Get(':id/versions')

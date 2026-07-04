@@ -8,12 +8,16 @@ type TopicSuggestionsPickerProps = {
   suggestions: TopicSuggestion[];
   onSelect: (suggestion: TopicSuggestion) => void;
   disabled?: boolean;
+  stale?: boolean;
+  onRefresh?: () => void;
 };
 
 export function TopicSuggestionsPicker({
   suggestions,
   onSelect,
   disabled,
+  stale,
+  onRefresh,
 }: TopicSuggestionsPickerProps) {
   if (suggestions.length === 0) {
     return null;
@@ -21,9 +25,21 @@ export function TopicSuggestionsPicker({
 
   return (
     <div className="mb-4 rounded-xl border border-[#eceef4] bg-[#fafbff] p-3">
-      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#94a3b8]">
-        Suggested topics
-      </p>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-[#94a3b8]">
+          Suggested topics
+        </p>
+        {stale ? (
+          <button
+            type="button"
+            onClick={onRefresh}
+            disabled={disabled}
+            className="text-[11px] font-semibold text-[#4f46e5] hover:underline disabled:opacity-50"
+          >
+            Suggestions may be outdated · Refresh
+          </button>
+        ) : null}
+      </div>
       <div className="flex flex-wrap gap-2">
         {suggestions.map((suggestion) => (
           <span key={suggestion.topic} title={suggestion.rationale}>
@@ -49,29 +65,43 @@ type TopicMagicButtonProps = {
   onClick: () => void;
   loading?: boolean;
   disabled?: boolean;
+  hasSuggestions?: boolean;
 };
 
 export function TopicMagicButton({
   onClick,
   loading,
   disabled,
+  hasSuggestions,
 }: TopicMagicButtonProps) {
   return (
-    <Button
-      type="button"
-      variant="ghost"
-      size="sm"
-      disabled={disabled || loading}
-      aria-label="Suggest trending topics"
-      className="h-7 gap-1 px-2 text-[12px] text-[#5B3DF5] hover:bg-[#f0edff]"
-      onClick={onClick}
+    <span
+      title={hasSuggestions ? "Uses AI · regenerates suggestions" : "Uses AI"}
     >
-      <MsIcon
-        name={loading ? "progress_activity" : "auto_awesome"}
-        size={15}
-        className={loading ? "animate-spin" : undefined}
-      />
-      {loading ? "Suggesting…" : "Suggest topics"}
-    </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        disabled={disabled || loading}
+        aria-label={
+          hasSuggestions
+            ? "Regenerate topic suggestions"
+            : "Suggest trending topics"
+        }
+        className="h-7 gap-1 px-2 text-[12px] text-[#5B3DF5] hover:bg-[#f0edff]"
+        onClick={onClick}
+      >
+        <MsIcon
+          name={loading ? "progress_activity" : "auto_awesome"}
+          size={15}
+          className={loading ? "animate-spin" : undefined}
+        />
+        {loading
+          ? "Suggesting…"
+          : hasSuggestions
+            ? "Regenerate topics"
+            : "Suggest topics"}
+      </Button>
+    </span>
   );
 }

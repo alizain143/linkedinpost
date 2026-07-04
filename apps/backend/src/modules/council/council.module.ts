@@ -8,6 +8,7 @@ import { AuthModule } from '../auth/auth.module';
 import { GenerationModule } from '../generation/generation.module';
 import { MediaModule } from '../media/media.module';
 import { MediaGenerationModule } from '../media-generation/media-generation.module';
+import { MediaTemplatesModule } from '../media-templates/media-templates.module';
 import { PostsModule } from '../posts/posts.module';
 import { SchedulingModule } from '../scheduling/scheduling.module';
 import { WorkspacesModule } from '../workspaces/workspaces.module';
@@ -38,6 +39,7 @@ import { WriterOutputParser } from './parsers/writer-output.parser';
     forwardRef(() => GenerationModule),
     MediaModule,
     forwardRef(() => MediaGenerationModule),
+    MediaTemplatesModule,
     SchedulingModule,
   ],
   controllers: [CouncilController],
