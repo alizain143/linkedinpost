@@ -1,0 +1,12 @@
+node_modules
+.git
+.env
+.env.*
+!.env.example
+apps/web/.next
+apps/web/node_modules
+coverage
+dist
+*.md
+.cursor
+.github

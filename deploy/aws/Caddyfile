@@ -1,0 +1,4 @@
+# Replace api.example.com with your domain (or set via deploy.sh)
+api.example.com {
+	reverse_proxy api:3001
+}

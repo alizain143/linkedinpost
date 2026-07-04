@@ -10,13 +10,16 @@ async function bootstrap() {
 
   app.setGlobalPrefix('v1');
 
-  const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:3000';
+  const frontendUrls = (process.env.FRONTEND_URL ?? 'http://localhost:3000')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
   const corsOrigins =
     process.env.NODE_ENV === 'production'
-      ? frontendUrl
+      ? frontendUrls
       : Array.from(
           new Set([
-            frontendUrl,
+            ...frontendUrls,
             'http://localhost:3000',
             'http://127.0.0.1:3000',
           ]),
