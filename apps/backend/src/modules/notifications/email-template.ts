@@ -1,5 +1,5 @@
 import { NotificationType } from '@prisma/client';
-import { EMAIL_LOGO_DATA_URI } from './email-logo';
+import { EMAIL_LOGO_URL } from './email-logo';
 
 export const EMAIL_BRAND = {
   violet: '#5B3DF5',
@@ -214,7 +214,7 @@ export function buildEmailHtml(params: BuildEmailHtmlParams): string {
                 <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
                   <tr>
                     <td style="vertical-align:middle;padding:0 12px 0 0;">
-                      <img src="${EMAIL_LOGO_DATA_URI}" width="36" height="36" alt="linkedinpost.ai" style="display:block;width:36px;height:36px;border:0;border-radius:8px;">
+                      <img src="${EMAIL_LOGO_URL}" width="36" height="36" alt="linkedinpost.ai" style="display:block;width:36px;height:36px;border:0;border-radius:8px;">
                     </td>
                     <td style="vertical-align:middle;">
                       <span style="font-family:${FONT};font-size:18px;font-weight:700;letter-spacing:-0.02em;color:${EMAIL_BRAND.ink};">

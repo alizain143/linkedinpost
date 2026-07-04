@@ -9,7 +9,7 @@ import type {
 import type { UserPlan } from "@/lib/api/types/enums";
 import { formatScheduledDateTime } from "@/lib/format-relative-time";
 
-export const AUTOPILOT_CREDIT_COST = 10;
+export const AUTOPILOT_CREDIT_COST = 3;
 
 export const DEFAULT_AUTOPILOT_POSTING_DAYS = [1, 3, 4, 5, 7] as const;
 export const DEFAULT_AUTOPILOT_POSTING_TIME = "09:00";

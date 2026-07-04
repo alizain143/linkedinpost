@@ -1,6 +1,6 @@
 # linkedinpost.ai — Current Architecture (As Implemented)
 
-> Snapshot: June 2026. Backend slices 1–20 complete. Schema cleanup phases 1–3 applied.
+> Snapshot: July 2026. Backend slices 1–20 complete. Billing uses XPay (replaced Stripe).
 > Living reference for what exists today.
 >
 > **Field-level reference:** [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) (every table, column, enum).
@@ -9,7 +9,7 @@
 
 AI LinkedIn content engine: generate posts → AI Council pipeline → human approval → schedule/publish to LinkedIn.
 
-**Stack:** NestJS (`apps/backend`) · Next.js (`apps/web`, UI not built) · PostgreSQL · Prisma · Redis/BullMQ · Clerk · Stripe · Cloudflare R2 · OpenAI (text) · Google Gemini (images)
+**Stack:** NestJS (`apps/backend`) · Next.js (`apps/web`) · PostgreSQL · Prisma · Redis/BullMQ · Clerk · XPay · Cloudflare R2 · OpenAI (text) · Google Gemini (images)
 
 ---
 
@@ -24,7 +24,7 @@ AI LinkedIn content engine: generate posts → AI Council pipeline → human app
          ┌──────────────────────────┼──────────────────────────┐
          ▼                          ▼                          ▼
    PostgreSQL                  Redis/BullMQ              External APIs
-   (Prisma)                    (async jobs)              Clerk, Stripe,
+   (Prisma)                    (async jobs)              Clerk, XPay,
                                                          LinkedIn, OpenAI,
                                                          Google Image, R2
 ```
@@ -50,13 +50,13 @@ AI LinkedIn content engine: generate posts → AI Council pipeline → human app
 | scheduling | Schedule/unschedule/reschedule |
 | linkedin | Profile sync, publish now, scheduled publish worker |
 | credits | Ledger with billing-aligned credit period |
-| billing | Stripe checkout, portal, webhooks |
+| billing | XPay checkout, cancel, webhooks |
 | generation | Quick draft (sync) |
 | job-queue | BullMQ worker for async jobs |
 | council | Multi-agent orchestration + timeline |
 | calendar-generation | Bulk 7/30-day calendar jobs |
 | autopilot | Cron config + dispatch to council |
-| media | Quote card generation + R2 attach |
+| media | Unbound AI image generation + R2 attach |
 | dashboard | Aggregated stats |
 | notifications | In-app feed, Resend email, FCM web push |
 
@@ -66,7 +66,7 @@ AI LinkedIn content engine: generate posts → AI Council pipeline → human app
 
 ```
 User
- ├── Subscription (Stripe)
+ ├── Subscription (XPay)
  ├── CreditTransaction[] (user-level ledger, optional generationJobId FK)
  ├── Document[] (R2 uploads — profile only)
  ├── profileDocument (1:1 optional)
@@ -82,7 +82,7 @@ Workspace (personal | client)
  ├── GenerationJob[] → CouncilEvent[], PostMedia[], CreditTransaction[]
  └── AutopilotConfig? (1:1)
 
-StripeWebhookEvent (idempotency)
+BillingWebhookEvent (idempotency)
 ```
 
 **Central entity:** `PostPackage` — moves through pipeline statuses from draft → generating → approval → scheduled → published/failed.
@@ -108,8 +108,8 @@ StripeWebhookEvent (idempotency)
 | Model | Purpose |
 |-------|---------|
 | User | Clerk identity, plan, settings, LinkedIn profile JSON |
-| Subscription | Stripe customer/subscription mirror |
-| StripeWebhookEvent | Webhook idempotency |
+| Subscription | XPay customer/subscription mirror |
+| BillingWebhookEvent | Webhook idempotency |
 | Document | R2 file metadata (profile uploads) |
 | Workspace | Personal or client workspace |
 | WorkspaceMember | User ↔ workspace membership |
@@ -117,7 +117,7 @@ StripeWebhookEvent (idempotency)
 | ContentPillar | Named pillars under a profile |
 | PostPackage | Core post unit + pipeline status |
 | PostVersion | Content snapshots on edit / council |
-| PostMedia | Generated quote cards attached to posts |
+| PostMedia | Generated feed images attached to posts |
 | CreditTransaction | Append-only credit ledger |
 | GenerationJob | AI job tracking (sync + async); council execution unit |
 | CouncilEvent | Per-agent step in a council job |
@@ -131,7 +131,7 @@ StripeWebhookEvent (idempotency)
 | DocumentStatus | pending, attached | |
 | DocumentPurpose | profile | Profile images only |
 | WorkspaceMemberRole | owner, editor, viewer | Only `owner` used today |
-| UserPlan | free, starter, pro, agency | Denormalized on User, synced from Stripe |
+| UserPlan | free, starter, pro, agency | Denormalized on User, synced from XPay |
 | WorkspaceType | personal, client | |
 | ContentGoal | build_authority, generate_leads, grow_audience | |
 | PostPackageStatus | draft, text_generating, … | No `brief_created` |
@@ -139,11 +139,12 @@ StripeWebhookEvent (idempotency)
 | PostType | personal_story, list_post, how_to, … | |
 | CreditTransactionType | generation, council, media, calendar, autopilot, content_profile, adjustment | All types used |
 | GenerationJobStatus | pending, running, completed, failed | Council lifecycle uses this |
-| GenerationJobType | quick_draft, council, calendar, media | `media` = quote card on existing draft |
+| GenerationJobType | quick_draft, council, calendar, media | `media` = image on existing draft (2 credits) |
 | PostMediaType | quote_card | Single value only |
 | CouncilAgentRole | writer, reviewer, editor, media_creator, media_reviewer | |
 | CouncilEventStatus | running, completed, failed | No `skipped` |
-| SubscriptionStatus | active, trialing, past_due, canceled, incomplete, unpaid | |
+| SubscriptionStatus | active, trialing, past_due, canceled, incomplete, unpaid | Mapped from XPay |
+| BillingWebhookEventStatus | pending, processed, failed | Webhook idempotency |
 
 ---
 
@@ -206,12 +207,12 @@ Council agent pipeline: writer → reviewer → editor → media_creator → med
 | Pipeline | `GET .../pipeline` |
 | Calendar | `GET .../calendar` |
 | Approvals | `GET .../approvals` |
-| Generate | `POST .../generate/quick`, `suggest-topics`, `council`, `council-premium`, `calendar`; `POST .../posts/:id/generate-media` |
+| Generate | `POST .../generate/quick`, `suggest-topics`, `council`, `calendar`; `POST .../posts/:id/generate-media` |
 | Jobs | `GET /v1/jobs/:id` |
 | Council | `GET .../posts/:postId/council` |
 | Credits | `GET /v1/credits` |
 | Notifications | `GET /v1/notifications`, unread count, mark read, device tokens |
-| Billing | `GET /v1/billing`, checkout, portal, Stripe webhook |
+| Billing | `GET /v1/billing`, checkout, cancel, XPay webhook |
 | Scheduling | schedule/unschedule/reschedule on posts |
 | LinkedIn | connection, profile sync, publish |
 | Autopilot | `GET/PUT .../autopilot`, planned posts |
@@ -225,10 +226,10 @@ Council agent pipeline: writer → reviewer → editor → media_creator → med
 | Service | Usage |
 |---------|-------|
 | Clerk | Auth + LinkedIn OAuth token for publish |
-| Stripe | Subscriptions; plan synced to `User.plan` |
-| R2 | Profile images, post media (quote cards) |
+| XPay | Subscriptions; plan synced to `User.plan` |
+| R2 | Profile images, post media (AI feed images) |
 | OpenAI | Text generation (GPT-5.4 default) |
-| Google Gemini | Quote card images (Nano Banana 2) |
+| Google Gemini | Feed images (Nano Banana 2) |
 | Resend | Transactional notification email |
 | Firebase FCM | Web push notifications |
 | Redis | BullMQ job queue |
@@ -285,7 +286,7 @@ Backend deep-dives in `apps/backend/`: `GENERATION.md`, `COUNCIL.md`, `PUBLISHIN
 
 ## Frontend status
 
-Marketing site and app UI shells exist under `apps/web`. **FE-SLICE-01** through **FE-SLICE-18** are wired to the API (workspace context, settings, content profile, credits shell, dashboard stats, posts CRUD, pipeline kanban, approvals queue, calendar views, LinkedIn connection, schedule/publish, quick draft generate, council jobs + polling, bulk calendar generation, autopilot config + planned posts, billing + Stripe checkout/portal, agency client workspaces, approval share links + public `/approve/[token]` page).
+Marketing site and app UI shells exist under `apps/web`. **FE-SLICE-01** through **FE-SLICE-18** are wired to the API (workspace context, settings, content profile, credits shell, dashboard stats, posts CRUD, pipeline kanban, approvals queue, calendar views, LinkedIn connection, schedule/publish, quick draft generate, council jobs + polling, bulk calendar generation, autopilot config + planned posts, billing + XPay checkout/cancel, agency client workspaces, approval share links + public `/approve/[token]` page).
 
 ---
 

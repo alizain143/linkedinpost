@@ -10,7 +10,7 @@ Agency-plan users can create, rename, and cascade soft-delete up to 5 client wor
 ## Dependencies
 
 - Slice 01: `Workspace`, `WorkspaceMember`, `WorkspaceType.client`
-- Slice 18: `PlanFeatureService`, Agency plan via Stripe
+- Slice 18: `PlanFeatureService`, Agency plan via XPay
 
 ## Prisma
 

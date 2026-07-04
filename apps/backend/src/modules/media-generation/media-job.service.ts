@@ -8,7 +8,7 @@ import {
   PostPackageStatus,
   Prisma,
 } from '@prisma/client';
-import { MEDIA_REGEN_CREDIT_COST } from '../../common/constants/media.constants';
+import { MEDIA_GENERATION_CREDIT_COST } from '../../common/constants/media.constants';
 import { NOT_DELETED } from '../../common/constants/soft-delete.constants';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreditsService } from '../credits/credits.service';
@@ -29,9 +29,6 @@ export class MediaJobService {
   ) {}
 
   async enqueueMedia(workspaceId: string, userId: string, postId: string) {
-    // #region agent log
-    fetch('http://127.0.0.1:7936/ingest/839fd5aa-975f-4d2f-afc3-4e50b695a8d5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'c1f975'},body:JSON.stringify({sessionId:'c1f975',location:'media-job.service.ts:enqueueMedia:entry',message:'enqueueMedia called',data:{workspaceId,postId},timestamp:Date.now(),hypothesisId:'A,B'})}).catch(()=>{});
-    // #endregion
     await this.workspacesService.assertMember(userId, workspaceId);
     this.enqueueService.assertRedisAvailable();
 
@@ -47,9 +44,6 @@ export class MediaJobService {
     }
 
     if (post.status !== PostPackageStatus.draft) {
-      // #region agent log
-      fetch('http://127.0.0.1:7936/ingest/839fd5aa-975f-4d2f-afc3-4e50b695a8d5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'c1f975'},body:JSON.stringify({sessionId:'c1f975',location:'media-job.service.ts:enqueueMedia:status',message:'post not draft',data:{postId,status:post.status},timestamp:Date.now(),hypothesisId:'C'})}).catch(()=>{});
-      // #endregion
       throw new ConflictException({
         error: 'Media can only be generated for draft posts',
         code: 'INVALID_POST_STATUS',
@@ -79,7 +73,10 @@ export class MediaJobService {
       });
     }
 
-    await this.creditsService.assertHasCredits(userId, MEDIA_REGEN_CREDIT_COST);
+    await this.creditsService.assertHasCredits(
+      userId,
+      MEDIA_GENERATION_CREDIT_COST,
+    );
 
     const input: MediaJobInput = {
       workspaceId,
@@ -98,7 +95,7 @@ export class MediaJobService {
       type: GenerationJobType.media,
       flowId: 'post-media',
       promptVersion: 'v1',
-      creditCost: MEDIA_REGEN_CREDIT_COST,
+      creditCost: MEDIA_GENERATION_CREDIT_COST,
       input: input as unknown as Prisma.InputJsonValue,
       postPackageId: postId,
     });
@@ -110,9 +107,6 @@ export class MediaJobService {
       },
     });
 
-    // #region agent log
-    fetch('http://127.0.0.1:7936/ingest/839fd5aa-975f-4d2f-afc3-4e50b695a8d5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'c1f975'},body:JSON.stringify({sessionId:'c1f975',location:'media-job.service.ts:enqueueMedia:success',message:'media job enqueued',data:{jobId:fullJob.id,postId},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
     return toGenerationJobResponse(fullJob);
   }
 }

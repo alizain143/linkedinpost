@@ -20,14 +20,14 @@ export class BillingController {
   }
 
   @Post('checkout')
-  @ApiOperation({ summary: 'Create a Stripe Checkout session for a paid plan' })
+  @ApiOperation({ summary: 'Create an XPay subscription checkout session' })
   createCheckout(@CurrentUser() user: User, @Body() dto: CreateCheckoutDto) {
     return this.billingService.createCheckoutSession(user, dto);
   }
 
-  @Post('portal')
-  @ApiOperation({ summary: 'Create a Stripe Customer Portal session' })
-  createPortal(@CurrentUser() user: User) {
-    return this.billingService.createPortalSession(user.id);
+  @Post('cancel')
+  @ApiOperation({ summary: 'Cancel the current XPay subscription' })
+  cancelSubscription(@CurrentUser() user: User) {
+    return this.billingService.cancelSubscription(user.id);
   }
 }

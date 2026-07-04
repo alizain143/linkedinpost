@@ -12,7 +12,6 @@ import { JobHandler } from '../job-queue/job-handler.interface';
 import { NotificationEventService } from '../notifications/notification-event.service';
 import { SchedulingService } from '../scheduling/scheduling.service';
 import { CouncilOrchestrator } from './council-orchestrator';
-import { CouncilPausedError } from './council-paused.error';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
@@ -33,43 +32,19 @@ export class CouncilJobHandler implements JobHandler {
       where: { id: generationJobId },
     });
 
-    const input = (job.input ?? {}) as { resumeFrom?: string };
-    const isResume = input.resumeFrom === 'media_creator';
-
-    if (job.creditCharged && !isResume) {
+    if (job.creditCharged) {
       return;
     }
 
-    if (job.status !== GenerationJobStatus.completed || isResume) {
-      try {
-        await this.councilOrchestrator.run(generationJobId);
-      } catch (error) {
-        if (error instanceof CouncilPausedError) {
-          return;
-        }
-        throw error;
-      }
+    if (job.status !== GenerationJobStatus.completed) {
+      await this.councilOrchestrator.run(generationJobId);
     }
 
     const refreshedJob = await this.prisma.generationJob.findUniqueOrThrow({
       where: { id: generationJobId },
     });
 
-    if (
-      refreshedJob.result &&
-      (refreshedJob.result as { paused?: boolean }).paused
-    ) {
-      return;
-    }
-
-    if (job.creditCharged) {
-      await this.prisma.generationJob.update({
-        where: { id: generationJobId },
-        data: {
-          status: GenerationJobStatus.completed,
-          completedAt: new Date(),
-        },
-      });
+    if (refreshedJob.status === GenerationJobStatus.failed) {
       return;
     }
 
@@ -107,10 +82,7 @@ export class CouncilJobHandler implements JobHandler {
         })
       : null;
 
-    if (
-      completedPost?.source === PostSource.autopilot &&
-      completedPost.id
-    ) {
+    if (completedPost?.source === PostSource.autopilot && completedPost.id) {
       await this.maybeAutoScheduleAutopilotPost(
         completedJob.workspaceId,
         completedPost.id,

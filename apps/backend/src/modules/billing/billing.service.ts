@@ -4,11 +4,13 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { SubscriptionStatus, UserPlan, type User } from '@prisma/client';
-import { getStripePriceIdForPlan } from '../../common/constants/stripe-plan.map';
+import {
+  getPlanLabel,
+  getXpayAmountForPlan,
+} from '../../common/constants/xpay-plan.map';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateCheckoutDto } from './dto/create-checkout.dto';
-import { StripeClientService } from './stripe-client.service';
-import { StripeCustomerService } from './stripe-customer.service';
+import { XpayClientService } from './xpay-client.service';
 
 const ACTIVE_STATUSES: SubscriptionStatus[] = [
   SubscriptionStatus.active,
@@ -20,8 +22,7 @@ const ACTIVE_STATUSES: SubscriptionStatus[] = [
 export class BillingService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly stripeClient: StripeClientService,
-    private readonly stripeCustomerService: StripeCustomerService,
+    private readonly xpayClient: XpayClientService,
   ) {}
 
   async getBillingStatus(userId: string) {
@@ -37,19 +38,20 @@ export class BillingService {
       subscriptionStatus: subscription?.status ?? null,
       cancelAtPeriodEnd: subscription?.cancelAtPeriodEnd ?? false,
       currentPeriodEnd: subscription?.currentPeriodEnd?.toISOString() ?? null,
-      stripeCustomerId: subscription?.stripeCustomerId ?? null,
+      xpayCustomerId: subscription?.xpayCustomerId ?? null,
+      hasBillingAccount: Boolean(subscription?.xpaySubscriptionId),
     };
   }
 
   async createCheckoutSession(user: User, dto: CreateCheckoutDto) {
     this.assertBillingAvailable();
 
-    const priceId = getStripePriceIdForPlan(
+    const amount = getXpayAmountForPlan(
       dto.plan,
-      this.stripeClient.getPriceConfig(),
+      this.xpayClient.getAmountConfig(),
     );
 
-    if (!priceId) {
+    if (!amount) {
       throw new ServiceUnavailableException({
         error: 'Billing is not configured for this plan',
         code: 'BILLING_UNAVAILABLE',
@@ -71,58 +73,109 @@ export class BillingService {
       });
     }
 
-    const stripe = this.stripeClient.getClient()!;
-    const customerId =
-      await this.stripeCustomerService.getOrCreateStripeCustomer(user);
-    const frontendUrl = this.stripeClient.getFrontendUrl();
-
-    const session = await stripe.checkout.sessions.create({
-      mode: 'subscription',
-      customer: customerId,
-      line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `${frontendUrl}/billing?checkout=success`,
-      cancel_url: `${frontendUrl}/billing?checkout=cancel`,
-      client_reference_id: user.id,
-      metadata: { userId: user.id, plan: dto.plan },
+    const phone = dto.phone.trim();
+    const updatedUser = await this.prisma.user.update({
+      where: { id: user.id },
+      data: { phone },
     });
 
-    if (!session.url) {
-      throw new ServiceUnavailableException({
-        error: 'Failed to create checkout session',
-        code: 'BILLING_UNAVAILABLE',
-      });
-    }
+    const frontendUrl = this.xpayClient.getFrontendUrl();
+    const name =
+      [updatedUser.firstName, updatedUser.lastName].filter(Boolean).join(' ') ||
+      updatedUser.email;
 
-    return { url: session.url };
+    const created = await this.xpayClient.createSubscription({
+      amount,
+      currency: this.xpayClient.getCurrency(),
+      customerDetails: {
+        name,
+        email: updatedUser.email,
+        contactNumber: phone,
+      },
+      callbackUrl: `${frontendUrl}/app/billing?checkout=success`,
+      cancelUrl: `${frontendUrl}/app/billing?checkout=cancel`,
+      interval: 'MONTH',
+      intervalCount: 1,
+      cycleCount: this.xpayClient.getCycleCount(),
+      metadata: {
+        userId: updatedUser.id,
+        plan: dto.plan,
+      },
+      productPage: {
+        name: `${getPlanLabel(dto.plan)} plan`,
+        description: `linkedinpost.ai ${getPlanLabel(dto.plan)} subscription`,
+      },
+      customerId: subscription?.xpayCustomerId ?? undefined,
+    });
+
+    await this.prisma.subscription.upsert({
+      where: { userId: updatedUser.id },
+      create: {
+        userId: updatedUser.id,
+        xpaySubscriptionId: created.subscriptionId,
+        plan: dto.plan,
+        status: SubscriptionStatus.incomplete,
+      },
+      update: {
+        xpaySubscriptionId: created.subscriptionId,
+        plan: dto.plan,
+        status: SubscriptionStatus.incomplete,
+        cancelAtPeriodEnd: false,
+      },
+    });
+
+    return { url: created.fwdUrl };
   }
 
-  async createPortalSession(userId: string) {
+  async cancelSubscription(userId: string) {
     this.assertBillingAvailable();
 
     const subscription = await this.prisma.subscription.findUnique({
       where: { userId },
     });
 
-    if (!subscription?.stripeCustomerId) {
+    if (!subscription?.xpaySubscriptionId) {
       throw new ConflictException({
         error: 'No billing account found',
         code: 'BILLING_ACCOUNT_REQUIRED',
       });
     }
 
-    const stripe = this.stripeClient.getClient()!;
-    const frontendUrl = this.stripeClient.getFrontendUrl();
+    if (
+      subscription.status === SubscriptionStatus.canceled ||
+      !ACTIVE_STATUSES.includes(subscription.status)
+    ) {
+      throw new ConflictException({
+        error: 'No active subscription to cancel',
+        code: 'NO_ACTIVE_SUBSCRIPTION',
+      });
+    }
 
-    const session = await stripe.billingPortal.sessions.create({
-      customer: subscription.stripeCustomerId,
-      return_url: `${frontendUrl}/billing`,
-    });
+    await this.xpayClient.cancelSubscription(subscription.xpaySubscriptionId);
 
-    return { url: session.url };
+    await this.prisma.$transaction([
+      this.prisma.subscription.update({
+        where: { userId },
+        data: {
+          status: SubscriptionStatus.canceled,
+          cancelAtPeriodEnd: false,
+          xpaySubscriptionId: null,
+          plan: null,
+          currentPeriodStart: null,
+          currentPeriodEnd: null,
+        },
+      }),
+      this.prisma.user.update({
+        where: { id: userId },
+        data: { plan: UserPlan.free },
+      }),
+    ]);
+
+    return { cancelled: true };
   }
 
   private assertBillingAvailable(): void {
-    if (!this.stripeClient.isCheckoutConfigured()) {
+    if (!this.xpayClient.isCheckoutConfigured()) {
       throw new ServiceUnavailableException({
         error: 'Billing is not available',
         code: 'BILLING_UNAVAILABLE',

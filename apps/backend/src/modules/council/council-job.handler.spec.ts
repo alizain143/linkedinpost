@@ -42,7 +42,7 @@ describe('CouncilJobHandler', () => {
     prisma.generationJob.findUniqueOrThrow.mockResolvedValue({
       id: 'job-1',
       userId,
-      creditCost: 10,
+      creditCost: 3,
       creditCharged: false,
       postPackageId: 'post-1',
       type: GenerationJobType.council,
@@ -61,7 +61,7 @@ describe('CouncilJobHandler', () => {
     expect(councilOrchestrator.run).toHaveBeenCalledWith('job-1');
     expect(creditsService.consume).toHaveBeenCalledWith(
       userId,
-      10,
+      3,
       CreditTransactionType.autopilot,
       { generationJobId: 'job-1' },
     );

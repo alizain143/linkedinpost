@@ -67,13 +67,11 @@ export class MockTextCompletionProvider implements TextCompletionProvider {
     if (system.includes('Media Creator agent')) {
       return {
         content: JSON.stringify({
-          mediaType: 'quote_card',
-          altText: 'Quote card featuring the post hook',
+          altText: 'LinkedIn post visual featuring the post hook',
           imagePrompt:
-            'Navy gradient background, bold white sans-serif typography, centered layout',
+            'Navy gradient background, bold white sans-serif typography, centered layout, professional founder tone',
           width: 1200,
           height: 630,
-          headlineText: 'Most founders skip this step.',
           styleNotes: 'Professional founder tone',
         }),
         model: 'mock-text',

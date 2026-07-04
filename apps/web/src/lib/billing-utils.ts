@@ -7,6 +7,7 @@ import {
   CALENDAR_7_DAY_CREDIT_COST,
   CONTENT_PROFILE_AI_CREDIT_COST,
   COUNCIL_CREDIT_COST,
+  MEDIA_GENERATION_CREDIT_COST,
   QUICK_DRAFT_CREDIT_COST,
 } from "@/lib/credit-costs";
 import { formatResetDate } from "@/lib/format-relative-time";
@@ -18,6 +19,10 @@ export const CHECKOUT_PLANS: CheckoutPlan[] = ["starter", "pro", "agency"];
 export const BILLING_CREDIT_COSTS = [
   { action: "Quick draft", cost: `${QUICK_DRAFT_CREDIT_COST} credit` },
   { action: "AI Council", cost: `${COUNCIL_CREDIT_COST} credits` },
+  {
+    action: "Generate image",
+    cost: `${MEDIA_GENERATION_CREDIT_COST} credits`,
+  },
   { action: "7-day calendar", cost: `${CALENDAR_7_DAY_CREDIT_COST} credits` },
   {
     action: "30-day calendar",
@@ -53,7 +58,7 @@ export function isCheckoutPlan(plan: UserPlan): plan is CheckoutPlan {
 }
 
 export function canManageBilling(billing: ApiBillingStatus): boolean {
-  return !!billing.stripeCustomerId;
+  return billing.hasBillingAccount;
 }
 
 export function formatSubscriptionStatusLabel(

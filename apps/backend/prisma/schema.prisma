@@ -112,6 +112,7 @@ enum PostMediaType {
   tip_card
   infographic
   photo_illustration
+  generated
 }
 
 enum CouncilAgentRole {
@@ -170,6 +171,7 @@ model User {
   email                   String    @unique
   firstName               String?
   lastName                String?
+  phone                   String?
   profileDocumentId       String?   @unique @db.Uuid
   profileImageUrl         String?
   timezone                String    @default("America/New_York")
@@ -201,37 +203,37 @@ model User {
 }
 
 model Subscription {
-  id                   String             @id @default(uuid()) @db.Uuid
-  userId               String             @unique @db.Uuid
-  stripeCustomerId     String             @unique
-  stripeSubscriptionId String?            @unique
-  stripePriceId        String?
-  status               SubscriptionStatus @default(incomplete)
-  cancelAtPeriodEnd    Boolean            @default(false)
-  currentPeriodStart   DateTime?          @db.Timestamptz(6)
-  currentPeriodEnd     DateTime?          @db.Timestamptz(6)
-  createdAt            DateTime           @default(now()) @db.Timestamptz(6)
-  updatedAt            DateTime           @updatedAt @db.Timestamptz(6)
+  id                 String             @id @default(uuid()) @db.Uuid
+  userId             String             @unique @db.Uuid
+  xpayCustomerId     String?            @unique
+  xpaySubscriptionId String?            @unique
+  plan               UserPlan?
+  status             SubscriptionStatus @default(incomplete)
+  cancelAtPeriodEnd  Boolean            @default(false)
+  currentPeriodStart DateTime?          @db.Timestamptz(6)
+  currentPeriodEnd   DateTime?          @db.Timestamptz(6)
+  createdAt          DateTime           @default(now()) @db.Timestamptz(6)
+  updatedAt          DateTime           @updatedAt @db.Timestamptz(6)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("subscriptions")
 }
 
-enum StripeWebhookEventStatus {
+enum BillingWebhookEventStatus {
   pending
   processed
   failed
 }
 
-model StripeWebhookEvent {
+model BillingWebhookEvent {
   id           String                    @id
   type         String
-  status       StripeWebhookEventStatus  @default(pending)
+  status       BillingWebhookEventStatus @default(pending)
   errorMessage String?
   processedAt  DateTime                  @default(now()) @db.Timestamptz(6)
 
-  @@map("stripe_webhook_events")
+  @@map("billing_webhook_events")
 }
 
 model Document {
@@ -368,9 +370,7 @@ model PostPackage {
   postType            PostType?
   tone                String?
   pillar              String?
-  mediaTypePreference PostMediaType?
   mediaCustomPrompt   String?           @db.Text
-  mediaTemplateId     String?
   source              PostSource        @default(manual)
   status           PostPackageStatus @default(draft)
   score            Int?

@@ -1,12 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import {
   GenerationJobType,
   PostPackageStatus,
   PostSource,
   Prisma,
 } from '@prisma/client';
-import { MEDIA_REGEN_CREDIT_COST } from '../../common/constants/media.constants';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreditsService } from '../credits/credits.service';
 import { GenerationJobEnqueueService } from '../job-queue/generation-job-enqueue.service';
@@ -29,7 +27,6 @@ export class CouncilJobService {
     private readonly workspacesService: WorkspacesService,
     private readonly enqueueService: GenerationJobEnqueueService,
     private readonly creditsService: CreditsService,
-    private readonly configService: ConfigService,
   ) {}
 
   async enqueueCouncil(
@@ -43,12 +40,6 @@ export class CouncilJobService {
 
     const source = options?.source ?? PostSource.generation;
     const creditCost = options?.creditCost ?? 3;
-    const maxMediaRegens = this.configService.get<number>(
-      'council.maxMediaRegens',
-      1,
-    );
-    const maxCreditExposure =
-      creditCost + maxMediaRegens * MEDIA_REGEN_CREDIT_COST;
 
     await this.creditsService.assertHasCredits(userId, creditCost);
 
@@ -62,10 +53,7 @@ export class CouncilJobService {
       contentProfileId: dto.contentProfileId,
       additionalContext: dto.additionalContext,
       brief: dto.brief,
-      mediaType: dto.mediaType,
       mediaCustomPrompt: dto.mediaCustomPrompt,
-      mediaTemplateId: dto.mediaTemplateId,
-      skipImageScout: dto.skipImageScout,
     };
 
     const placeholderHook = dto.topic?.trim() || 'Generating…';
@@ -79,9 +67,7 @@ export class CouncilJobService {
         postType: dto.postType,
         tone: dto.tone,
         pillar: dto.pillar,
-        mediaTypePreference: dto.mediaType,
         mediaCustomPrompt: dto.mediaCustomPrompt,
-        mediaTemplateId: dto.mediaTemplateId,
         source,
         status: PostPackageStatus.text_generating,
         ...(options?.scheduledAt ? { scheduledAt: options.scheduledAt } : {}),
@@ -124,7 +110,10 @@ export class CouncilJobService {
     }
 
     const jobs = await this.prisma.generationJob.findMany({
-      where: { postPackageId: postId, type: GenerationJobType.council },
+      where: {
+        postPackageId: postId,
+        type: GenerationJobType.council,
+      },
       include: {
         councilEvents: { orderBy: { stepOrder: 'asc' } },
       },

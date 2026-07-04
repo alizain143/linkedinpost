@@ -72,8 +72,8 @@ describe('AutopilotDispatchService', () => {
 
   it('skips dispatch when credits are insufficient', async () => {
     creditsService.getBalance.mockResolvedValue({
-      remaining: 5,
-      used: 195,
+      remaining: 2,
+      used: 198,
       limit: 200,
     });
 
@@ -127,7 +127,7 @@ describe('AutopilotDispatchService', () => {
     );
   });
 
-  it('enqueues council with autopilot source and 10 credits', async () => {
+  it('enqueues council with autopilot source and 3 credits', async () => {
     const now = new Date('2026-06-26T13:00:00.000Z');
 
     const result = await service.dispatch(
@@ -147,7 +147,7 @@ describe('AutopilotDispatchService', () => {
       }),
       expect.objectContaining({
         source: PostSource.autopilot,
-        creditCost: 10,
+        creditCost: 3,
         scheduledAt: expect.any(Date),
       }),
     );

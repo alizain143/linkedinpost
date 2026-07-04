@@ -2,12 +2,13 @@
 
 Multi-agent LinkedIn post generation: Writer → Reviewer → Editor → Media Creator → Media Reviewer.
 
+Produces a reviewed post **and** one unbound AI feed image (3 credits). Autopilot uses the same path at 3 credits per post.
+
 ## HTTP API
 
 | Method | Route | Cost | Response |
 |--------|-------|------|----------|
 | `POST` | `/v1/workspaces/:workspaceId/generate/council` | 3 credits | **202** + `jobId` |
-| `POST` | `/v1/workspaces/:workspaceId/generate/council-premium` | 10 credits | **202** + `jobId` (bundled media regen) |
 | `GET` | `/v1/jobs/:id` | — | Job + `progress` + `events[]` |
 | `GET` | `/v1/workspaces/:workspaceId/posts/:postId/council` | — | Full run history |
 
@@ -22,11 +23,11 @@ Requires **Redis** (`REDIS_URL`). Without Redis, council POST returns `503 REDIS
 
 ## Pipeline
 
-- **Text revision loop:** if reviewer `overall < COUNCIL_PASS_SCORE` (default 75), writer revises once (max `COUNCIL_MAX_TEXT_REVISIONS=1`). Premium council (`creditCost >= 10`) uses pass score **90** — injected into the reviewer prompt via `{{council.passScore}}`.
-- **Media regen loop:** media reviewer may fail once (max `COUNCIL_MAX_MEDIA_REGENS=1`); each regen charges **5 credits** (`CreditTransactionType.media`) **after** successful R2 attach
-- **Output:** creates `PostPackage` at enqueue, updates through pipeline, final status `ready_for_approval`
-- **Credits:** handler charges 3 on success (`CreditTransactionType.council`) after orchestrator completes; media regen (up to 5 credits each) is checked and charged during the orchestrator regen loop; enqueue only requires the base 3-credit council cost
-- **Retry:** processor skips when `creditCharged`; orchestrator can resume; `failed → text_generating` allowed for council retry
+- **Text revision loop:** if reviewer `overall < COUNCIL_PASS_SCORE` (default 75), writer revises once (max `COUNCIL_MAX_TEXT_REVISIONS=1`).
+- **Media phase:** Media Creator designs a freeform `imagePrompt` from post copy + profile brand colors + optional `mediaCustomPrompt`; Nano Banana renders the image; Media Reviewer QAs.
+- **Media regen loop:** media reviewer may fail once (max `COUNCIL_MAX_MEDIA_REGENS=1`); each regen charges **2 credits** (`CreditTransactionType.media`).
+- **Output:** creates `PostPackage` at enqueue, updates through pipeline, attaches `PostMedia` (`mediaType=generated`), final status `ready_for_approval`.
+- **Credits:** handler charges 3 on success (`CreditTransactionType.council` or `autopilot`); media regen is charged during the orchestrator regen loop.
 
 ## Env
 
@@ -48,19 +49,8 @@ One **`GenerationJob`** (`type=council`) is the council execution unit:
 |-------|---------|
 | `revisionCount` | Text revision loops completed |
 | `mediaRegenCount` | Media regen loops completed |
-| `finalScore` | Reviewer overall score at completion |
-| `progress` | Polling UI step state |
-| `councilEvents[]` | Append-only timeline per agent step |
-
-`CouncilEvent` rows reference `generationJobId` (not a separate run table).
-
-`PostMedia` optionally references `generationJobId` for the job that produced the asset.
-
-The council history API (`GET .../posts/:postId/council`) maps council jobs to the existing `runs[]` response shape for backward compatibility (`id` = job id).
-
-## Tests
-
-```bash
-npm test -- --testPathPattern=council
-npm test -- --testPathPattern=job-queue
-```
+| `creditCost` | 3 for manual council and autopilot |
+| `creditCharged` | Set after successful consume |
+| `postPackageId` | Linked post |
+| `progress` | Live step label for UI |
+| `result` | `{ postPackageId, revisionCount, mediaRegenCount }` |

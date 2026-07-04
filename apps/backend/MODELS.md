@@ -21,12 +21,12 @@ Verify the exact OpenAI API model slug in the dashboard when upgrading.
 
 | Route | Model | Use case |
 |-------|-------|----------|
-| Primary | **Nano Banana 2** (`gemini-3.1-flash-image`) | Quote cards — council media creator |
+| Primary | **Nano Banana 2** (`gemini-3.1-flash-image`) | Unbound LinkedIn feed images — council media creator |
 | Secondary | **Imagen 4** (Google Vertex) | Photoreal hero shots — deferred |
 
 `ConfigModelRouter.image()` uses mock when `MEDIA_GENERATION_MOCK=true` or no Google creds; otherwise `GoogleImageGenerationProvider`.
 
-**Image prompt assembly:** Media Creator outputs `imagePrompt` (visual/layout only), `headlineText`, and `styleNotes`. The Google provider merges them into one deterministic prompt (headline rendered exactly, visual/style separate) — shorter LLM output, better quote-card text legibility.
+**Image prompt assembly:** Media Creator outputs freeform `imagePrompt` (+ optional `styleNotes`) from post copy, profile brand colors, and optional `mediaCustomPrompt`. `MediaRenderService` merges brand colors and user direction, then Nano Banana renders. No media types or templates.
 
 ### Env
 

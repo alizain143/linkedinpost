@@ -1,6 +1,6 @@
 # SLICE-19 — Media types and template renderer
 
-**Status:** Complete
+**Status:** Superseded by [SLICE-21-unbound-media.md](SLICE-21-unbound-media.md)
 
 ## Scope
 

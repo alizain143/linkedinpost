@@ -5,7 +5,7 @@ import {
   localDateTimeToUtc,
 } from '../calendar-generation/calendar-schedule.util';
 
-export const AUTOPILOT_CREDIT_COST = 10;
+export const AUTOPILOT_CREDIT_COST = 3;
 export const DEFAULT_POSTING_TIME = '09:00';
 export const DEFAULT_POSTING_DAYS = [1, 3, 4, 5, 7];
 

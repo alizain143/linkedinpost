@@ -4,19 +4,10 @@ import { createMockPrismaService } from '../../test/prisma.mock';
 import { userId } from '../../test/fixtures';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BillingSyncService } from './billing-sync.service';
-import { StripeClientService } from './stripe-client.service';
 
 describe('BillingSyncService', () => {
   let service: BillingSyncService;
   const prisma = createMockPrismaService();
-  const stripeClient = {
-    getClient: jest.fn(),
-    getPriceConfig: jest.fn().mockReturnValue({
-      priceStarter: 'price_starter',
-      pricePro: 'price_pro',
-      priceAgency: 'price_agency',
-    }),
-  };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -31,27 +22,34 @@ describe('BillingSyncService', () => {
       providers: [
         BillingSyncService,
         { provide: PrismaService, useValue: prisma },
-        { provide: StripeClientService, useValue: stripeClient },
       ],
     }).compile();
 
     service = module.get(BillingSyncService);
   });
 
-  it('maps active pro price to pro plan', () => {
-    const plan = service.resolvePlanForSubscription(
-      'active',
-      'price_pro',
-      stripeClient.getPriceConfig(),
+  it('maps active event with plan metadata to pro plan', async () => {
+    const plan = await service.resolvePlanForEvent(
+      {
+        eventId: 'whe_1',
+        eventType: 'subscription.active',
+        subscriptionId: 'sub_1',
+        metadata: { userId, plan: UserPlan.pro },
+      },
+      SubscriptionStatus.active,
     );
     expect(plan).toBe(UserPlan.pro);
   });
 
-  it('maps deleted subscription status to free plan', () => {
-    const plan = service.resolvePlanForSubscription(
-      'canceled',
-      'price_pro',
-      stripeClient.getPriceConfig(),
+  it('maps unpaid status to free plan resolution only when not paid status', async () => {
+    const plan = await service.resolvePlanForEvent(
+      {
+        eventId: 'whe_2',
+        eventType: 'subscription.cancelled',
+        subscriptionId: 'sub_1',
+        metadata: { userId, plan: UserPlan.pro },
+      },
+      SubscriptionStatus.canceled,
     );
     expect(plan).toBe(UserPlan.free);
   });
@@ -61,42 +59,41 @@ describe('BillingSyncService', () => {
     prisma.subscription.upsert.mockResolvedValue({});
     prisma.user.update.mockResolvedValue({});
 
-    await service.syncFromStripeSubscription({
-      id: 'sub_1',
-      customer: 'cus_1',
-      status: 'active',
-      cancel_at_period_end: false,
-      current_period_start: 1_700_000_000,
-      current_period_end: 1_702_592_000,
-      items: {
-        data: [{ price: { id: 'price_pro' } }],
-      },
-    } as never);
+    await service.syncFromSubscriptionEvent({
+      eventId: 'whe_3',
+      eventType: 'subscription.active',
+      subscriptionId: 'sub_1',
+      nextPaymentDate: 1_702_592_000_000,
+      metadata: { userId, plan: UserPlan.pro },
+    });
 
     expect(prisma.$transaction).toHaveBeenCalled();
     const upsertCall = prisma.subscription.upsert.mock.calls[0]?.[0];
-    expect(upsertCall.update.stripePriceId).toBe('price_pro');
+    expect(upsertCall.update.plan).toBe(UserPlan.pro);
+    expect(upsertCall.update.status).toBe(SubscriptionStatus.active);
     const userUpdateCall = prisma.user.update.mock.calls[0]?.[0];
     expect(userUpdateCall.data.plan).toBe(UserPlan.pro);
   });
 
-  it('downgrades user to free on subscription deleted', async () => {
+  it('downgrades user to free on subscription cancelled', async () => {
     prisma.subscription.findUnique.mockResolvedValue({
       userId,
-      stripeCustomerId: 'cus_1',
+      xpaySubscriptionId: 'sub_1',
     });
 
-    await service.handleSubscriptionDeleted({
-      id: 'sub_1',
-      customer: 'cus_1',
-    } as never);
+    await service.handleSubscriptionEnded({
+      eventId: 'whe_4',
+      eventType: 'subscription.cancelled',
+      subscriptionId: 'sub_1',
+      metadata: { userId },
+    });
 
     expect(prisma.subscription.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { userId },
         data: expect.objectContaining({
           status: SubscriptionStatus.canceled,
-          stripeSubscriptionId: null,
+          xpaySubscriptionId: null,
         }),
       }),
     );
@@ -104,5 +101,18 @@ describe('BillingSyncService', () => {
       where: { id: userId },
       data: { plan: UserPlan.free },
     });
+  });
+
+  it('maps event types to subscription statuses', () => {
+    expect(service.mapEventToStatus('subscription.active')).toBe(
+      SubscriptionStatus.active,
+    );
+    expect(service.mapEventToStatus('subscription.paused')).toBe(
+      SubscriptionStatus.past_due,
+    );
+    expect(service.mapEventToStatus('subscription.unpaid')).toBe(
+      SubscriptionStatus.unpaid,
+    );
+    expect(service.mapEventToStatus('intent.success')).toBeNull();
   });
 });

@@ -14,7 +14,6 @@ import { useCredits } from "@/hooks/api/use-credits-api";
 import {
   useCouncilMutation,
   useGenerationJob,
-  usePremiumCouncilMutation,
   useQuickDraftMutation,
   useTopicSuggestionsMutation,
 } from "@/hooks/api/use-generation-api";
@@ -27,7 +26,6 @@ import type { PostType } from "@/lib/api/types/enums";
 import {
   COUNCIL_CREDIT_COST,
   MEDIA_GENERATION_CREDIT_COST,
-  PREMIUM_COUNCIL_CREDIT_COST,
   QUICK_DRAFT_CREDIT_COST,
   getGenerationModeCost,
 } from "@/lib/credit-costs";
@@ -41,22 +39,11 @@ import {
 } from "@/lib/generation-utils";
 import { CouncilTimeline } from "@/components/sections/app/generate/CouncilTimeline";
 import { LinkedInFeedPreview } from "@/components/sections/app/generate/LinkedInFeedPreview";
-import { MediaReferencePicker } from "@/components/sections/app/generate/MediaReferencePicker";
-import { MediaTemplatePicker } from "@/components/sections/app/generate/MediaTemplatePicker";
 import { GenerationHistoryPanel } from "@/components/sections/app/generate/GenerationHistoryPanel";
 import {
   TopicMagicButton,
   TopicSuggestionsPicker,
 } from "@/components/sections/app/generate/TopicSuggestionsPicker";
-import { fetchMediaReferences, submitMediaReferences } from "@/lib/api/media-references";
-import type { PostMediaType } from "@/lib/api/types/enums";
-import type { MediaReferenceCandidate } from "@/lib/api/types/media-references";
-import { MEDIA_TYPE_OPTIONS } from "@/lib/media-types";
-import {
-  DEFAULT_MEDIA_TEMPLATE_ID,
-  getTemplateDefinition,
-  type MediaTemplateId,
-} from "@/lib/media-template-catalog";
 import { useAppUi } from "@/providers/app-ui-provider";
 import { useAuth } from "@clerk/nextjs";
 import {
@@ -67,7 +54,7 @@ import {
   type StoredQuickDraftSession,
 } from "@/lib/generation-session";
 
-type GenModeId = "quick" | "council" | "media";
+type GenModeId = "quick" | "council";
 
 const GEN_MODES: Array<{
   id: GenModeId;
@@ -81,13 +68,7 @@ const GEN_MODES: Array<{
     id: "council",
     label: "AI Council",
     icon: "groups",
-    desc: "3 credits · reviewed + quote card",
-  },
-  {
-    id: "media",
-    label: "Post + Media",
-    icon: "auto_awesome_motion",
-    desc: "10 credits · publish-ready",
+    desc: "3 credits · reviewed post + image",
   },
 ];
 
@@ -101,10 +82,7 @@ type GenerateFormState = {
   pillar: string;
   additionalContext: string;
   brief: string;
-  mediaType: PostMediaType;
   mediaCustomPrompt: string;
-  mediaTemplateId: string;
-  skipImageScout: boolean;
 };
 
 export default function Generate() {
@@ -128,7 +106,6 @@ export default function Generate() {
   const quickDraft = useQuickDraftMutation(activeWorkspaceId);
   const topicSuggestionsMutation = useTopicSuggestionsMutation(activeWorkspaceId);
   const councilMutation = useCouncilMutation(activeWorkspaceId);
-  const premiumCouncilMutation = usePremiumCouncilMutation(activeWorkspaceId);
   const generatePostMedia = useGeneratePostMediaMutation(activeWorkspaceId);
   const createPost = useCreatePost(activeWorkspaceId);
 
@@ -146,16 +123,8 @@ export default function Generate() {
     pillar: "",
     additionalContext: "",
     brief: "",
-    mediaType: "branded_quote_card",
     mediaCustomPrompt: "",
-    mediaTemplateId: DEFAULT_MEDIA_TEMPLATE_ID,
-    skipImageScout: true,
   });
-  const [mediaReferenceCandidates, setMediaReferenceCandidates] = useState<
-    MediaReferenceCandidate[]
-  >([]);
-  const [submittingMediaReferences, setSubmittingMediaReferences] =
-    useState(false);
   const [variants, setVariants] = useState<QuickDraftVariant[]>([]);
   const [generated, setGenerated] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
@@ -214,7 +183,7 @@ export default function Generate() {
     onCompleted: async (job) => {
       if (!activeWorkspaceId || mediaCompletedRef.current === job.id) return;
       mediaCompletedRef.current = job.id;
-      showToast("Quote card ready", "image");
+      showToast("Media ready", "image");
 
       if (job.postPackageId && mediaVariantIndex !== null) {
         const token = await getToken();
@@ -287,7 +256,7 @@ export default function Generate() {
       const session = loadGenerationSession(activeWorkspaceId);
       setHistory(session.history);
       setActiveCouncilJobId(session.activeCouncilJobId);
-      setMode(session.mode);
+      setMode(session.mode === "council" ? "council" : "quick");
 
       if (session.quickDraft) {
         restoreQuickDraft(session.quickDraft);
@@ -376,8 +345,7 @@ export default function Generate() {
     saveGenerationSession(activeWorkspaceId, {
       quickDraft,
       activeCouncilJobId,
-      mode:
-        mode === "council" ? "council" : mode === "media" ? "media" : "quick",
+      mode: mode === "council" ? "council" : "quick",
     });
   }, [
     activeWorkspaceId,
@@ -433,68 +401,11 @@ export default function Generate() {
     }));
   };
 
-  const awaitingMediaSelection =
-    councilJob.data?.progress?.currentStep === "awaiting_media_selection";
-
-  useEffect(() => {
-    if (!awaitingMediaSelection || !activeCouncilJobId || !activeWorkspaceId) {
-      return;
-    }
-
-    let cancelled = false;
-
-    void (async () => {
-      const token = await getToken();
-      if (!token || cancelled) return;
-      try {
-        const candidates = await fetchMediaReferences(
-          activeWorkspaceId,
-          activeCouncilJobId,
-          token,
-        );
-        if (!cancelled) setMediaReferenceCandidates(candidates);
-      } catch {
-        // timeline still shows progress if fetch fails
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    activeCouncilJobId,
-    activeWorkspaceId,
-    awaitingMediaSelection,
-    getToken,
-  ]);
-
-  const handleSubmitMediaReferences = async (selectedUrls: string[]) => {
-    if (!activeCouncilJobId || !activeWorkspaceId) return;
-    const token = await getToken();
-    if (!token) return;
-
-    setSubmittingMediaReferences(true);
-    try {
-      await submitMediaReferences(activeWorkspaceId, activeCouncilJobId, token, {
-        selectedUrls,
-        mediaType: form.mediaType,
-        mediaCustomPrompt: form.mediaCustomPrompt.trim() || undefined,
-        mediaTemplateId: form.mediaTemplateId || undefined,
-      });
-      showToast("Continuing media generation…", "auto_awesome");
-    } catch (err) {
-      showToast(getApiErrorMessage(err), "error");
-    } finally {
-      setSubmittingMediaReferences(false);
-    }
-  };
-
   const modeCost = getGenerationModeCost(mode);
   const canAffordMode = canAfford(modeCost);
   const selectedMode = GEN_MODES.find((item) => item.id === mode) ?? GEN_MODES[0];
   const quickGenerating = quickDraft.isPending;
-  const councilEnqueueing =
-    councilMutation.isPending || premiumCouncilMutation.isPending;
+  const councilEnqueueing = councilMutation.isPending;
   const councilJobActive =
     !!activeCouncilJobId &&
     !!councilJob.data &&
@@ -527,10 +438,7 @@ export default function Generate() {
       pillar: form.pillar || undefined,
       contentProfileId: form.contentProfileId || undefined,
       additionalContext: form.additionalContext.trim() || undefined,
-      mediaType: form.mediaType,
       mediaCustomPrompt: form.mediaCustomPrompt.trim() || undefined,
-      mediaTemplateId: form.mediaTemplateId || undefined,
-      skipImageScout: form.skipImageScout || undefined,
     };
   }, [form]);
 
@@ -542,16 +450,6 @@ export default function Generate() {
       brief: form.brief.trim() || undefined,
     };
   }, [buildRequestBody, form.brief]);
-
-  const handleTemplateChange = useCallback((templateId: MediaTemplateId) => {
-    const templateDef = getTemplateDefinition(templateId);
-    setForm((current) => ({
-      ...current,
-      mediaTemplateId: templateId,
-      mediaType: templateDef?.mediaType ?? current.mediaType,
-      skipImageScout: true,
-    }));
-  }, []);
 
   const runGenerate = async () => {
     if (!canAffordMode) {
@@ -624,32 +522,19 @@ export default function Generate() {
       return;
     }
 
-    if (mode === "council" || mode === "media") {
+    if (mode === "council") {
       setActiveCouncilJobId(null);
 
       try {
         const body = buildCouncilBody();
-        const job =
-          mode === "media"
-            ? await premiumCouncilMutation.mutateAsync(body)
-            : await councilMutation.mutateAsync(body);
+        const job = await councilMutation.mutateAsync(body);
         setActiveCouncilJobId(job.id);
         councilCompletedRef.current = null;
         if (activeWorkspaceId) {
           saveGenerationSession(activeWorkspaceId, {
             activeCouncilJobId: job.id,
-            mode,
+            mode: "council",
           });
-          if (mode === "media") {
-            addGenerationHistoryEntry(activeWorkspaceId, {
-              kind: "council",
-              label: "Post + Media",
-              topic: form.topic.trim(),
-              councilJobId: job.id,
-              councilPostId: job.postPackageId ?? undefined,
-            });
-            setHistory(loadGenerationSession(activeWorkspaceId).history);
-          }
         }
       } catch (err) {
         const message = getApiErrorMessage(err);
@@ -678,12 +563,7 @@ export default function Generate() {
     }
     if (activeWorkspaceId) {
       saveGenerationSession(activeWorkspaceId, {
-        mode:
-          nextMode === "council"
-            ? "council"
-            : nextMode === "media"
-              ? "media"
-              : "quick",
+        mode: nextMode === "council" ? "council" : "quick",
       });
     }
   };
@@ -697,13 +577,13 @@ export default function Generate() {
       return;
     }
     if (entry.kind === "council") {
-      setMode(entry.label === "Post + Media" ? "media" : "council");
+      setMode("council");
       if (entry.councilJobId) {
         setActiveCouncilJobId(entry.councilJobId);
         if (activeWorkspaceId) {
           saveGenerationSession(activeWorkspaceId, {
             activeCouncilJobId: entry.councilJobId,
-            mode: entry.label === "Post + Media" ? "media" : "council",
+            mode: "council",
           });
         }
       }
@@ -779,11 +659,11 @@ export default function Generate() {
     hasMediaPreview: boolean,
   ): string | null => {
     if (hasMediaPreview) {
-      return "This post already has a quote card.";
+      return "This post already has media attached.";
     }
     const status = variantPostStatuses[variantIndex];
     if (status && status !== "draft") {
-      return "Quote cards can only be generated while the post is a draft.";
+      return "Media can only be generated while the post is a draft.";
     }
     return null;
   };
@@ -1043,60 +923,24 @@ export default function Generate() {
         <div className="mb-4" />
       )}
 
-      <details className="mb-4 rounded-xl border border-border bg-card p-3">
-        <summary className="cursor-pointer text-sm font-semibold">
-          Media options
-        </summary>
-        <div className="mt-3 flex flex-col gap-3">
-          <SelectField
-            label="Media type"
-            value={form.mediaType}
-            onChange={(event) =>
-              setForm((current) => ({
-                ...current,
-                mediaType: event.target.value as PostMediaType,
-              }))
-            }
-            options={MEDIA_TYPE_OPTIONS.map((option) => ({
-              value: option.value,
-              label: option.label,
-            }))}
-            disabled={formDisabled}
-          />
-          <MediaTemplatePicker
-            value={form.mediaTemplateId}
-            onChange={handleTemplateChange}
-            disabled={formDisabled}
-          />
-          <TextareaField
-            label="Custom media prompt (optional)"
-            value={form.mediaCustomPrompt}
-            maxLength={500}
-            placeholder="Minimal dark layout, gold accent, professional LinkedIn feed style..."
-            onChange={(event) =>
-              setForm((current) => ({
-                ...current,
-                mediaCustomPrompt: event.target.value,
-              }))
-            }
-            disabled={formDisabled}
-          />
-          <label className="flex items-center gap-2 text-sm text-muted-foreground">
-            <input
-              type="checkbox"
-              checked={form.skipImageScout}
-              onChange={(event) =>
-                setForm((current) => ({
-                  ...current,
-                  skipImageScout: event.target.checked,
-                }))
-              }
-              disabled={formDisabled}
-            />
-            Skip reference image search (faster)
-          </label>
-        </div>
-      </details>
+      {mode === "council" ? (
+        <TextareaField
+          label="Custom media prompt"
+          hint="(optional)"
+          fieldClassName="mb-4"
+          className="h-16"
+          value={form.mediaCustomPrompt}
+          maxLength={500}
+          placeholder="Minimal dark layout, gold accent, professional LinkedIn feed style..."
+          onChange={(event) =>
+            setForm((current) => ({
+              ...current,
+              mediaCustomPrompt: event.target.value,
+            }))
+          }
+          disabled={formDisabled}
+        />
+      ) : null}
 
       <InputField
         label="Topic"
@@ -1151,7 +995,7 @@ export default function Generate() {
         disabled={formDisabled}
       />
 
-      {(mode === "council" || mode === "media") ? (
+      {mode === "council" ? (
         <TextareaField
           label="Brief"
           hint="(optional)"
@@ -1177,11 +1021,9 @@ export default function Generate() {
       >
         <MsIcon name="auto_awesome" size={19} />
         {isCouncilRunning
-          ? mode === "media"
-            ? "Post + Media running…"
-            : "Council running…"
+          ? "Council running…"
           : isMediaJobRunning
-            ? "Generating quote card…"
+            ? "Generating image…"
             : generating
               ? "Starting…"
               : `Generate with ${selectedMode.label}`}
@@ -1200,10 +1042,8 @@ export default function Generate() {
             <h2 className="font-display text-[17px] font-bold">Post generator</h2>
             <p className="text-[12.5px] text-[#94a3b8]">
               {mode === "council"
-                ? "Run the AI Council for a reviewed post with quote card."
-                : mode === "media"
-                  ? "Premium pipeline with stricter review and media revision included."
-                  : "Pick a mode, then generate polished drafts."}
+                ? "Run the AI Council for a reviewed post with image."
+                : "Pick a mode, then generate polished drafts."}
             </p>
           </div>
         </div>
@@ -1243,7 +1083,7 @@ export default function Generate() {
           </div>
         ) : null}
 
-        {(mode === "council" || mode === "media") ? (
+        {mode === "council" ? (
           isCouncilRunning && !councilJob.data ? (
             <div className="flex flex-col gap-4">
               <div className="flex items-center gap-2.5 text-sm font-semibold text-[#4f46e5]">
@@ -1265,25 +1105,6 @@ export default function Generate() {
                 errorMessage={councilJob.data.errorMessage}
                 postPackageId={councilJob.data.postPackageId}
               />
-              {awaitingMediaSelection ? (
-                <MediaReferencePicker
-                  candidates={mediaReferenceCandidates}
-                  mediaType={form.mediaType}
-                  mediaCustomPrompt={form.mediaCustomPrompt}
-                  mediaTemplateId={form.mediaTemplateId}
-                  onMediaTypeChange={(value) =>
-                    setForm((current) => ({ ...current, mediaType: value }))
-                  }
-                  onCustomPromptChange={(value) =>
-                    setForm((current) => ({ ...current, mediaCustomPrompt: value }))
-                  }
-                  onTemplateChange={handleTemplateChange}
-                  onContinue={(selectedUrls) =>
-                    void handleSubmitMediaReferences(selectedUrls)
-                  }
-                  isSubmitting={submittingMediaReferences}
-                />
-              ) : null}
             </div>
           ) : (
             <div className="flex flex-col items-center rounded-[18px] border border-dashed border-[#d8dce8] bg-white px-8 py-14 text-center">
@@ -1291,14 +1112,11 @@ export default function Generate() {
                 <MsIcon name="groups" size={34} className="text-[#4f46e5]" />
               </div>
               <h3 className="mb-2 font-display text-[19px] font-bold">
-                {mode === "media"
-                  ? "Post + Media progress will appear here"
-                  : "AI Council progress will appear here"}
+                AI Council progress will appear here
               </h3>
               <p className="mb-[22px] max-w-[360px] text-[14.5px] leading-relaxed text-[#64748b]">
-                {mode === "media"
-                  ? "Premium pipeline: write, review, edit, and generate a quote card with media revision included."
-                  : "Five agents will write, review, edit, and generate media — with live progress as each step completes."}
+                Agents write, review, edit, and generate an image — with live
+                progress as each step completes.
               </p>
               <Button
                 type="button"
@@ -1307,10 +1125,8 @@ export default function Generate() {
                 onClick={() => void runGenerate()}
                 disabled={!canSubmitGenerate}
               >
-                <MsIcon name={mode === "media" ? "auto_awesome_motion" : "groups"} size={18} />
-                {mode === "media"
-                  ? `Run Post + Media (${PREMIUM_COUNCIL_CREDIT_COST} credits)`
-                  : `Run AI Council (${COUNCIL_CREDIT_COST} credits)`}
+                <MsIcon name="groups" size={18} />
+                {`Run AI Council (${COUNCIL_CREDIT_COST} credits)`}
               </Button>
             </div>
           )
@@ -1455,14 +1271,14 @@ export default function Generate() {
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={mediaPreviewUrl}
-                          alt="Generated quote card"
+                          alt="Generated media"
                           className="h-40 w-full object-cover"
                         />
                       </div>
                     ) : isGeneratingMedia ? (
                       <div className="mb-4 flex items-center gap-2 rounded-xl border border-dashed border-[#d8dce8] bg-[#fbfbfd] px-4 py-6 text-[13px] font-semibold text-[#0891b2]">
                         <MsIcon name="progress_activity" size={18} className="animate-ppspin" />
-                        Generating quote card…
+                        Generating image…
                       </div>
                     ) : null}
                     <div className="flex flex-wrap gap-2">

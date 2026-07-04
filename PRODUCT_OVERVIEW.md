@@ -25,7 +25,7 @@ Per-slice implementation specs live at the repo root:
 - [SLICE-15-autopilot.md](SLICE-15-autopilot.md) — Done
 - [SLICE-16-linkedin-publish-media.md](SLICE-16-linkedin-publish-media.md) — Done
 - [SLICE-17-nano-banana-image-generation.md](SLICE-17-nano-banana-image-generation.md) — Done
-- [SLICE-18-stripe-billing.md](SLICE-18-stripe-billing.md) — Done
+- [SLICE-18-stripe-billing.md](SLICE-18-stripe-billing.md) — Done (XPay; filename historical)
 - [SLICE-19-agency-client-workspaces.md](SLICE-19-agency-client-workspaces.md) — Done
 - [SLICE-20-approval-share-links.md](SLICE-20-approval-share-links.md) — Done
 - [SLICE-22-topic-suggestions.md](SLICE-22-topic-suggestions.md) — Done
@@ -94,7 +94,7 @@ Update this section as features land. Tell the agent to mark items `[x]` when do
 
 ### Phase 6 — Business
 
-- [x] Stripe subscriptions + webhooks — [SLICE-18](SLICE-18-stripe-billing.md)
+- [x] XPay subscriptions + webhooks — [SLICE-18](SLICE-18-stripe-billing.md)
 - [x] Agency client workspaces — [SLICE-19](SLICE-19-agency-client-workspaces.md)
 - [x] Approval share links for clients — [SLICE-20](SLICE-20-approval-share-links.md)
 
@@ -177,7 +177,7 @@ Core promise: generate authentic LinkedIn posts, plan a content calendar, run an
 | **Approvals** | Review queue: mine / client / changes / approved | Approval workflow |
 | **Post Package** | Full detail: brief, preview, media, AI scores, council timeline, versions | Rich post model + agent run history |
 | **Clients** | Agency client workspaces | Workspace multi-tenancy |
-| **Billing** | Plan, credits, usage breakdown, history | Stripe + credit ledger |
+| **Billing** | Plan, credits, usage breakdown, history | XPay + credit ledger |
 | **Settings** | Account, LinkedIn connection, publishing defaults, notifications | OAuth tokens, user prefs |
 | **Notifications** | Full inbox, unread filter, mark read | User-scoped notification API |
 
@@ -215,7 +215,7 @@ Unit that moves through the pipeline.
 
 **Stages:** Brief Created → Text Generating → Text Reviewing → Media Generating → Ready for Approval → Approved → Scheduled → Publishing → Published | Failed
 
-**Fields:** hook, body, cta, tags, topic, postType, tone, pillar, goal, media type, score (0–100), source (Manual / Calendar / Autopilot), workspace, scheduledAt
+**Fields:** hook, body, cta, tags, topic, postType, tone, pillar, goal, optional media custom prompt, score (0–100), source (Manual / Calendar / Autopilot), workspace, scheduledAt
 
 **Child data:** versions, council agent timeline, media assets, approval state
 
@@ -254,7 +254,7 @@ Unit that moves through the pipeline.
 | **linkedin** | OAuth connect, publish API, profile sync | Done ([SLICE-12](SLICE-12-linkedin-publish.md)) |
 | **autopilot** | Config + cron generation + approval mode + day profiles | Done ([SLICE-15](SLICE-15-autopilot.md), [SLICE-21](SLICE-21-autopilot-v2.md)) |
 | **credits** | Ledger, deduct, monthly reset | Ledger stub + guard done |
-| **billing** | Stripe subscriptions | Complete (Slice 18) |
+| **billing** | XPay subscriptions | Complete (Slice 18) |
 | **notifications** | In-app + email + web push | Done (Slice 21) |
 | **dashboard** | Read-only aggregations | Done |
 | **search** | Full-text search posts/drafts | Not started |
@@ -289,7 +289,7 @@ Unit that moves through the pipeline.
 | Autopilot cron engine | **Hard** | |
 | Bulk calendar generation | **Hard** | |
 | LinkedIn OAuth + publish | **Hard** | |
-| Stripe billing + webhooks | **Hard** | |
+| XPay billing + webhooks | **Hard** | |
 | Agency multi-workspace | **Medium–Hard** | |
 | Approval share links | **Medium** | |
 | Real-time generation progress | **Medium–Hard** | |
@@ -350,7 +350,7 @@ Unit that moves through the pipeline.
 ### Business
 
 - `Workspace (multi)` → `Clients screen`
-- `Stripe` → `Plan enforcement`, `Billing`
+- `XPay` → `Plan enforcement`, `Billing`
 - `Plan tier` → workspace limits, credit limits, feature flags
 - `Agency plan` → client workspaces (max 5)
 
@@ -394,7 +394,7 @@ flowchart TD
   end
 
   subgraph business [Business]
-    Stripe[Stripe Billing]
+    XPay[XPay Billing]
     Agency[Agency Workspaces]
   end
 
@@ -419,8 +419,8 @@ flowchart TD
   Jobs --> Autopilot
   Council --> BulkCal
   Profile --> BulkCal
-  Stripe --> Credits
-  Stripe --> Agency
+  XPay --> Credits
+  XPay --> Agency
   Agency --> WS
 ```
 
@@ -436,7 +436,7 @@ flowchart TD
 | 3 | Quick draft, AI Council, job queue | Medium–Hard |
 | 4 | LinkedIn OAuth, schedule, publish | Hard |
 | 5 | Autopilot, media gen, bulk calendar | Hard |
-| 6 | Stripe, agency workspaces, approval links | Hard |
+| 6 | XPay, agency workspaces, approval links | Hard |
 
 We will **not** tackle whole phases at once — pick one small feature per step.
 
@@ -489,7 +489,7 @@ Beyond current `User` / `Document`:
 - `/calendar`, `/approvals`
 - `/autopilot`
 - `/linkedin/connect`, `/callback`, `/disconnect`
-- `/billing`, `/billing/portal`, `/billing/webhooks/stripe`
+- `/billing`, `/billing/cancel`, `/billing/webhooks/xpay`
 - `/credits`, `/search`
 
 ---

@@ -67,7 +67,9 @@ rsync -az --delete \
   "$ROOT/" "$APP_SSH:~/linkedinpost"
 
 # Build runtime .env (infra vars override anything in secrets file)
-tmp="$(mktemp)"
+# Use two temp files — writing to the same file we read truncates secrets.
+tmp_base="$(mktemp)"
+tmp_out="$(mktemp)"
 grep -v '^DATABASE_URL=' "$ENV_FILE" \
   | grep -v '^REDIS_URL=' \
   | grep -v '^PORT=' \
@@ -75,13 +77,13 @@ grep -v '^DATABASE_URL=' "$ENV_FILE" \
   | grep -v '^FRONTEND_URL=' \
   | grep -v '^POSTGRES_USER=' \
   | grep -v '^POSTGRES_PASSWORD=' \
-  | grep -v '^POSTGRES_DB=' > "$tmp" || true
+  | grep -v '^POSTGRES_DB=' > "$tmp_base" || true
 
 # URL-encode password for DATABASE_URL (handles +, /, =, etc.)
 POSTGRES_PASSWORD_ENC="$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1], safe=''))" "$POSTGRES_PASSWORD")"
 
 {
-  cat "$tmp"
+  cat "$tmp_base"
   echo "POSTGRES_USER=${POSTGRES_USER}"
   echo "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}"
   echo "POSTGRES_DB=${POSTGRES_DB}"
@@ -90,10 +92,10 @@ POSTGRES_PASSWORD_ENC="$(python3 -c "import urllib.parse,sys; print(urllib.parse
   echo "PORT=3001"
   echo "NODE_ENV=production"
   echo "FRONTEND_URL=${FRONTEND_URL}"
-} > "$tmp"
+} > "$tmp_out"
 
-scp "${SSH_OPTS[@]}" "$tmp" "$APP_SSH:~/linkedinpost/deploy/aws/.env"
-rm -f "$tmp"
+scp "${SSH_OPTS[@]}" "$tmp_out" "$APP_SSH:~/linkedinpost/deploy/aws/.env"
+rm -f "$tmp_base" "$tmp_out"
 
 sed "s/api.example.com/${API_DOMAIN}/g" "$DEPLOY_DIR/Caddyfile" \
   | remote "cat > ~/linkedinpost/deploy/aws/Caddyfile"
@@ -107,6 +109,6 @@ echo ""
 echo "✓ Deployed — https://${API_DOMAIN}"
 echo "  Swagger: https://${API_DOMAIN}/docs"
 echo "  Clerk webhook: https://${API_DOMAIN}/v1/auth/webhooks/clerk"
-echo "  Stripe webhook: https://${API_DOMAIN}/v1/billing/webhooks/stripe"
+echo "  XPay webhook: https://${API_DOMAIN}/v1/billing/webhooks/xpay"
 echo ""
 echo "Set NEXT_PUBLIC_API_URL=https://${API_DOMAIN} in Vercel."

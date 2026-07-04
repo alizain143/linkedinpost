@@ -2,6 +2,7 @@ import { apiFetch } from "@/lib/api/fetch";
 import type {
   ApiBillingStatus,
   BillingSessionResponse,
+  CancelSubscriptionResponse,
   CreateCheckoutBody,
 } from "@/lib/api/types/billing";
 
@@ -21,10 +22,10 @@ export async function createCheckoutSession(
   });
 }
 
-export async function createPortalSession(
+export async function cancelSubscription(
   token: string,
-): Promise<BillingSessionResponse> {
-  return apiFetch<BillingSessionResponse>(token, "/billing/portal", {
+): Promise<CancelSubscriptionResponse> {
+  return apiFetch<CancelSubscriptionResponse>(token, "/billing/cancel", {
     method: "POST",
   });
 }

@@ -53,13 +53,13 @@ export function getApiErrorMessage(
       case "REDIS_UNAVAILABLE":
         return "Background jobs are temporarily unavailable. Try again shortly.";
       case "POST_ALREADY_HAS_MEDIA":
-        return "This post already has a quote card attached.";
+        return "This post already has media attached.";
       case "MEDIA_JOB_IN_PROGRESS":
         return "Media generation is already running for this post.";
       case "INVALID_POST_STATUS":
         return error.message || "Media can only be generated for draft posts.";
       case "MEDIA_GENERATION_FAILED":
-        return error.message || "Quote card generation failed. Try again.";
+        return error.message || "Image generation failed. Try again.";
       case "COUNCIL_CONTEXT_ERROR":
         return error.message || "Check your content profile and try again.";
       case "COUNCIL_AGENT_FAILED":
@@ -77,6 +77,8 @@ export function getApiErrorMessage(
         return "You're already on this plan.";
       case "BILLING_ACCOUNT_REQUIRED":
         return "No billing account found. Subscribe to a plan first.";
+      case "NO_ACTIVE_SUBSCRIPTION":
+        return "No active subscription to cancel.";
       case "CLIENT_WORKSPACE_LIMIT":
         return "You can have at most 5 client workspaces.";
       case "WORKSPACE_FORBIDDEN":

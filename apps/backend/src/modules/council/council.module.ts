@@ -7,8 +7,7 @@ import { CreditsModule } from '../credits/credits.module';
 import { AuthModule } from '../auth/auth.module';
 import { GenerationModule } from '../generation/generation.module';
 import { MediaModule } from '../media/media.module';
-import { MediaTemplatesModule } from '../media-templates/media-template.module';
-import { ImageScoutModule } from '../image-scout/image-scout.module';
+import { MediaGenerationModule } from '../media-generation/media-generation.module';
 import { PostsModule } from '../posts/posts.module';
 import { SchedulingModule } from '../scheduling/scheduling.module';
 import { WorkspacesModule } from '../workspaces/workspaces.module';
@@ -38,8 +37,7 @@ import { WriterOutputParser } from './parsers/writer-output.parser';
     forwardRef(() => PostsModule),
     forwardRef(() => GenerationModule),
     MediaModule,
-    MediaTemplatesModule,
-    ImageScoutModule,
+    forwardRef(() => MediaGenerationModule),
     SchedulingModule,
   ],
   controllers: [CouncilController],

@@ -30,12 +30,19 @@ writing_sample: ${fields.writingSample}
 }
 
 export function buildMediaProfileBlock(fields: {
-  preferredTone: string;
+  name: string;
+  roleTitle: string;
   industry: string;
+  preferredTone: string;
+  brandPrimary: string;
+  brandAccent: string;
   avoidWords: string;
 }): string {
   return `<profile>
-${fields.preferredTone}|${fields.industry}|${fields.avoidWords}
+${fields.name}|${fields.roleTitle}|${fields.industry}|${fields.preferredTone}
+brandPrimary: ${fields.brandPrimary}
+brandAccent: ${fields.brandAccent}
+avoidWords: ${fields.avoidWords}
 </profile>`;
 }
 

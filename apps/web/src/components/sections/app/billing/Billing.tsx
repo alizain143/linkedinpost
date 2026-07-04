@@ -5,12 +5,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { QueryState } from "@/components/app/query-state";
 import { BillingPlanCard } from "@/components/sections/app/billing/BillingPlanCard";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { MsIcon } from "@/components/ui/ms-icon";
 import {
   useBillingStatus,
+  useCancelSubscriptionMutation,
   useCheckoutMutation,
   useInvalidateBilling,
-  usePortalMutation,
 } from "@/hooks/api/use-billing-api";
 import { useCredits } from "@/hooks/api/use-credits-api";
 import { ApiError } from "@/lib/api/client";
@@ -26,6 +27,9 @@ import { formatResetDate } from "@/lib/format-relative-time";
 import { PLANS } from "@/lib/marketing-data";
 import { getPlanLabel } from "@/lib/plan-labels";
 import { useAppUi } from "@/providers/app-ui-provider";
+
+/** E.164: + followed by 8–15 digits */
+const E164_PHONE = /^\+[1-9]\d{7,14}$/;
 
 function BillingSkeleton() {
   return (
@@ -73,19 +77,24 @@ export default function Billing() {
   } = useCredits();
 
   const checkoutMutation = useCheckoutMutation();
-  const portalMutation = usePortalMutation();
+  const cancelMutation = useCancelSubscriptionMutation();
 
   const [loadingPlan, setLoadingPlan] = useState<CheckoutPlan | null>(null);
   const [billingUnavailable, setBillingUnavailable] = useState(false);
+  const [phone, setPhone] = useState("");
+  const [phoneError, setPhoneError] = useState<string | null>(null);
   const handledCheckoutReturnRef = useRef(false);
 
   useEffect(() => {
     const checkout = searchParams.get("checkout");
-    if (!checkout || handledCheckoutReturnRef.current) return;
+    const subscriptionId = searchParams.get("subscription_id");
+    if ((!checkout && !subscriptionId) || handledCheckoutReturnRef.current) {
+      return;
+    }
 
     handledCheckoutReturnRef.current = true;
 
-    if (checkout === "success") {
+    if (checkout === "success" || subscriptionId) {
       showToast("Subscription updated", "check_circle");
       invalidateBilling();
     } else if (checkout === "cancel") {
@@ -96,11 +105,19 @@ export default function Billing() {
   }, [searchParams, showToast, invalidateBilling, router]);
 
   const handleCheckout = (plan: CheckoutPlan) => {
+    const trimmedPhone = phone.trim();
+    if (!E164_PHONE.test(trimmedPhone)) {
+      setPhoneError("Enter a valid phone with country code (e.g. +923001234567)");
+      showToast("Phone number is required for checkout", "error");
+      return;
+    }
+
+    setPhoneError(null);
     setLoadingPlan(plan);
     setBillingUnavailable(false);
 
     checkoutMutation.mutate(
-      { plan },
+      { plan, phone: trimmedPhone },
       {
         onError: (error) => {
           setLoadingPlan(null);
@@ -113,10 +130,18 @@ export default function Billing() {
     );
   };
 
-  const handlePortal = () => {
+  const handleCancel = () => {
+    const confirmed = window.confirm(
+      "Cancel your subscription? You will lose access to paid plan features immediately.",
+    );
+    if (!confirmed) return;
+
     setBillingUnavailable(false);
 
-    portalMutation.mutate(undefined, {
+    cancelMutation.mutate(undefined, {
+      onSuccess: () => {
+        showToast("Subscription cancelled", "check_circle");
+      },
       onError: (error) => {
         if (error instanceof ApiError && error.code === "BILLING_UNAVAILABLE") {
           setBillingUnavailable(true);
@@ -128,6 +153,13 @@ export default function Billing() {
 
   const isLoading = billingLoading || creditsLoading || !billing || !balance || !usage;
   const queryError = billingError || creditsError;
+  const canCancel =
+    billing &&
+    canManageBilling(billing) &&
+    (billing.subscriptionStatus === "active" ||
+      billing.subscriptionStatus === "trialing" ||
+      billing.subscriptionStatus === "past_due" ||
+      billing.subscriptionStatus === "unpaid");
 
   return (
     <QueryState
@@ -204,7 +236,7 @@ export default function Billing() {
             </div>
           </div>
 
-          {canManageBilling(billing) ? (
+          {canCancel ? (
             <div className="rounded-2xl border border-[#eceef4] bg-white p-5">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
@@ -216,31 +248,26 @@ export default function Billing() {
                       billing.currentPeriodEnd,
                     )}
                   </p>
-                  {billing.cancelAtPeriodEnd && billing.currentPeriodEnd ? (
-                    <p className="mt-1 text-sm text-[#92400e]">
-                      Your plan cancels on{" "}
-                      {formatResetDate(billing.currentPeriodEnd)}.
-                    </p>
-                  ) : null}
-                  {billing.subscriptionStatus === "past_due" ? (
+                  {billing.subscriptionStatus === "past_due" ||
+                  billing.subscriptionStatus === "unpaid" ? (
                     <p className="mt-1 text-sm font-medium text-[#dc2626]">
-                      There is a payment issue with your subscription. Update
-                      your payment method in Stripe.
+                      There is a payment issue with your subscription. Try
+                      upgrading again or contact support.
                     </p>
                   ) : null}
                 </div>
                 <Button
                   type="button"
-                  variant="secondary"
+                  variant="destructive"
                   size="md"
                   className="rounded-[10px]"
-                  disabled={portalMutation.isPending}
-                  onClick={handlePortal}
+                  disabled={cancelMutation.isPending}
+                  onClick={handleCancel}
                 >
-                  <MsIcon name="credit_card" size={18} />
-                  {portalMutation.isPending
-                    ? "Opening portal…"
-                    : "Manage billing"}
+                  <MsIcon name="cancel" size={18} />
+                  {cancelMutation.isPending
+                    ? "Cancelling…"
+                    : "Cancel subscription"}
                 </Button>
               </div>
             </div>
@@ -248,6 +275,34 @@ export default function Billing() {
 
           <div>
             <h3 className="mb-4 font-display text-lg font-bold">Plans</h3>
+            <div className="mb-4 rounded-2xl border border-[#eceef4] bg-white p-5">
+              <label
+                htmlFor="billing-phone"
+                className="text-sm font-semibold text-[#64748b]"
+              >
+                Phone number
+              </label>
+              <p className="mt-1 text-xs text-[#94a3b8]">
+                Required for checkout. Include country code (E.164).
+              </p>
+              <Input
+                id="billing-phone"
+                type="tel"
+                autoComplete="tel"
+                placeholder="+923001234567"
+                value={phone}
+                onChange={(event) => {
+                  setPhone(event.target.value);
+                  if (phoneError) setPhoneError(null);
+                }}
+                className="mt-2 max-w-sm"
+              />
+              {phoneError ? (
+                <p className="mt-1.5 text-xs font-medium text-[#dc2626]">
+                  {phoneError}
+                </p>
+              ) : null}
+            </div>
             <div className="pp-grid4">
               {PLANS.map((plan) => (
                 <BillingPlanCard

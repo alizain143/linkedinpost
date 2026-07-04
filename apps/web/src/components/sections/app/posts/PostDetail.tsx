@@ -143,7 +143,7 @@ export default function PostDetail({ postId }: PostDetailProps) {
     poll: true,
     workspaceId: activeWorkspaceId,
     onCompleted: () => {
-      showToast("Quote card ready", "image");
+      showToast("Media ready", "image");
       setActiveMediaJobId(null);
       void refetch();
     },
@@ -203,7 +203,7 @@ export default function PostDetail({ postId }: PostDetailProps) {
   const handleGenerateMedia = async () => {
     if (!canAfford(MEDIA_GENERATION_CREDIT_COST)) {
       showToast(
-        `You need ${MEDIA_GENERATION_CREDIT_COST} credits to generate a quote card.`,
+        `You need ${MEDIA_GENERATION_CREDIT_COST} credits to generate an image.`,
         "error",
       );
       return;
@@ -315,9 +315,9 @@ export default function PostDetail({ postId }: PostDetailProps) {
                         className="inline-flex"
                         title={
                           isMediaGenerating
-                            ? "Quote card generation in progress"
+                            ? "Image generation in progress"
                             : !isDraft
-                              ? "Quote cards can only be generated while the post is a draft"
+                              ? "Media can only be generated while the post is a draft"
                               : undefined
                         }
                       >

@@ -65,44 +65,28 @@ describe('ReviewerOutputParser', () => {
 describe('MediaCreatorOutputParser', () => {
   const parser = new MediaCreatorOutputParser();
 
-  it('parses branded quote card JSON', () => {
+  it('parses freeform media creator JSON', () => {
     const result = parser.parse(
       JSON.stringify({
-        mediaType: 'branded_quote_card',
-        altText: 'Branded quote',
-        headlineText: 'Ship weekly',
-        ctaFooter: 'Repost · Comment · Share',
-      }),
-    );
-
-    expect(result.mediaType).toBe('branded_quote_card');
-    expect(result.headlineText).toBe('Ship weekly');
-  });
-
-  it('parses v2 media creator JSON', () => {
-    const result = parser.parse(
-      JSON.stringify({
-        mediaType: 'quote_card',
-        altText: 'Quote card',
-        imagePrompt: 'Navy quote card with bold white text',
+        altText: 'LinkedIn post visual',
+        imagePrompt: 'Navy gradient with bold white typography',
         width: 1200,
         height: 630,
-        headlineText: 'Ship weekly',
+        styleNotes: 'Professional',
       }),
     );
 
-    expect(result.mediaType).toBe('quote_card');
     expect(result.imagePrompt).toContain('Navy');
+    expect(result.altText).toBe('LinkedIn post visual');
     expect(result.width).toBe(1200);
+    expect(result.styleNotes).toBe('Professional');
   });
 
   it('rejects missing imagePrompt', () => {
     expect(() =>
       parser.parse(
         JSON.stringify({
-          mediaType: 'quote_card',
           altText: 'x',
-          headlineText: 'y',
         }),
       ),
     ).toThrow();
@@ -116,11 +100,7 @@ describe('council progress', () => {
   });
 
   it('calculates total steps with revisions', () => {
-    expect(councilTotalSteps(1, 1)).toBe(10);
-  });
-
-  it('calculates total steps without image scout', () => {
-    expect(councilTotalSteps(1, 1, false)).toBe(9);
+    expect(councilTotalSteps(1, 1)).toBe(9);
   });
 });
 

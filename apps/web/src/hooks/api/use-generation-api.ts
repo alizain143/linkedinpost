@@ -7,7 +7,6 @@ import {
   fetchGenerationJob,
   generateCalendar,
   generateCouncil,
-  generateCouncilPremium,
   generateQuickDraft,
   suggestTopics,
 } from "@/lib/api/generation";
@@ -65,25 +64,6 @@ export function useCouncilMutation(workspaceId: string | null | undefined) {
       const token = await getToken();
       if (!token || !workspaceId) throw new Error("Not authenticated");
       return generateCouncil(token, workspaceId, body);
-    },
-    onSuccess: (job) => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.credits });
-      void queryClient.setQueryData(queryKeys.jobs.detail(job.id), job);
-    },
-  });
-}
-
-export function usePremiumCouncilMutation(
-  workspaceId: string | null | undefined,
-) {
-  const { getToken } = useAuth();
-  const queryClient = useQueryClient();
-
-  return useMutation<ApiGenerationJob, Error, CouncilRequestBody>({
-    mutationFn: async (body) => {
-      const token = await getToken();
-      if (!token || !workspaceId) throw new Error("Not authenticated");
-      return generateCouncilPremium(token, workspaceId, body);
     },
     onSuccess: (job) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.credits });

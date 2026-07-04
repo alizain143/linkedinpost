@@ -25,6 +25,7 @@ export function toCouncilInputFromPost(
     tone: post.tone ?? undefined,
     pillar: post.pillar ?? undefined,
     contentProfileId: post.contentProfileId ?? undefined,
+    mediaCustomPrompt: post.mediaCustomPrompt ?? undefined,
   };
 }
 

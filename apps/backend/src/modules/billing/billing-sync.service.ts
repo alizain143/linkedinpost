@@ -4,138 +4,112 @@ import {
   Logger,
 } from '@nestjs/common';
 import { SubscriptionStatus, UserPlan } from '@prisma/client';
-import Stripe from 'stripe';
 import {
-  getPlanForStripePriceId,
-  StripePriceConfig,
-} from '../../common/constants/stripe-plan.map';
+  parsePlanFromMetadata,
+  type CheckoutPlan,
+} from '../../common/constants/xpay-plan.map';
 import { PrismaService } from '../../prisma/prisma.service';
-import { StripeClientService } from './stripe-client.service';
 
-const PAID_STRIPE_STATUSES = new Set<Stripe.Subscription.Status>([
-  'active',
-  'trialing',
-  'past_due',
+export interface XpaySubscriptionEvent {
+  eventId: string;
+  eventType: string;
+  eventTime?: number;
+  subscriptionId: string;
+  nextPaymentDate?: number | null;
+  remainingCycleCount?: number | null;
+  metadata?: Record<string, string> | null;
+  errorCode?: string;
+}
+
+const PAID_STATUSES = new Set<SubscriptionStatus>([
+  SubscriptionStatus.active,
+  SubscriptionStatus.trialing,
+  SubscriptionStatus.past_due,
+  SubscriptionStatus.unpaid,
 ]);
 
 @Injectable()
 export class BillingSyncService {
   private readonly logger = new Logger(BillingSyncService.name);
 
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly stripeClient: StripeClientService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  async syncFromCheckoutSession(
-    session: Stripe.Checkout.Session,
-  ): Promise<void> {
-    const userId =
-      session.client_reference_id ?? session.metadata?.userId ?? null;
-
-    if (!userId) {
-      this.logger.warn(
-        `checkout.session.completed missing userId for session ${session.id}`,
-      );
+  async syncFromSubscriptionEvent(event: XpaySubscriptionEvent): Promise<void> {
+    const status = this.mapEventToStatus(event.eventType);
+    if (!status) {
+      this.logger.debug(`Unhandled XPay event type: ${event.eventType}`);
       return;
     }
 
-    const stripeCustomerId =
-      typeof session.customer === 'string'
-        ? session.customer
-        : session.customer?.id;
-
-    if (!stripeCustomerId) {
-      this.logger.warn(
-        `checkout.session.completed missing customer for session ${session.id}`,
-      );
+    if (
+      status === SubscriptionStatus.canceled ||
+      event.eventType === 'subscription.ended'
+    ) {
+      await this.handleSubscriptionEnded(event);
       return;
     }
 
-    await this.prisma.subscription.upsert({
-      where: { userId },
-      create: {
-        userId,
-        stripeCustomerId,
-      },
-      update: {
-        stripeCustomerId,
-      },
-    });
-
-    if (session.mode === 'subscription' && session.subscription) {
-      const subscriptionId =
-        typeof session.subscription === 'string'
-          ? session.subscription
-          : session.subscription.id;
-
-      const stripe = this.stripeClient.getClient();
-      if (!stripe) {
-        return;
-      }
-
-      const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-      await this.syncFromStripeSubscription(subscription, userId);
-    }
-  }
-
-  async syncFromStripeSubscription(
-    subscription: Stripe.Subscription,
-    userIdHint?: string,
-  ): Promise<void> {
-    const stripeCustomerId =
-      typeof subscription.customer === 'string'
-        ? subscription.customer
-        : subscription.customer.id;
-
-    const priceId = subscription.items.data[0]?.price?.id ?? null;
-    const prices = this.stripeClient.getPriceConfig();
-    const period = this.readSubscriptionPeriod(subscription);
-
-    let userId = userIdHint ?? null;
-    if (!userId) {
-      const existing = await this.prisma.subscription.findUnique({
-        where: { stripeCustomerId },
-      });
-      userId = existing?.userId ?? null;
-    }
-
+    const userId = await this.resolveUserId(event);
     if (!userId) {
       this.logger.error(
-        `Cannot sync subscription ${subscription.id}: user not found for customer ${stripeCustomerId}`,
+        `Cannot sync subscription ${event.subscriptionId}: user not found`,
       );
       return;
     }
 
-    const plan = this.resolvePlanForSubscription(
-      subscription.status,
-      priceId,
-      prices,
-    );
+    const periodEnd = this.toDate(event.nextPaymentDate);
+    const periodStart =
+      periodEnd && status !== SubscriptionStatus.incomplete
+        ? new Date()
+        : null;
 
-    const status = this.mapStripeStatus(subscription.status);
+    // Incomplete checkout events only track the pending subscription row.
+    if (status === SubscriptionStatus.incomplete) {
+      const pendingPlan = parsePlanFromMetadata(event.metadata?.plan);
+      await this.prisma.subscription.upsert({
+        where: { userId },
+        create: {
+          userId,
+          xpaySubscriptionId: event.subscriptionId,
+          plan: pendingPlan,
+          status,
+          cancelAtPeriodEnd: false,
+        },
+        update: {
+          xpaySubscriptionId: event.subscriptionId,
+          plan: pendingPlan ?? undefined,
+          status,
+          cancelAtPeriodEnd: false,
+        },
+      });
+      return;
+    }
+
+    const plan = await this.resolvePlanForEvent(event, status);
 
     await this.prisma.$transaction([
       this.prisma.subscription.upsert({
         where: { userId },
         create: {
           userId,
-          stripeCustomerId,
-          stripeSubscriptionId: subscription.id,
-          stripePriceId: priceId,
+          xpaySubscriptionId: event.subscriptionId,
+          plan: plan === UserPlan.free ? null : plan,
           status,
-          cancelAtPeriodEnd: subscription.cancel_at_period_end,
-          currentPeriodStart: period.start,
-          currentPeriodEnd: period.end,
+          cancelAtPeriodEnd: false,
+          currentPeriodStart: periodStart,
+          currentPeriodEnd: periodEnd,
         },
         update: {
-          stripeCustomerId,
-          stripeSubscriptionId: subscription.id,
-          stripePriceId: priceId,
+          xpaySubscriptionId: event.subscriptionId,
+          plan: plan === UserPlan.free ? null : plan,
           status,
-          cancelAtPeriodEnd: subscription.cancel_at_period_end,
-          currentPeriodStart: period.start,
-          currentPeriodEnd: period.end,
+          cancelAtPeriodEnd: false,
+          ...(periodEnd
+            ? {
+                currentPeriodEnd: periodEnd,
+                currentPeriodStart: periodStart ?? undefined,
+              }
+            : {}),
         },
       }),
       this.prisma.user.update({
@@ -145,31 +119,29 @@ export class BillingSyncService {
     ]);
   }
 
-  async handleSubscriptionDeleted(
-    subscription: Stripe.Subscription,
-  ): Promise<void> {
-    const stripeCustomerId =
-      typeof subscription.customer === 'string'
-        ? subscription.customer
-        : subscription.customer.id;
-
+  async handleSubscriptionEnded(event: XpaySubscriptionEvent): Promise<void> {
     const existing = await this.prisma.subscription.findUnique({
-      where: { stripeCustomerId },
+      where: { xpaySubscriptionId: event.subscriptionId },
     });
 
-    if (!existing) {
+    let userId = existing?.userId ?? null;
+    if (!userId) {
+      userId = await this.resolveUserId(event);
+    }
+
+    if (!userId) {
       this.logger.warn(
-        `customer.subscription.deleted for unknown customer ${stripeCustomerId}`,
+        `subscription ended for unknown subscription ${event.subscriptionId}`,
       );
       return;
     }
 
     await this.prisma.$transaction([
       this.prisma.subscription.update({
-        where: { userId: existing.userId },
+        where: { userId },
         data: {
-          stripeSubscriptionId: null,
-          stripePriceId: null,
+          xpaySubscriptionId: null,
+          plan: null,
           status: SubscriptionStatus.canceled,
           cancelAtPeriodEnd: false,
           currentPeriodStart: null,
@@ -177,138 +149,101 @@ export class BillingSyncService {
         },
       }),
       this.prisma.user.update({
-        where: { id: existing.userId },
+        where: { id: userId },
         data: { plan: UserPlan.free },
       }),
     ]);
   }
 
-  async handlePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
-    const stripeCustomerId =
-      typeof invoice.customer === 'string'
-        ? invoice.customer
-        : invoice.customer?.id;
-
-    if (!stripeCustomerId) {
-      return;
-    }
-
-    const existing = await this.prisma.subscription.findUnique({
-      where: { stripeCustomerId },
-    });
-
-    if (!existing) {
-      return;
-    }
-
-    await this.prisma.subscription.update({
-      where: { userId: existing.userId },
-      data: { status: SubscriptionStatus.past_due },
-    });
-  }
-
-  async syncFromInvoicePayment(invoice: Stripe.Invoice): Promise<void> {
-    const subscriptionRef = invoice.parent?.subscription_details?.subscription;
-    const subscriptionId =
-      typeof subscriptionRef === 'string'
-        ? subscriptionRef
-        : subscriptionRef?.id;
-
-    if (!subscriptionId) {
-      return;
-    }
-
-    const stripe = this.stripeClient.getClient();
-    if (!stripe) {
-      return;
-    }
-
-    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-    await this.syncFromStripeSubscription(subscription);
-  }
-
-  resolvePlanForSubscription(
-    stripeStatus: Stripe.Subscription.Status,
-    priceId: string | null,
-    prices: StripePriceConfig,
-  ): UserPlan {
-    if (!PAID_STRIPE_STATUSES.has(stripeStatus)) {
+  async resolvePlanForEvent(
+    event: XpaySubscriptionEvent,
+    status: SubscriptionStatus,
+  ): Promise<UserPlan> {
+    if (!PAID_STATUSES.has(status)) {
       return UserPlan.free;
     }
 
-    if (!priceId) {
-      throw new InternalServerErrorException({
-        error: 'Active subscription missing price ID',
-        code: 'BILLING_SYNC_ERROR',
-      });
+    const fromMetadata = parsePlanFromMetadata(event.metadata?.plan);
+    if (fromMetadata) {
+      return fromMetadata;
     }
 
-    const plan = getPlanForStripePriceId(priceId, prices);
-    if (!plan) {
-      this.logger.error(`Unknown Stripe price ID: ${priceId}`);
-      throw new InternalServerErrorException({
-        error: `Unknown Stripe price ID: ${priceId}`,
-        code: 'BILLING_SYNC_ERROR',
-      });
+    const existing = await this.prisma.subscription.findUnique({
+      where: { xpaySubscriptionId: event.subscriptionId },
+    });
+
+    if (existing?.plan && isPaidPlan(existing.plan)) {
+      return existing.plan;
     }
 
-    return plan;
+    const userId = event.metadata?.userId ?? existing?.userId;
+    if (userId) {
+      const byUser = await this.prisma.subscription.findUnique({
+        where: { userId },
+      });
+      if (byUser?.plan && isPaidPlan(byUser.plan)) {
+        return byUser.plan;
+      }
+    }
+
+    this.logger.error(
+      `Unknown plan for subscription ${event.subscriptionId}`,
+    );
+    throw new InternalServerErrorException({
+      error: 'Active subscription missing plan metadata',
+      code: 'BILLING_SYNC_ERROR',
+    });
   }
 
-  private mapStripeStatus(
-    status: Stripe.Subscription.Status,
-  ): SubscriptionStatus {
-    switch (status) {
-      case 'active':
+  private async resolveUserId(
+    event: XpaySubscriptionEvent,
+  ): Promise<string | null> {
+    const fromMetadata = event.metadata?.userId;
+    if (fromMetadata) {
+      return fromMetadata;
+    }
+
+    const existing = await this.prisma.subscription.findUnique({
+      where: { xpaySubscriptionId: event.subscriptionId },
+    });
+
+    return existing?.userId ?? null;
+  }
+
+  mapEventToStatus(eventType: string): SubscriptionStatus | null {
+    switch (eventType) {
+      case 'subscription.active':
+      case 'subscription.cycle_charged':
         return SubscriptionStatus.active;
-      case 'trialing':
+      case 'subscription.trialing':
         return SubscriptionStatus.trialing;
-      case 'past_due':
-        return SubscriptionStatus.past_due;
-      case 'canceled':
-        return SubscriptionStatus.canceled;
-      case 'unpaid':
+      case 'subscription.unpaid':
         return SubscriptionStatus.unpaid;
-      case 'incomplete':
-      case 'incomplete_expired':
-      default:
+      case 'subscription.paused':
+        return SubscriptionStatus.past_due;
+      case 'subscription.cancelled':
+      case 'subscription.ended':
+        return SubscriptionStatus.canceled;
+      case 'subscription.created':
+      case 'subscription.checkout_opened':
         return SubscriptionStatus.incomplete;
+      default:
+        return null;
     }
   }
 
-  private toDate(unixSeconds: number | null | undefined): Date | null {
-    if (!unixSeconds) {
+  private toDate(ms: number | null | undefined): Date | null {
+    if (!ms) {
       return null;
     }
-    return new Date(unixSeconds * 1000);
+    return new Date(ms);
   }
+}
 
-  private readSubscriptionPeriod(subscription: Stripe.Subscription): {
-    start: Date | null;
-    end: Date | null;
-  } {
-    const raw = subscription as Stripe.Subscription & {
-      current_period_start?: number;
-      current_period_end?: number;
-    };
-
-    if (raw.current_period_start || raw.current_period_end) {
-      return {
-        start: this.toDate(raw.current_period_start),
-        end: this.toDate(raw.current_period_end),
-      };
-    }
-
-    const item = subscription.items.data[0] as
-      | (Stripe.SubscriptionItem & {
-          current_period_start?: number;
-          current_period_end?: number;
-        })
-      | undefined;
-
-    return {
-      start: this.toDate(item?.current_period_start),
-      end: this.toDate(item?.current_period_end),
-    };
-  }
+function isPaidPlan(plan: UserPlan): plan is CheckoutPlan {
+  return (
+    plan === UserPlan.starter ||
+    plan === UserPlan.pro ||
+    plan === UserPlan.agency
+  );
 }

@@ -2,7 +2,7 @@
 
 > **Source of truth:** `apps/backend/prisma/schema.prisma`  
 > **Companion docs:** [CURRENT_ARCHITECTURE.md](CURRENT_ARCHITECTURE.md) · [PRODUCT_OVERVIEW.md](PRODUCT_OVERVIEW.md)  
-> **Last synced:** June 2026 (notifications slice + schema cleanup phases 1–3)
+> **Last synced:** July 2026 (XPay billing replaces Stripe)
 
 Developer reference for every PostgreSQL table, field, enum, and relationship. Read this before writing Prisma queries, migrations, or API mappers.
 
@@ -60,11 +60,11 @@ User
 | Value | Credits/mo | Notes |
 |-------|------------|-------|
 | `free` | 5 | Default on signup |
-| `starter` | 50 | Stripe-paid |
+| `starter` | 50 | XPay-paid |
 | `pro` | 200 | Autopilot, 30-day calendar |
 | `agency` | 1000 | Client workspaces, approval share links |
 
-Denormalized on `User.plan`, synced from Stripe via `BillingSyncService`. Feature gates in `plan-features.constants.ts`.
+Denormalized on `User.plan`, synced from XPay via `BillingSyncService`. Feature gates in `plan-features.constants.ts`.
 
 ### `WorkspaceType`
 
@@ -174,12 +174,13 @@ Council jobs use this status exclusively (no separate run status).
 
 | Value | Meaning |
 |-------|---------|
-| `quote_card` | Legacy AI quote card |
-| `branded_quote_card` | Template: name, title, quote, CTA footer |
-| `stat_highlight` | Template: big stat + label |
-| `tip_card` | Template: numbered tips |
-| `infographic` | AI visual summary |
-| `photo_illustration` | AI mood image (reference-guided) |
+| `generated` | **Current.** Unbound AI feed image (all new media) |
+| `quote_card` | Legacy — historical rows only |
+| `branded_quote_card` | Legacy template — historical rows only |
+| `stat_highlight` | Legacy template — historical rows only |
+| `tip_card` | Legacy template — historical rows only |
+| `infographic` | Legacy — historical rows only |
+| `photo_illustration` | Legacy — historical rows only |
 
 ### `CouncilAgentRole`
 
@@ -202,24 +203,24 @@ Council jobs use this status exclusively (no separate run status).
 
 ### `SubscriptionStatus`
 
-Mirrors Stripe subscription status. Synced in `BillingSyncService`.
+Mirrors XPay subscription status. Synced in `BillingSyncService`.
 
 | Value | Typical effect |
 |-------|----------------|
 | `active` | Paid plan applied |
 | `trialing` | Paid plan during trial |
-| `past_due` | Grace period — still treated as paid for credits |
+| `past_due` | Grace period — still treated as paid for credits (also maps XPay `PAUSED`) |
 | `canceled` | Reverts toward `free` |
 | `incomplete` | Checkout started, not completed (default) |
-| `unpaid` | Stripe unpaid state |
+| `unpaid` | XPay unpaid state — plan kept until cancelled/ended |
 
-### `StripeWebhookEventStatus`
+### `BillingWebhookEventStatus`
 
 | Value | Meaning |
 |-------|---------|
 | `pending` | Inserted, handler not yet finished |
 | `processed` | Handler succeeded |
-| `failed` | Handler failed; Stripe replay will retry dispatch |
+| `failed` | Handler failed; XPay replay will retry dispatch |
 
 ### `NotificationType`
 
@@ -261,6 +262,7 @@ Account identity. Synced from Clerk on sign-in/webhook.
 | `email` | String | No | — | **Unique.** From Clerk |
 | `firstName` | String | Yes | — | Display name |
 | `lastName` | String | Yes | — | Display name |
+| `phone` | String | Yes | — | E.164 phone for XPay checkout. Written on `POST /billing/checkout` |
 | `profileDocumentId` | UUID | Yes | — | **Unique.** FK → `documents.id`. Avatar from R2 |
 | `profileImageUrl` | String | Yes | — | Public URL (may duplicate document URL) |
 | `timezone` | String | No | `America/New_York` | Used for scheduling/autopilot. `PATCH /auth/me` |
@@ -269,7 +271,7 @@ Account identity. Synced from Clerk on sign-in/webhook.
 | `emailProductUpdates` | Boolean | No | `false` | Email pref for product broadcasts |
 | `emailPublishAlerts` | Boolean | No | `true` | Email pref for publish success/failure |
 | `pushEnabled` | Boolean | No | `true` | Master web push toggle (`PATCH /auth/me`) |
-| `plan` | UserPlan | No | `free` | **Denormalized** from Stripe. Credit limit source |
+| `plan` | UserPlan | No | `free` | **Denormalized** from XPay subscription webhooks. Credit limit source |
 | `linkedInMemberId` | String | Yes | — | LinkedIn member URN/id for publish API |
 | `linkedInProfileSyncedAt` | Timestamptz | Yes | — | Last profile sync timestamp |
 | `linkedInProfile` | JSON | Yes | — | Cached OIDC profile (name, photo, etc.) |
@@ -285,19 +287,19 @@ Account identity. Synced from Clerk on sign-in/webhook.
 
 ### `subscriptions` → `Subscription`
 
-One row per user (1:1). Stripe billing mirror.
+One row per user (1:1). XPay billing mirror.
 
 | Field | Type | Null | Default | Description |
 |-------|------|------|---------|-------------|
 | `id` | UUID | No | uuid() | |
 | `userId` | UUID | No | — | **Unique.** FK → `users.id` CASCADE |
-| `stripeCustomerId` | String | No | — | **Unique.** Stripe customer |
-| `stripeSubscriptionId` | String | Yes | — | **Unique.** Active subscription id |
-| `stripePriceId` | String | Yes | — | Maps to `UserPlan` via `stripe-plan.map.ts` |
-| `status` | SubscriptionStatus | No | `incomplete` | Stripe status |
-| `cancelAtPeriodEnd` | Boolean | No | `false` | User canceled but still active until period end |
+| `xpayCustomerId` | String | Yes | — | **Unique.** XPay customer id when created |
+| `xpaySubscriptionId` | String | Yes | — | **Unique.** Active/pending XPay subscription id |
+| `plan` | UserPlan | Yes | — | Intended/active paid plan from checkout metadata |
+| `status` | SubscriptionStatus | No | `incomplete` | Mapped from XPay status |
+| `cancelAtPeriodEnd` | Boolean | No | `false` | Reserved; XPay cancel is immediate via API |
 | `currentPeriodStart` | Timestamptz | Yes | — | Billing period start — drives credit period for paid users |
-| `currentPeriodEnd` | Timestamptz | Yes | — | Billing period end |
+| `currentPeriodEnd` | Timestamptz | Yes | — | Billing period end (`nextPaymentDate` from webhooks) |
 | `createdAt` | Timestamptz | No | now() | |
 | `updatedAt` | Timestamptz | No | auto | |
 
@@ -305,19 +307,19 @@ One row per user (1:1). Stripe billing mirror.
 
 ---
 
-### `stripe_webhook_events` → `StripeWebhookEvent`
+### `billing_webhook_events` → `BillingWebhookEvent`
 
-Idempotency log for Stripe webhooks.
+Idempotency log for XPay webhooks.
 
 | Field | Type | Null | Default | Description |
 |-------|------|------|---------|-------------|
-| `id` | String | No | — | Stripe event id (not UUID) |
-| `type` | String | No | — | Event type e.g. `checkout.session.completed` |
-| `status` | StripeWebhookEventStatus | No | `processed` | `pending` → dispatch → `processed` or `failed` |
+| `id` | String | No | — | XPay `eventId` (not UUID) |
+| `type` | String | No | — | Event type e.g. `subscription.active` |
+| `status` | BillingWebhookEventStatus | No | `pending` | `pending` → dispatch → `processed` or `failed` |
 | `errorMessage` | String | Yes | — | Last handler error when `status=failed` |
 | `processedAt` | Timestamptz | No | now() | When row was last updated |
 
-No relations. Prevents double-processing; failed rows are retried on Stripe replay.
+No relations. Prevents double-processing; failed rows are retried on XPay replay.
 
 ---
 
@@ -447,6 +449,7 @@ Named themes under a content profile. Autopilot rotates through pillars.
 | `postType` | PostType | Yes | — | Format enum |
 | `tone` | String | Yes | — | Generation input (free text) |
 | `pillar` | String | Yes | — | Pillar **name** snapshot (not FK) |
+| `mediaCustomPrompt` | Text | Yes | — | Optional user direction for unbound image generation |
 | `source` | PostSource | No | `manual` | Origin of post |
 | `status` | PostPackageStatus | No | `draft` | Pipeline state |
 | `score` | Int | Yes | — | 0–100 council reviewer score. Shown in approvals |
@@ -494,14 +497,14 @@ Immutable content snapshots when copy changes.
 
 ### `post_media` → `PostMedia`
 
-Generated media assets (quote cards) on a post.
+Generated media assets (AI feed images) on a post.
 
 | Field | Type | Null | Default | Description |
 |-------|------|------|---------|-------------|
 | `id` | UUID | No | uuid() | |
 | `postPackageId` | UUID | No | — | FK → `post_packages.id` CASCADE |
 | `generationJobId` | UUID | Yes | — | FK → `generation_jobs.id` SET NULL. Which council job produced this |
-| `mediaType` | PostMediaType | No | — | `quote_card` |
+| `mediaType` | PostMediaType | No | — | New rows: `generated` |
 | `storageKey` | String | No | — | R2 key |
 | `storageBucket` | String | No | — | R2 bucket |
 | `mimeType` | String | No | — | e.g. `image/png` |

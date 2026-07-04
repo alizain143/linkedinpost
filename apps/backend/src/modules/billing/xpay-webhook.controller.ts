@@ -8,22 +8,22 @@ import {
 } from '@nestjs/common';
 import { ApiHeader, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
-import { StripeWebhookService } from './stripe-webhook.service';
+import { XpayWebhookService } from './xpay-webhook.service';
 
 type RawBodyRequest = Request & { rawBody?: Buffer };
 
 @ApiTags('billing')
 @Controller('billing/webhooks')
-export class StripeWebhookController {
-  constructor(private readonly stripeWebhookService: StripeWebhookService) {}
+export class XpayWebhookController {
+  constructor(private readonly xpayWebhookService: XpayWebhookService) {}
 
-  @Post('stripe')
+  @Post('xpay')
   @HttpCode(200)
-  @ApiOperation({ summary: 'Stripe webhook receiver (signature-verified)' })
-  @ApiHeader({ name: 'stripe-signature', required: true })
-  async handleStripeWebhook(
+  @ApiOperation({ summary: 'XPay webhook receiver (signature-verified)' })
+  @ApiHeader({ name: 'xpay-signature', required: true })
+  async handleXpayWebhook(
     @Req() req: RawBodyRequest,
-    @Headers('stripe-signature') signature: string,
+    @Headers('xpay-signature') signature: string,
   ) {
     const rawBody = req.rawBody;
 
@@ -34,6 +34,6 @@ export class StripeWebhookController {
       });
     }
 
-    return this.stripeWebhookService.handleWebhook(rawBody, signature);
+    return this.xpayWebhookService.handleWebhook(rawBody, signature);
   }
 }

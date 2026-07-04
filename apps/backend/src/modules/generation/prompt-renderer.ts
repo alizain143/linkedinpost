@@ -150,10 +150,7 @@ export class PromptRenderer {
       'input.pillar': input?.pillar ?? '',
       'input.additionalContext': additionalContext,
       'input.brief': brief,
-      'input.mediaType': input?.mediaType ?? '',
       'input.mediaCustomPrompt': input?.mediaCustomPrompt ?? '',
-      'input.mediaTemplateId': input?.mediaTemplateId ?? '',
-      'input.referenceImageDescriptions': this.buildReferenceDescriptions(context),
       'calendar.slotCount': String(input?.calendarSlotCount ?? ''),
       'calendar.durationDays': String(input?.calendarDurationDays ?? ''),
       'calendar.slots.json': JSON.stringify(
@@ -176,8 +173,12 @@ export class PromptRenderer {
         avoidWords,
       }),
       'profile.media': buildMediaProfileBlock({
-        preferredTone: profileFields.preferredTone,
+        name: profileFields.name,
+        roleTitle: profileFields.roleTitle,
         industry: profileFields.industry,
+        preferredTone: profileFields.preferredTone,
+        brandPrimary: profile?.brandPrimary ?? '',
+        brandAccent: profile?.brandAccent ?? '',
         avoidWords,
       }),
       'brief.block': buildBriefBlock({
@@ -215,23 +216,5 @@ export class PromptRenderer {
       /\{\{([^}]+)\}\}/g,
       (_match, key: string) => values[key.trim()] ?? '',
     );
-  }
-
-  private buildReferenceDescriptions(context: GenerationContext): string {
-    const scoutStep = context.priorSteps?.find(
-      (step) => step.agentRole === CouncilAgentRole.image_scout,
-    );
-    const candidates = scoutStep?.output?.candidates;
-    if (!Array.isArray(candidates) || candidates.length === 0) {
-      return 'None';
-    }
-
-    return candidates
-      .slice(0, 8)
-      .map((candidate, index) => {
-        const item = candidate as { title?: string };
-        return `${index + 1}. ${item.title ?? 'reference'}`;
-      })
-      .join('; ');
   }
 }

@@ -71,6 +71,6 @@ Maps to backend SLICE-06 (`credits` module).
 
 ## Out of scope
 
-- Stripe checkout/portal (FE-SLICE-16)
+- XPay checkout/cancel (FE-SLICE-16)
 - Dashboard credit usage card (FE-SLICE-05)
 - Real generation API (FE-SLICE-12)

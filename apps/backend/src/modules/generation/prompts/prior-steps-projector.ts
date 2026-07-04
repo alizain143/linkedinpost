@@ -95,7 +95,6 @@ export function projectPriorSteps(
     }
     case CouncilAgentRole.media_creator: {
       const editor = findLatest(steps, CouncilAgentRole.editor);
-      const scout = findLatest(steps, CouncilAgentRole.image_scout);
       if (!editor) {
         return [];
       }
@@ -111,26 +110,13 @@ export function projectPriorSteps(
         output.changelog = editor.output.changelog;
       }
 
-      const projected: CouncilPriorStep[] = [
+      return [
         {
           agentRole: CouncilAgentRole.editor,
           revisionAttempt: editor.revisionAttempt,
           output,
         },
       ];
-
-      if (scout) {
-        projected.push({
-          agentRole: CouncilAgentRole.image_scout,
-          revisionAttempt: scout.revisionAttempt,
-          output: {
-            queries: scout.output.queries,
-            candidates: scout.output.candidates,
-          },
-        });
-      }
-
-      return projected;
     }
     case CouncilAgentRole.image_scout: {
       const editor = findLatest(steps, CouncilAgentRole.editor);

@@ -44,7 +44,7 @@ Minimal per-user credit ledger, `GET /v1/credits`, reusable `CreditsGuard` + `@C
 
 Monthly reset cron, `POST /generate/*`, public consume API
 
-**Plan source:** Stripe webhooks sync `User.plan` — see [SLICE-18](SLICE-18-stripe-billing.md).
+**Plan source:** XPay webhooks sync `User.plan` — see [SLICE-18](SLICE-18-stripe-billing.md).
 
 ## Test plan
 

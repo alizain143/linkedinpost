@@ -13,15 +13,21 @@ export type ApiBillingStatus = {
   subscriptionStatus: SubscriptionStatus | null;
   cancelAtPeriodEnd: boolean;
   currentPeriodEnd: string | null;
-  stripeCustomerId: string | null;
+  xpayCustomerId: string | null;
+  hasBillingAccount: boolean;
 };
 
 export type CheckoutPlan = "starter" | "pro" | "agency";
 
 export type CreateCheckoutBody = {
   plan: CheckoutPlan;
+  phone: string;
 };
 
 export type BillingSessionResponse = {
   url: string;
+};
+
+export type CancelSubscriptionResponse = {
+  cancelled: boolean;
 };

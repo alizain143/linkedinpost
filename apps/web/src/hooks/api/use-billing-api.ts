@@ -4,14 +4,15 @@ import { useAuth } from "@clerk/nextjs";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import {
+  cancelSubscription,
   createCheckoutSession,
-  createPortalSession,
   fetchBillingStatus,
 } from "@/lib/api/billing";
 import { queryKeys } from "@/lib/api/query-keys";
 import type {
   ApiBillingStatus,
   BillingSessionResponse,
+  CancelSubscriptionResponse,
   CreateCheckoutBody,
 } from "@/lib/api/types/billing";
 
@@ -44,17 +45,18 @@ export function useCheckoutMutation() {
   });
 }
 
-export function usePortalMutation() {
+export function useCancelSubscriptionMutation() {
   const { getToken } = useAuth();
+  const invalidateBilling = useInvalidateBilling();
 
-  return useMutation<BillingSessionResponse, Error, void>({
+  return useMutation<CancelSubscriptionResponse, Error, void>({
     mutationFn: async () => {
       const token = await getToken();
       if (!token) throw new Error("Not authenticated");
-      return createPortalSession(token);
+      return cancelSubscription(token);
     },
-    onSuccess: (response) => {
-      window.location.href = response.url;
+    onSuccess: () => {
+      invalidateBilling();
     },
   });
 }

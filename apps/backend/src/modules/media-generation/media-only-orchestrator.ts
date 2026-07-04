@@ -6,11 +6,10 @@ import {
   PostMediaType,
   PostPackageStatus,
 } from '@prisma/client';
-import { MEDIA_REGEN_CREDIT_COST } from '../../common/constants/media.constants';
+import { MEDIA_GENERATION_CREDIT_COST } from '../../common/constants/media.constants';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CouncilMediaPhaseService } from '../council/council-media-phase.service';
 import { CreditsService } from '../credits/credits.service';
-import { CouncilInput, CouncilPriorStep } from '../generation/generation.types';
 import { MediaService } from '../media/media.service';
 import { PostsService } from '../posts/posts.service';
 import {
@@ -50,7 +49,8 @@ export class MediaOnlyOrchestrator {
       'council.maxMediaRegens',
       1,
     );
-    const totalSteps = MEDIA_JOB_TOTAL_STEPS + maxMediaRegens * MEDIA_JOB_TOTAL_STEPS;
+    const totalSteps =
+      MEDIA_JOB_TOTAL_STEPS + maxMediaRegens * MEDIA_JOB_TOTAL_STEPS;
 
     let stepOrder = 0;
     let completedSteps = 0;
@@ -63,11 +63,6 @@ export class MediaOnlyOrchestrator {
       );
 
       let mediaAttempt = 1;
-      const fallbackMediaType = this.mediaPhaseService.resolveMediaType(
-        input,
-        post.mediaTypePreference,
-      );
-
       let media = await this.mediaPhaseService.executeMediaCreator({
         generationJobId,
         input,
@@ -76,7 +71,6 @@ export class MediaOnlyOrchestrator {
         stepOrder: ++stepOrder,
         completedSteps,
         totalSteps,
-        fallbackMediaType,
       });
       completedSteps++;
 
@@ -98,7 +92,7 @@ export class MediaOnlyOrchestrator {
 
         await this.creditsService.assertHasCredits(
           job.userId,
-          MEDIA_REGEN_CREDIT_COST,
+          MEDIA_GENERATION_CREDIT_COST,
         );
 
         media = await this.mediaPhaseService.executeMediaCreator({
@@ -109,13 +103,12 @@ export class MediaOnlyOrchestrator {
           stepOrder: ++stepOrder,
           completedSteps,
           totalSteps,
-          fallbackMediaType,
         });
         completedSteps++;
 
         await this.creditsService.consume(
           job.userId,
-          MEDIA_REGEN_CREDIT_COST,
+          MEDIA_GENERATION_CREDIT_COST,
           CreditTransactionType.media,
           { generationJobId, reason: 'media regen' },
         );
@@ -141,7 +134,7 @@ export class MediaOnlyOrchestrator {
         workspaceId: post.workspaceId,
         postPackageId: post.id,
         generationJobId,
-        mediaType: media.spec.mediaType ?? PostMediaType.quote_card,
+        mediaType: PostMediaType.generated,
         altText: media.spec.altText,
         imageBuffer: media.imageBuffer,
         mimeType: media.mimeType,
@@ -177,7 +170,7 @@ export class MediaOnlyOrchestrator {
           result,
           progress: {
             currentStep: 'completed',
-            currentLabel: 'Quote card ready',
+            currentLabel: 'Media ready',
             completedSteps: totalSteps,
             totalSteps,
             percentComplete: 100,
@@ -197,7 +190,8 @@ export class MediaOnlyOrchestrator {
         data: {
           status: GenerationJobStatus.failed,
           errorCode: 'MEDIA_GENERATION_FAILED',
-          errorMessage: err instanceof Error ? err.message : 'Media generation failed',
+          errorMessage:
+            err instanceof Error ? err.message : 'Media generation failed',
           completedAt: new Date(),
         },
       });

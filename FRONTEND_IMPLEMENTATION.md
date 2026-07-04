@@ -161,7 +161,7 @@ Mark `[x]` when slice is shipped (API wired, mocks removed for that screen, basi
 ### Business
 
 - [x] **FE-SLICE-15** — Autopilot config + planned posts
-- [x] **FE-SLICE-16** — Billing + Stripe checkout/portal
+- [x] **FE-SLICE-16** — Billing + XPay checkout/cancel
 - [x] **FE-SLICE-17** — Agency client workspaces
 - [x] **FE-SLICE-18** — Approval share links
 
@@ -265,7 +265,7 @@ Mark `[x]` when slice is shipped (API wired, mocks removed for that screen, basi
 - Refetch after generation mutations
 - `402 CREDITS_EXHAUSTED` → upgrade CTA linking to billing
 
-**Out of scope:** Stripe checkout (FE-SLICE-16)
+**Out of scope:** XPay checkout (FE-SLICE-16)
 
 ---
 
@@ -559,7 +559,7 @@ Mark `[x]` when slice is shipped (API wired, mocks removed for that screen, basi
 
 ### FE-SLICE-16 — Billing
 
-**Goal:** Billing page with plan, usage, Stripe checkout/portal.
+**Goal:** Billing page with plan, usage, XPay checkout/cancel.
 
 **Depends on:** FE-SLICE-04
 
@@ -576,7 +576,7 @@ Mark `[x]` when slice is shipped (API wired, mocks removed for that screen, basi
 
 - Replace mocks in `Billing.tsx`
 - Current plan, renewal date, credit usage summary
-- Upgrade → Stripe Checkout redirect; Manage → Customer Portal
+- Upgrade → XPay checkout redirect (phone required); Cancel → `POST /billing/cancel`
 - Return URL handling after checkout
 
 **Out of scope:** Webhooks (backend only)

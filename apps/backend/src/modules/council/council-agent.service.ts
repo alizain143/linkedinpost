@@ -24,10 +24,6 @@ const FLOW_BY_ROLE: Partial<Record<CouncilAgentRole, CouncilFlowId>> = {
   media_reviewer: 'council-media-reviewer',
 };
 
-export interface MediaCreatorRunOptions {
-  fallbackMediaType?: import('@prisma/client').PostMediaType;
-}
-
 export interface AgentRunOptions {
   passScore?: number;
 }
@@ -81,17 +77,12 @@ export class CouncilAgentService {
     );
   }
 
-  async runMediaCreator(
-    input: CouncilInput,
-    priorSteps: CouncilPriorStep[],
-    options?: MediaCreatorRunOptions,
-  ) {
+  async runMediaCreator(input: CouncilInput, priorSteps: CouncilPriorStep[]) {
     return this.runAgent(
       input,
       priorSteps,
       CouncilAgentRole.media_creator,
-      (content) =>
-        this.mediaCreatorParser.parse(content, options?.fallbackMediaType),
+      (content) => this.mediaCreatorParser.parse(content),
     );
   }
 

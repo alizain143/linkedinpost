@@ -2,9 +2,7 @@ export interface ImageGenerationRequest {
   prompt: string;
   width?: number;
   height?: number;
-  headlineText?: string;
   styleNotes?: string;
-  referenceImages?: Array<{ buffer: Buffer; mimeType: string }>;
 }
 
 export interface ImageGenerationResponse {

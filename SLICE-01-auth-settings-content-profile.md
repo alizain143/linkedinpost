@@ -54,4 +54,4 @@ Extend account settings on `/auth/me`, add notification preference flags on `Use
 
 ## Out of scope
 
-- LinkedIn OAuth, Stripe, agency workspaces, email sending, frontend Settings/Profile pages
+- LinkedIn OAuth, XPay billing, agency workspaces, email sending, frontend Settings/Profile pages

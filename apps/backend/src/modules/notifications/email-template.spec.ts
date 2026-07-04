@@ -1,4 +1,5 @@
 import { NotificationType } from '@prisma/client';
+import { EMAIL_LOGO_URL } from './email-logo';
 import {
   buildEmailHtml,
   buildEmailText,
@@ -32,7 +33,8 @@ describe('email-template', () => {
     });
 
     expect(html).toContain('linkedinpost<span style="color:#5B3DF5;">.ai</span>');
-    expect(html).toContain('data:image/png;base64,');
+    expect(html).toContain(EMAIL_LOGO_URL);
+    expect(html).toContain('src="https://');
     expect(html).toContain('alt="linkedinpost.ai"');
     expect(html).toContain('Generation complete');
     expect(html).toContain('Review post');

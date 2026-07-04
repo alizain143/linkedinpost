@@ -33,7 +33,7 @@ export type WorkspaceGenerationSession = {
   quickDraft: StoredQuickDraftSession | null;
   activeCouncilJobId: string | null;
   activeCalendarJobId: string | null;
-  mode: "quick" | "council" | "media";
+  mode: "quick" | "council";
   history: GenerationHistoryEntry[];
 };
 

@@ -12,6 +12,7 @@ import { MediaJobHandler } from './media-job.handler';
 import { MediaJobHandlerRegistrar } from './media-job-handler.registrar';
 import { MediaJobService } from './media-job.service';
 import { MediaOnlyOrchestrator } from './media-only-orchestrator';
+import { MediaRenderService } from './media-render.service';
 
 @Module({
   imports: [
@@ -25,11 +26,12 @@ import { MediaOnlyOrchestrator } from './media-only-orchestrator';
     forwardRef(() => GenerationModule),
   ],
   providers: [
+    MediaRenderService,
     MediaOnlyOrchestrator,
     MediaJobService,
     MediaJobHandler,
     MediaJobHandlerRegistrar,
   ],
-  exports: [MediaJobService],
+  exports: [MediaJobService, MediaRenderService],
 })
 export class MediaGenerationModule {}

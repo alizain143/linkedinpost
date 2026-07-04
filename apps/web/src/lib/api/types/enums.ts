@@ -46,7 +46,8 @@ export type PostMediaType =
   | "stat_highlight"
   | "tip_card"
   | "infographic"
-  | "photo_illustration";
+  | "photo_illustration"
+  | "generated";
 
 export type GenerationJobStatus =
   | "pending"

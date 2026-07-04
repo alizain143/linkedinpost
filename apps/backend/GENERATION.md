@@ -11,10 +11,9 @@ Council pipeline: [`COUNCIL.md`](COUNCIL.md)
 |--------|-------|------|------|
 | `POST` | `/v1/workspaces/:workspaceId/generate/quick` | 1 credit | Sync (200) |
 | `POST` | `/v1/workspaces/:workspaceId/generate/suggest-topics` | Free | Sync (200) — 5–8 topic ideas |
-| `POST` | `/v1/workspaces/:workspaceId/generate/council` | 3 credits | Async (202) |
-| `POST` | `/v1/workspaces/:workspaceId/generate/council-premium` | 10 credits | Async (202) — Post + Media tier |
+| `POST` | `/v1/workspaces/:workspaceId/generate/council` | 3 credits | Async (202) — post + unbound image |
 | `POST` | `/v1/workspaces/:workspaceId/generate/calendar` | 10 / 30 credits | Async (202) |
-| `POST` | `/v1/workspaces/:workspaceId/posts/:id/generate-media` | 5 credits | Async (202) — quote card on draft |
+| `POST` | `/v1/workspaces/:workspaceId/posts/:id/generate-media` | 2 credits | Async (202) — image on existing draft |
 | `GET` | `/v1/workspaces/:workspaceId/autopilot` | — | Config + next run |
 | `PUT` | `/v1/workspaces/:workspaceId/autopilot` | — | Upsert autopilot config |
 | `GET` | `/v1/workspaces/:workspaceId/autopilot/planned` | — | Upcoming autopilot posts |
@@ -28,7 +27,6 @@ Guards: `ClerkAuthGuard` + `CreditsGuard` on quick draft and council only. Calen
 POST /v1/workspaces/{wsId}/generate/quick
 POST /v1/workspaces/{wsId}/generate/suggest-topics
 POST /v1/workspaces/{wsId}/generate/council
-POST /v1/workspaces/{wsId}/generate/council-premium
 POST /v1/workspaces/{wsId}/generate/calendar
 POST /v1/workspaces/{wsId}/posts/{postId}/generate-media
 GET  /v1/jobs/{jobId}
@@ -77,7 +75,7 @@ POST /generate/council
     → CouncilJobHandler charges credits + sets `completed` + `creditCharged`
 ```
 
-## Media-only job (draft quote card)
+## Media-only job (draft image)
 
 ```
 POST /posts/:id/generate-media
@@ -86,19 +84,13 @@ POST /posts/:id/generate-media
     → BullMQ generation-jobs queue
     → MediaJobHandler → MediaOnlyOrchestrator.run(jobId)
     → Post status: draft → media_generating → draft (with PostMedia attached)
-    → MediaJobHandler charges 5 credits (CreditTransactionType.media)
+    → MediaJobHandler charges 2 credits (CreditTransactionType.media)
 ```
 
 Requires Redis. Blocks if post is not `draft` or already has media.
 
-## Premium council (Post + Media UI)
+Media inputs: post copy + content profile (brand colors) + optional `mediaCustomPrompt`. No media types, templates, or reference images.
 
-```
-POST /generate/council-premium
-    → CouncilJobService.enqueueCouncil({ creditCost: 10 })
-    → Same CouncilOrchestrator pipeline as standard council
-    → Pass score default 90 (vs 75); first media regen included in bundle (no extra 5-credit charge)
-```
 
 ## Autopilot (Slice 15)
 
@@ -107,9 +99,9 @@ Autopilot reuses council jobs — no new `GenerationJobType`.
 ```
 Hourly cron (AutopilotTickJob)
     → AutopilotDispatchService.dispatch()
-    → CouncilJobService.enqueueCouncil({ source: autopilot, scheduledAt, creditCost: 10 })
-    → CouncilJobHandler → CouncilOrchestrator (full pipeline + media)
-    → CreditsService.consume(10, autopilot, { generationJobId }) on success
+    → CouncilJobService.enqueueCouncil({ source: autopilot, scheduledAt, creditCost: 3 })
+    → CouncilJobHandler → CouncilOrchestrator (full pipeline + unbound image)
+    → CreditsService.consume(3, autopilot, { generationJobId }) on success
 ```
 
 Config API: `GET` / `PUT` `/v1/workspaces/:workspaceId/autopilot`, planned posts at `.../autopilot/planned`.

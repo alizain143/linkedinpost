@@ -1,6 +1,6 @@
 import { GenerationJobProgress } from '../generation/generation.types';
 
-const BASE_TOTAL_STEPS = 7;
+const BASE_TOTAL_STEPS = 5;
 
 export function computeCouncilProgress(
   completedSteps: number,
@@ -25,8 +25,6 @@ export function computeCouncilProgress(
 export function councilTotalSteps(
   maxTextRevisions: number,
   maxMediaRegens: number,
-  includeImageScout = true,
 ): number {
-  const base = includeImageScout ? 6 : 5;
-  return base + maxTextRevisions * 2 + maxMediaRegens * 2;
+  return BASE_TOTAL_STEPS + maxTextRevisions * 2 + maxMediaRegens * 2;
 }

@@ -4,6 +4,7 @@ import { ClerkAuthGuard } from '../../common/guards/clerk-auth.guard';
 import { userId, workspaceId } from '../../test/fixtures';
 import { CreditsGuard } from '../credits/credits.guard';
 import { QuickDraftJobService } from './quick-draft-job.service';
+import { TopicSuggestionsService } from './topic-suggestions.service';
 import { GenerationController } from './generation.controller';
 import { CouncilJobService } from '../council/council-job.service';
 import { CalendarJobService } from '../calendar-generation/calendar-job.service';
@@ -19,6 +20,7 @@ describe('GenerationController', () => {
   const quickDraftJobService = { runQuickDraft: jest.fn() };
   const councilJobService = { enqueueCouncil: jest.fn() };
   const calendarJobService = { enqueueCalendar: jest.fn() };
+  const topicSuggestionsService = { suggestTopics: jest.fn() };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -29,6 +31,7 @@ describe('GenerationController', () => {
         { provide: QuickDraftJobService, useValue: quickDraftJobService },
         { provide: CouncilJobService, useValue: councilJobService },
         { provide: CalendarJobService, useValue: calendarJobService },
+        { provide: TopicSuggestionsService, useValue: topicSuggestionsService },
       ],
     })
       .overrideGuard(ClerkAuthGuard)

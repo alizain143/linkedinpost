@@ -38,21 +38,6 @@ export async function generateCouncil(
   );
 }
 
-export async function generateCouncilPremium(
-  token: string,
-  workspaceId: string,
-  body: CouncilRequestBody,
-): Promise<ApiGenerationJob> {
-  return apiFetch<ApiGenerationJob>(
-    token,
-    `/workspaces/${workspaceId}/generate/council-premium`,
-    {
-      method: "POST",
-      body: JSON.stringify(body),
-    },
-  );
-}
-
 export async function generateCalendar(
   token: string,
   workspaceId: string,

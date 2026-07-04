@@ -17,7 +17,7 @@ export class CreditsController {
   @Get()
   @ApiOperation({
     summary:
-      'Get current user credit balance (Stripe billing period for paid users, UTC month for free)',
+      'Get current user credit balance (subscription billing period for paid users, UTC month for free)',
   })
   @ApiDataResponse(CreditsBalanceResponseDto)
   getBalance(@CurrentUser() user: User) {

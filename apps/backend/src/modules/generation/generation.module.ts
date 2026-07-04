@@ -20,8 +20,6 @@ import { UserContextProvider } from './context/user-context.provider';
 import { GenerationController } from './generation.controller';
 import { GenerationJobsController } from './generation-jobs.controller';
 import { GenerationJobsQueryService } from './generation-jobs-query.service';
-import { GenerationMediaReferencesController } from './generation-media-references.controller';
-import { GenerationMediaReferencesService } from './generation-media-references.service';
 import { QuickDraftGenerator } from './flows/quick-draft.generator';
 import { CalendarSlotGenerator } from './flows/calendar-slot.generator';
 import { TopicSuggestionsGenerator } from './flows/topic-suggestions.generator';
@@ -50,11 +48,7 @@ import { TopicSuggestionsService } from './topic-suggestions.service';
     forwardRef(() => CouncilModule),
     forwardRef(() => CalendarGenerationModule),
   ],
-  controllers: [
-    GenerationController,
-    GenerationJobsController,
-    GenerationMediaReferencesController,
-  ],
+  controllers: [GenerationController, GenerationJobsController],
   providers: [
     UserContextProvider,
     ContentProfileContextProvider,
@@ -85,7 +79,6 @@ import { TopicSuggestionsService } from './topic-suggestions.service';
     QuickDraftJobService,
     TopicSuggestionsService,
     GenerationJobsQueryService,
-    GenerationMediaReferencesService,
   ],
   exports: [
     QuickDraftGenerator,

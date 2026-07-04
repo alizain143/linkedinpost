@@ -5,20 +5,18 @@ import { BillingController } from './billing.controller';
 import { BillingService } from './billing.service';
 import { BillingSyncService } from './billing-sync.service';
 import { PlanFeatureService } from './plan-feature.service';
-import { StripeClientService } from './stripe-client.service';
-import { StripeCustomerService } from './stripe-customer.service';
-import { StripeWebhookController } from './stripe-webhook.controller';
-import { StripeWebhookService } from './stripe-webhook.service';
+import { XpayClientService } from './xpay-client.service';
+import { XpayWebhookController } from './xpay-webhook.controller';
+import { XpayWebhookService } from './xpay-webhook.service';
 
 @Module({
   imports: [PrismaModule, forwardRef(() => AuthModule)],
-  controllers: [BillingController, StripeWebhookController],
+  controllers: [BillingController, XpayWebhookController],
   providers: [
-    StripeClientService,
-    StripeCustomerService,
+    XpayClientService,
     BillingService,
     BillingSyncService,
-    StripeWebhookService,
+    XpayWebhookService,
     PlanFeatureService,
   ],
   exports: [PlanFeatureService, BillingSyncService],

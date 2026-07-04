@@ -51,7 +51,7 @@ describe('MediaService', () => {
       storageKey: 'ws/post/media-1.png',
       mimeType: 'image/png',
       altText: 'Quote card',
-      mediaType: PostMediaType.quote_card,
+      mediaType: PostMediaType.generated,
       sortOrder: 0,
     });
     r2Storage.getObjectBuffer.mockResolvedValue(Buffer.from('png-bytes'));

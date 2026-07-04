@@ -87,7 +87,7 @@ export type MockPrismaService = {
     upsert: jest.Mock;
     update: jest.Mock;
   };
-  stripeWebhookEvent: {
+  billingWebhookEvent: {
     findUnique: jest.Mock;
     create: jest.Mock;
     update: jest.Mock;
@@ -200,7 +200,7 @@ export function createMockPrismaService(): MockPrismaService {
       upsert: jest.fn(),
       update: jest.fn(),
     },
-    stripeWebhookEvent: {
+    billingWebhookEvent: {
       findUnique: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),

@@ -14,7 +14,7 @@ describe('credits-period.util', () => {
   });
 
   describe('resolveCreditPeriod', () => {
-    it('uses Stripe subscription period for active paid users', () => {
+    it('uses subscription period for active paid users', () => {
       const periodStart = new Date('2026-01-15T00:00:00.000Z');
       const periodEnd = new Date('2026-02-15T00:00:00.000Z');
       const now = new Date('2026-01-20T00:00:00.000Z');
