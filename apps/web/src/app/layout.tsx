@@ -7,6 +7,7 @@ import {
 import { ClerkProvider } from "@clerk/nextjs";
 import { GaPageView } from "@/components/analytics/ga-page-view";
 import { GoogleAnalytics } from "@/components/analytics/google-analytics";
+import { MicrosoftClarity } from "@/components/analytics/microsoft-clarity";
 import {
   OrganizationJsonLd,
   SoftwareApplicationJsonLd,
@@ -66,6 +67,7 @@ export default function RootLayout({
       >
         <head>
           <GoogleAnalytics />
+          <MicrosoftClarity />
         </head>
         <body className="min-h-full bg-[#f6f7f9] text-slate-900">
           <AppProviders>

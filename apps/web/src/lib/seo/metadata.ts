@@ -137,6 +137,10 @@ export function rootMetadata(): Metadata {
     },
     twitter: defaultTwitter(SITE_TITLE_DEFAULT, SITE_DESCRIPTION, "/opengraph-image"),
     robots: shouldIndex ? INDEX_ROBOTS : NOINDEX_ROBOTS,
-    other: { "theme-color": THEME_COLOR },
+    other: {
+      "theme-color": THEME_COLOR,
+      "msvalidate.01": "2C8E26688610C5D46C0B63DBFBEDF6F0",
+      "google-site-verification": "q83s8dhRToFViAHym6yOTiLPRBaUhLza6FD1jUY63Oo",
+    },
   };
 }
