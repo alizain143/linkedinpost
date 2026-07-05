@@ -22,19 +22,27 @@ User-initiated Chrome extension (Manifest V3) that reads the LinkedIn profile pa
 
 1. **Google developer account** — pay the one-time [Chrome Web Store developer registration fee](https://chrome.google.com/webstore/devconsole) (~$5)
 2. **Prepare listing assets** — name, description, 128×128 icon, screenshots (1280×800 or 640×400), privacy policy URL on your domain
-3. **Zip the extension** — from repo root:
+3. **Package the extension** — from repo root:
    ```bash
-   cd apps/linkedin-import-extension
-   zip -r linkedinpost-import.zip manifest.json popup.html popup.js content.js parser.js background.js README.md
+   ./deploy/extension/deploy.sh --pack
    ```
-4. Open [Chrome Web Store Developer Dashboard](https://chrome.google.com/webstore/devconsole) → **New item** → upload the zip
+   Output: `deploy/extension/dist/linkedinpost-import-v{version}.zip`
+4. **Publish**
+   - **Manual:** upload the zip at [Chrome Web Store Developer Dashboard](https://chrome.google.com/webstore/devconsole) → **New item**
+   - **Automated:** copy `deploy/extension/config.env.example` → `config.env`, fill Chrome Web Store API credentials, then:
+     ```bash
+     ./deploy/extension/deploy.sh
+     ```
 5. Fill **Privacy practices** — declare that data is sent only on user click to your API; no LinkedIn cookies collected
 6. Set **host permissions** justification: `linkedin.com/in/*` to read profile page user is viewing; your API host to POST imported fields
 7. Submit for **review** (typically a few days to 2 weeks)
-8. After approval, add the Web Store URL to the import modal in the web app
+8. After approval, set on Vercel (production):
+   ```env
+   NEXT_PUBLIC_LINKEDIN_EXTENSION_INSTALL_URL=https://chromewebstore.google.com/detail/{EXTENSION_ID}
+   ```
 
-## Update an published extension
+## Update a published extension
 
 1. Bump `"version"` in `manifest.json`
-2. Create a new zip and upload in the developer dashboard
+2. Run `./deploy/extension/deploy.sh` (or `--pack` + manual upload)
 3. Submit update for review

@@ -2,10 +2,53 @@
 
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import {
+  isExternalExtensionInstallUrl,
+  linkedInExtensionInstallUrl,
+} from "@/lib/linkedin-extension-config";
 
 const EXTENSION_PATH = "apps/linkedin-import-extension";
 
 export default function InstallLinkedInExtensionPage() {
+  const installUrl = linkedInExtensionInstallUrl();
+  const storeInstall = isExternalExtensionInstallUrl(installUrl);
+
+  if (storeInstall) {
+    return (
+      <div className="mx-auto max-w-lg px-4 py-10">
+        <h1 className="font-display text-2xl font-bold text-[#0f172a]">
+          Install the LinkedIn import extension
+        </h1>
+        <p className="mt-2 text-sm leading-relaxed text-[#64748b]">
+          linkedinpost needs the Chrome extension to read your LinkedIn profile
+          when you click import. We never auto-scrape. You control when data is
+          sent.
+        </p>
+
+        <div className="mt-8 flex flex-wrap gap-3">
+          <Button type="button" variant="primary" size="sm" href={installUrl}>
+            Install from Chrome Web Store
+          </Button>
+          <Button type="button" variant="secondary" size="sm" href="/app/settings">
+            Back to Settings
+          </Button>
+        </div>
+
+        <ol className="mt-8 list-decimal space-y-3 pl-5 text-sm text-[#475569]">
+          <li>Click <strong>Install from Chrome Web Store</strong> above</li>
+          <li>Add the extension to Chrome and pin it from the puzzle icon</li>
+          <li>
+            Return to{" "}
+            <Link href="/app/settings" className="text-[#4f46e5] underline">
+              Settings
+            </Link>{" "}
+            and click <strong>Import profile</strong> again
+          </li>
+        </ol>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-lg px-4 py-10">
       <h1 className="font-display text-2xl font-bold text-[#0f172a]">
