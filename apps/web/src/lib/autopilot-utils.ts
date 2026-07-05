@@ -60,7 +60,7 @@ const PRESET_FREQUENCY_LABELS: Record<AutopilotPostingPreset, string> = {
 
 const PUBLISH_STATE_LABELS: Record<AutopilotPublishState, string> = {
   awaiting_approval: "Awaiting your approval",
-  approved: "Approved — not scheduled yet",
+  approved: "Approved, not scheduled yet",
   scheduled_for_linkedin: "Scheduled for LinkedIn",
 };
 

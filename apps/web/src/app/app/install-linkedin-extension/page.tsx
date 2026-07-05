@@ -13,7 +13,7 @@ export default function InstallLinkedInExtensionPage() {
       </h1>
       <p className="mt-2 text-sm leading-relaxed text-[#64748b]">
         linkedinpost needs the Chrome extension to read your LinkedIn profile
-        when you click import. We never auto-scrape — you control when data is
+        when you click import. We never auto-scrape. You control when data is
         sent.
       </p>
 

@@ -67,7 +67,7 @@ function SuccessCard({ action }: { action: SuccessAction }) {
         ? {
             icon: "auto_awesome",
             title: "Changes requested",
-            body: "Your feedback was sent — the author is applying changes with AI.",
+            body: "Your feedback was sent. The author is applying changes with AI.",
           }
         : action === "changes_requested"
           ? {

@@ -125,7 +125,7 @@ function VoicePreview({ form }: { form: ProfileFormState }) {
       <h3 className="font-display text-base font-bold">Voice preview</h3>
       <p className="mt-2 text-[13px] leading-relaxed text-[#64748b]">
         Based on your profile, posts will sound {toneLabel.toLowerCase()} and
-        focus on {goalLabel} — never generic AI.
+        focus on {goalLabel}, never generic AI.
       </p>
       <div className="mt-4 rounded-xl border border-[#eef0f5] bg-[#fafbff] p-4">
         <p className="text-[13px] leading-relaxed text-[#3f4a5e]">
@@ -355,7 +355,7 @@ function ProfileEditor() {
               <div>
                 <h2 className="font-display text-lg font-bold">Content profile</h2>
                 <p className="mt-1 text-[13px] text-[#94a3b8]">
-                  Your voice, audience, and strategy — used by every AI agent.
+                  Your voice, audience, and strategy, used by every AI agent.
                   {activeWorkspace?.type === "client" ? (
                     <>
                       {" "}
@@ -428,7 +428,7 @@ function ProfileEditor() {
                 label="Profile name"
                 value={form.name}
                 onChange={(event) => updateField("name", event.target.value)}
-                placeholder="Maya — Startup Founder"
+                placeholder="Maya, Startup Founder"
               />
               <InputField
                 label="Role"

@@ -1947,7 +1947,7 @@ export default function Generate() {
           className="h-24"
           value={form.brief}
           maxLength={5000}
-          placeholder="Add extra direction for the council — audience, angle, key points…"
+          placeholder="Add extra direction for the council: audience, angle, key points…"
           onChange={(event) =>
             setForm((current) => ({ ...current, brief: event.target.value }))
           }
@@ -2240,7 +2240,7 @@ export default function Generate() {
                 AI Council progress will appear here
               </h3>
               <p className="mb-[22px] max-w-[360px] text-[14.5px] leading-relaxed text-[#64748b]">
-                Agents write, review, edit, and generate an image — with live
+                Agents write, review, edit, and generate an image, with live
                 progress as each step completes.
               </p>
               <Button

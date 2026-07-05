@@ -169,7 +169,7 @@ export function MediaFormatFields({
         <SelectField
           label="Template"
           options={[
-            { value: "", label: "No template — freestyle image" },
+            { value: "", label: "No template (freestyle image)" },
             ...templateOptions,
           ]}
           value={values.mediaTemplateId}

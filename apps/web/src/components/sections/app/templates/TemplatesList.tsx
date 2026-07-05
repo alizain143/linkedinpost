@@ -94,7 +94,7 @@ export function TemplatesList() {
         height: draft.height,
         layout: draft.layout,
       });
-      toast.success("AI template created — tweak it in the editor");
+      toast.success("AI template created. Tweak it in the editor");
       closeAiModal();
       router.push(`/app/templates/${created.id}`);
     } catch (err) {
@@ -312,7 +312,7 @@ export function TemplatesList() {
               rows={4}
               value={aiPrompt}
               onChange={(e) => setAiPrompt(e.target.value)}
-              placeholder="Optional notes — e.g. keep the headline large in the center, identity corners like the reference"
+              placeholder="Optional notes, e.g. keep the headline large in the center, identity corners like the reference"
             />
             <input
               ref={referenceInputRef}

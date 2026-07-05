@@ -13,7 +13,7 @@ import { getPricingLocale } from "@/lib/currency/server";
 import { pageMetadata } from "@/lib/seo/metadata";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Pricing — linkedinpost.ai",
+  title: "Pricing | linkedinpost.ai",
   description:
     "Simple plans that scale with your output. Start free, upgrade when you're ready for more volume and the content calendar.",
   path: "/pricing",

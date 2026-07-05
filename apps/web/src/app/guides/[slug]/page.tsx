@@ -168,13 +168,13 @@ export default async function GuidePage({ params }: Props) {
           </h3>
           <p className="mt-3 max-w-[52ch] text-[15px] leading-relaxed text-white/75">
             linkedinpost.ai turns your voice profile into a month of LinkedIn
-            drafts — reviewed by an AI Council before you publish.
+            drafts, reviewed by an AI Council before you publish.
           </p>
           <Link
             href="/sign-up"
             className="mt-6 inline-flex rounded-[10px] bg-white px-5 py-3 text-sm font-semibold text-[#4338ca] transition-opacity hover:opacity-90"
           >
-            Start free — 5 credits / month
+            Start free, 5 credits / month
           </Link>
         </div>
       </article>

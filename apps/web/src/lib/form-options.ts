@@ -3,7 +3,7 @@
 export const TIMEZONE_OPTIONS = ["GMT-5 Eastern", "GMT-8 Pacific"] as const;
 
 export const CONTENT_PROFILE_OPTIONS = [
-  "Maya — Startup Founder",
+  "Maya, Startup Founder",
   "Northbeam Studio",
   "Personal brand",
 ] as const;

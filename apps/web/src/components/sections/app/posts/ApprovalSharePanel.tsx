@@ -91,7 +91,7 @@ export function ApprovalSharePanel({
       if (copied) {
         showToast("Share link copied to clipboard", "content_copy");
       } else {
-        showToast("Share link created — copy it before leaving this page", "link");
+        showToast("Share link created. Copy it before leaving this page", "link");
       }
     } catch (err) {
       showToast(getApiErrorMessage(err), "error");
@@ -156,7 +156,7 @@ export function ApprovalSharePanel({
         <div>
           <h3 className={appSectionTitle}>Share for client approval</h3>
           <p className={`mt-1 ${appMutedSm}`}>
-            Optional — you can approve this post yourself using the button above.
+            Optional. You can approve this post yourself using the button above.
             Use a share link when your client needs to review without signing in.
           </p>
         </div>

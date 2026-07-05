@@ -72,7 +72,7 @@ export function ImportProfileFlowModal({
                 <>
                   LinkedIn is connected as <strong>{connectedProfileName}</strong>,
                   but we don&apos;t have their profile link yet. Paste the client&apos;s
-                  LinkedIn profile URL so we open the right page — not whoever is
+                  LinkedIn profile URL so we open the right page, not whoever is
                   logged into Chrome.
                 </>
               ) : (
@@ -280,7 +280,7 @@ function ImportPreviewCard({ data }: { data: LinkedInImportPreview }) {
         <ul className="list-disc space-y-1 pl-4">
           {education.slice(0, 5).map((entry, index) => (
             <li key={`${entry.schoolName}-${index}`}>
-              {[entry.schoolName, entry.degreeName].filter(Boolean).join(" — ")}
+              {[entry.schoolName, entry.degreeName].filter(Boolean).join(", ")}
             </li>
           ))}
         </ul>

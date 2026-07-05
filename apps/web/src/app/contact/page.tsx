@@ -14,7 +14,7 @@ export default function ContactPage() {
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    showToast("Message sent — we'll reply within 1 business day", "send");
+    showToast("Message sent. We'll reply within 1 business day", "send");
   };
 
   return (
@@ -28,7 +28,7 @@ export default function ContactPage() {
             We&apos;d love to hear from you.
           </h1>
           <p className="mx-auto mt-[18px] max-w-[560px] text-[17px] leading-[1.55] text-[#5a667a]">
-            Questions, feedback, or partnership ideas — send us a note and
+            Questions, feedback, or partnership ideas? Send us a note and
             we&apos;ll get back within one business day.
           </p>
         </div>

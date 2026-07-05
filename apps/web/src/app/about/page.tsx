@@ -2,12 +2,12 @@ import type { Metadata } from "next";
 import { MarketingLayout } from "@/components/layout/marketing-layout";
 import { BreadcrumbJsonLd } from "@/components/seo/json-ld";
 import { MsIcon } from "@/components/ui/ms-icon";
-import { LANDING_STATS, VALUES } from "@/lib/marketing-data";
+import { VALUES } from "@/lib/marketing-data";
 import { pageMetadata } from "@/lib/seo/metadata";
 import Link from "next/link";
 
 export const metadata: Metadata = pageMetadata({
-  title: "About — linkedinpost.ai",
+  title: "About | linkedinpost.ai",
   description:
     "We're fixing the blank page for a million professionals. linkedinpost.ai helps founders and creators post consistently without sounding like generic AI.",
   path: "/about",
@@ -32,30 +32,14 @@ export default function AboutPage() {
           </h1>
           <p className="mx-auto mt-[22px] max-w-[640px] text-lg leading-[1.6] text-[#5a667a]">
             linkedinpost.ai started with a simple frustration: the people with the
-            most valuable things to say post the least — because writing
+            most valuable things to say post the least, because writing
             consistently is hard, and generic AI makes it worse. We built the tool
             we wished existed.
           </p>
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1180px] px-7 py-[46px]">
-        <div className="pp-grid4">
-          {LANDING_STATS.map((st) => (
-            <div
-              key={st.l}
-              className="rounded-2xl border border-[#eceef4] bg-white p-6 text-center"
-            >
-              <div className="font-display text-[32px] font-extrabold tracking-[-0.02em] text-[#4f46e5]">
-                {st.v}
-              </div>
-              <div className="mt-1 text-[13px] text-[#64748b]">{st.l}</div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-[900px] px-7 py-6">
+      <section className="mx-auto max-w-[900px] px-7 py-[46px]">
         <div className="rounded-[20px] border border-[#eceef4] bg-white p-10">
           <h2 className="font-display text-[26px] font-extrabold tracking-[-0.02em] text-[#0d1326]">
             Why we exist
@@ -66,7 +50,7 @@ export default function AboutPage() {
             that quietly erodes trust. Neither builds a brand.
           </p>
           <p className="mt-3.5 text-[15.5px] leading-[1.7] text-[#475569]">
-            We believe the answer isn&apos;t more automation — it&apos;s better
+            We believe the answer isn&apos;t more automation. It&apos;s better
             leverage. Capture your voice once, and let software handle the
             structure, the planning, and the blank-page friction. You stay the
             author; we handle the system.
@@ -101,7 +85,7 @@ export default function AboutPage() {
             href="/sign-up"
             className="inline-flex items-center gap-2 rounded-xl bg-[#4f46e5] px-7 py-3.5 text-base font-semibold text-white shadow-[0_8px_22px_rgba(79,70,229,0.3)] transition-colors hover:bg-[#4338ca]"
           >
-            Join us — start free <MsIcon name="arrow_forward" size={19} />
+            Join us, start free <MsIcon name="arrow_forward" size={19} />
           </Link>
         </div>
       </section>

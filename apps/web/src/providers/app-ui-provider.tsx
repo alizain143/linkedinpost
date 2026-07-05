@@ -361,7 +361,7 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
         try {
           await logoutMutation.mutateAsync();
         } catch {
-          showToast("Signed out locally — server session may still be active", "logout");
+          showToast("Signed out locally. Server session may still be active", "logout");
         }
 
         queryClient.clear();

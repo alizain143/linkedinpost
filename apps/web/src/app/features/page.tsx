@@ -8,7 +8,7 @@ import { FEATURE_DETAIL } from "@/lib/marketing-data";
 import { pageMetadata } from "@/lib/seo/metadata";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Features — linkedinpost.ai",
+  title: "Features | linkedinpost.ai",
   description:
     "Everything you need to post on LinkedIn consistently. AI post generator, content calendar, voice presets, and agency workspaces.",
   path: "/features",
@@ -31,7 +31,7 @@ export default function FeaturesPage() {
             Features
           </div>
           <h1 className="pp-hero-h1 font-display text-[48px] font-extrabold leading-[1.08] tracking-[-0.03em] text-[#0d1326]">
-            Everything you need to post on LinkedIn — consistently.
+            Everything you need to post on LinkedIn consistently.
           </h1>
           <p className="mx-auto mt-5 max-w-[600px] text-lg leading-[1.55] text-[#5a667a]">
             From your first hook to a fully scheduled month, linkedinpost.ai
@@ -106,7 +106,7 @@ export default function FeaturesPage() {
             See it on your own voice.
           </h2>
           <p className="mb-6 text-base text-white/85">
-            Generate your first five posts free — no credit card.
+            Generate your first five posts free, no credit card.
           </p>
           <Link
             href="/sign-up"

@@ -25,7 +25,7 @@ export function Footer() {
             </Link>
             <p className="mb-4 max-w-[300px] text-[13.5px] leading-relaxed text-[#9aa6be]">
               The AI LinkedIn content engine for founders, creators, and teams
-              who want to post consistently — without sounding like a robot.
+              who want to post consistently without sounding like a robot.
             </p>
             <div className="flex gap-2.5">
               {FOOTER_SOCIAL.map((item) =>

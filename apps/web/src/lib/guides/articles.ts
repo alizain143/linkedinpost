@@ -17,11 +17,11 @@ export const GUIDE_ARTICLES: Guide[] = [
     sections: [
       {
         heading: "Why most AI LinkedIn posts fail",
-        body: "Readers spot AI writing fast: em-dash overload, vague inspiration, and hooks like \"In today's fast-paced world.\" The problem isn't using AI — it's publishing the first draft unchanged.\n\nLinkedIn rewards specificity. A post about \"leadership lessons\" gets ignored. A post about the Tuesday you fired a vendor after three missed deadlines gets read.",
+        body: "Readers spot AI writing fast: vague inspiration and hooks like \"In today's fast-paced world.\" The problem isn't using AI. It's publishing the first draft unchanged.\n\nLinkedIn rewards specificity. A post about \"leadership lessons\" gets ignored. A post about the Tuesday you fired a vendor after three missed deadlines gets read.",
       },
       {
         heading: "Build a voice profile before you generate",
-        body: "Paste 3–5 posts you've actually published. Note your sentence length, whether you use questions, and words you never say. Feed that into your content profile along with your role, audience, and content pillars.\n\nThe goal isn't perfection — it's constraint. AI performs better with boundaries than with \"write like a thought leader.\"",
+        body: "Paste 3–5 posts you've actually published. Note your sentence length, whether you use questions, and words you never say. Feed that into your content profile along with your role, audience, and content pillars.\n\nThe goal isn't perfection. It's constraint. AI performs better with boundaries than with \"write like a thought leader.\"",
       },
       {
         heading: "Ban the tells",
@@ -29,21 +29,21 @@ export const GUIDE_ARTICLES: Guide[] = [
       },
       {
         heading: "The 10-minute human pass",
-        body: "Before you publish, read aloud. Cut the first sentence if it's throat-clearing. Add one line only you would write — a mistake, a doubt, a contrarian take.\n\nIf every paragraph could belong to anyone in your industry, it's not ready.",
+        body: "Before you publish, read aloud. Cut the first sentence if it's throat-clearing. Add one line only you would write: a mistake, a doubt, a contrarian take.\n\nIf every paragraph could belong to anyone in your industry, it's not ready.",
       },
     ],
     faqs: [
       {
         q: "Is it okay to use AI for LinkedIn posts?",
-        a: "Yes — if you treat AI as a drafting assistant, not a ghostwriter. The posts that perform best combine AI speed with your specific stories, opinions, and editing voice.",
+        a: "Yes, if you treat AI as a drafting assistant, not a ghostwriter. The posts that perform best combine AI speed with your specific stories, opinions, and editing voice.",
       },
       {
         q: "What phrases make LinkedIn posts sound like AI?",
-        a: "Overused hooks (\"Here's the thing…\"), empty inspiration, triple em-dashes, and buzzwords like \"synergy\" or \"leverage.\" Readers also notice posts with no concrete detail — no dates, numbers, or named examples.",
+        a: "Overused hooks (\"Here's the thing…\"), empty inspiration, and buzzwords like \"synergy\" or \"leverage.\" Readers also notice posts with no concrete detail: no dates, numbers, or named examples.",
       },
       {
         q: "How do I train AI on my LinkedIn voice?",
-        a: "Provide real writing samples, define your audience and tone, list words to avoid, and regenerate until one option feels close — then edit manually. Tools like linkedinpost.ai store this as a reusable content profile.",
+        a: "Provide real writing samples, define your audience and tone, list words to avoid, and regenerate until one option feels close, then edit manually. Tools like linkedinpost.ai store this as a reusable content profile.",
       },
     ],
   },
@@ -54,7 +54,7 @@ export const GUIDE_ARTICLES: Guide[] = [
     description:
       "A repeatable framework to plan a month of LinkedIn posts: content pillars, weekly themes, post types, and a simple spreadsheet structure you can start today.",
     answerCapsule:
-      "A useful 30-day calendar balances four content pillars across four weeks, mixes post formats (story, how-to, opinion, proof), and leaves buffer slots for timely reactions — so you're never staring at a blank box on Monday morning.",
+      "A useful 30-day calendar balances four content pillars across four weeks, mixes post formats (story, how-to, opinion, proof), and leaves buffer slots for timely reactions so you're never staring at a blank box on Monday morning.",
     updatedAt: "2026-06-20",
     relatedGuides: [
       "linkedin-posting-frequency-founders",
@@ -63,11 +63,11 @@ export const GUIDE_ARTICLES: Guide[] = [
     sections: [
       {
         heading: "Start with four content pillars",
-        body: "Pick four themes you'll return to all month: e.g. product lessons, industry takes, customer stories, and personal founder notes. Each pillar should map to something you can talk about without research.\n\nAim for roughly equal weight — if 80% of posts are product pitches, engagement drops.",
+        body: "Pick four themes you'll return to all month: e.g. product lessons, industry takes, customer stories, and personal founder notes. Each pillar should map to something you can talk about without research.\n\nAim for roughly equal weight. If 80% of posts are product pitches, engagement drops.",
       },
       {
         heading: "Assign a weekly rhythm",
-        body: "Week 1: establish context (who you are, what you build). Week 2: teach something practical. Week 3: share proof (metrics, testimonials, before/after). Week 4: take a stand or tell a story with stakes.\n\nPosting 3× per week? That's 12 slots — three per pillar.",
+        body: "Week 1: establish context (who you are, what you build). Week 2: teach something practical. Week 3: share proof (metrics, testimonials, before/after). Week 4: take a stand or tell a story with stakes.\n\nPosting 3× per week? That's 12 slots, three per pillar.",
       },
       {
         heading: "Rotate post formats",
@@ -81,11 +81,11 @@ export const GUIDE_ARTICLES: Guide[] = [
     faqs: [
       {
         q: "How many posts should be on a 30-day LinkedIn calendar?",
-        a: "Most founders do well with 12–16 posts per month (3–4 per week). Consistency beats volume — a sustainable rhythm you keep for six months beats a burst of daily posts that burns out in two weeks.",
+        a: "Most founders do well with 12–16 posts per month (3–4 per week). Consistency beats volume. A sustainable rhythm you keep for six months beats a burst of daily posts that burns out in two weeks.",
       },
       {
         q: "What are LinkedIn content pillars?",
-        a: "Recurring themes that organize your posts — e.g. leadership, product, industry news, and personal stories. Pillars prevent you from repeating the same angle and help your audience know what to expect from you.",
+        a: "Recurring themes that organize your posts, e.g. leadership, product, industry news, and personal stories. Pillars prevent you from repeating the same angle and help your audience know what to expect from you.",
       },
     ],
   },
@@ -105,7 +105,7 @@ export const GUIDE_ARTICLES: Guide[] = [
     sections: [
       {
         heading: "The minimum effective dose",
-        body: "If you're starting from zero, commit to 2–3 posts per week for 90 days. That's enough for the algorithm to learn your audience and for readers to remember your name.\n\nOne post every two weeks won't compound — you'll rebuild momentum from scratch each time.",
+        body: "If you're starting from zero, commit to 2–3 posts per week for 90 days. That's enough for the algorithm to learn your audience and for readers to remember your name.\n\nOne post every two weeks won't compound. You'll rebuild momentum from scratch each time.",
       },
       {
         heading: "When to post more",
@@ -113,7 +113,7 @@ export const GUIDE_ARTICLES: Guide[] = [
       },
       {
         heading: "Best days and times",
-        body: "Tuesday through Thursday mornings (8–10 AM in your audience's timezone) consistently perform well for B2B founders. Test your own data — LinkedIn analytics shows when your followers are online.\n\nConsistency of day matters less than consistency of week.",
+        body: "Tuesday through Thursday mornings (8–10 AM in your audience's timezone) consistently perform well for B2B founders. Test your own data. LinkedIn analytics shows when your followers are online.\n\nConsistency of day matters less than consistency of week.",
       },
       {
         heading: "Signs you're over-posting",
@@ -123,7 +123,7 @@ export const GUIDE_ARTICLES: Guide[] = [
     faqs: [
       {
         q: "Is posting every day on LinkedIn too much?",
-        a: "For most solo founders, yes — unless you have a content system and editor. Daily posting works for creators whose full-time job is content. Founders usually get better ROI at 3× per week with higher quality.",
+        a: "For most solo founders, yes, unless you have a content system and editor. Daily posting works for creators whose full-time job is content. Founders usually get better ROI at 3× per week with higher quality.",
       },
       {
         q: "How long until LinkedIn posting shows results?",
@@ -136,7 +136,7 @@ export const GUIDE_ARTICLES: Guide[] = [
     title: "LinkedIn Hooks That Get Engagement (With Examples)",
     seoTitle: "LinkedIn Hooks That Get Engagement",
     description:
-      "Twelve hook formulas that stop the scroll on LinkedIn — with founder-friendly examples you can adapt without sounding like a copywriting template.",
+      "Twelve hook formulas that stop the scroll on LinkedIn, with founder-friendly examples you can adapt without sounding like a copywriting template.",
     answerCapsule:
       "Strong LinkedIn hooks promise a specific payoff in the first line: a number, a mistake, a surprise, or a tension your reader recognizes. The best hooks feel like the start of a conversation, not a headline.",
     updatedAt: "2026-06-05",
@@ -147,7 +147,7 @@ export const GUIDE_ARTICLES: Guide[] = [
     sections: [
       {
         heading: "The job of the first line",
-        body: "LinkedIn truncates after ~140 characters on mobile. Your hook must earn the \"see more\" click. That means tension, specificity, or a pattern interrupt — not a greeting or context-setting.\n\nBad: \"I've been thinking about pricing lately.\" Good: \"We raised prices 40% and churn went down. Here's why.\"",
+        body: "LinkedIn truncates after ~140 characters on mobile. Your hook must earn the \"see more\" click. That means tension, specificity, or a pattern interrupt, not a greeting or context-setting.\n\nBad: \"I've been thinking about pricing lately.\" Good: \"We raised prices 40% and churn went down. Here's why.\"",
       },
       {
         heading: "Hook formulas that work for founders",
@@ -159,17 +159,17 @@ export const GUIDE_ARTICLES: Guide[] = [
       },
       {
         heading: "Match hook to post body",
-        body: "The fastest way to lose trust is a clickbait hook with a generic body. If your hook promises a pricing story, deliver the pricing story in line two — not three paragraphs of setup.\n\nWrite the hook last if you need to. Draft the insight first, then compress the most surprising line to the top.",
+        body: "The fastest way to lose trust is a clickbait hook with a generic body. If your hook promises a pricing story, deliver the pricing story in line two, not three paragraphs of setup.\n\nWrite the hook last if you need to. Draft the insight first, then compress the most surprising line to the top.",
       },
     ],
     faqs: [
       {
         q: "What is a hook on LinkedIn?",
-        a: "The first one or two lines of your post — visible before the \"see more\" fold. A good hook creates curiosity or recognition so readers expand the full post.",
+        a: "The first one or two lines of your post, visible before the \"see more\" fold. A good hook creates curiosity or recognition so readers expand the full post.",
       },
       {
         q: "Do emojis in hooks help engagement?",
-        a: "One emoji can add visual contrast in a text-heavy feed, but emoji-heavy hooks often read as spam. Test with your audience — B2B founder feeds usually prefer clean text hooks.",
+        a: "One emoji can add visual contrast in a text-heavy feed, but emoji-heavy hooks often read as spam. Test with your audience. B2B founder feeds usually prefer clean text hooks.",
       },
     ],
   },

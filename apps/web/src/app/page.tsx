@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { MarketingLayout } from "@/components/layout/marketing-layout";
 import { PricingLocaleProvider } from "@/components/pricing/pricing-locale-provider";
 import { FaqPageJsonLd } from "@/components/seo/json-ld";
-import { HeroSection, TrustBar } from "@/components/sections/landing/hero-section";
+import { HeroSection } from "@/components/sections/landing/hero-section";
 import {
   FaqSection,
   FeaturesSection,
@@ -10,8 +10,6 @@ import {
   HowItWorksSection,
   PricingSection,
   ProblemSection,
-  StatsBand,
-  TestimonialsSection,
 } from "@/components/sections/landing/landing-sections";
 import { getPricingLocale } from "@/lib/currency/server";
 import { SITE_DESCRIPTION, SITE_TITLE_DEFAULT } from "@/lib/site";
@@ -31,13 +29,10 @@ export default async function HomePage() {
       <MarketingLayout>
         <FaqPageJsonLd />
         <HeroSection />
-        <TrustBar />
         <ProblemSection />
         <HowItWorksSection />
         <FeaturesSection />
         <PricingSection />
-        <StatsBand />
-        <TestimonialsSection />
         <FaqSection />
         <FinalCtaSection />
       </MarketingLayout>

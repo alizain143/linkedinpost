@@ -5,11 +5,9 @@ import { PlanCard, SectionHeader } from "@/components/sections/marketing/shared"
 import {
   FAQS,
   FEATURES,
-  LANDING_STATS,
   PLANS,
   PROBLEMS,
   STEPS,
-  TESTIMONIALS,
 } from "@/lib/marketing-data";
 
 export function ProblemSection() {
@@ -145,67 +143,6 @@ export function PricingSection() {
           ))}
         </div>
         <PricingCurrencyNote className="mt-5" />
-      </div>
-    </section>
-  );
-}
-
-export function StatsBand() {
-  return (
-    <section className="bg-[#0d1326] text-white">
-      <div className="pp-grid4 mx-auto max-w-[1180px] gap-6 px-7 py-[46px]">
-        {LANDING_STATS.map((st) => (
-          <div key={st.l} className="text-center">
-            <div className="font-display text-[38px] font-extrabold tracking-[-0.02em] bg-gradient-to-r from-[#a5b4fc] to-[#67e8f9] bg-clip-text text-transparent">
-              {st.v}
-            </div>
-            <div className="mt-1 text-[13.5px] text-[#9aa6be]">{st.l}</div>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-export function TestimonialsSection() {
-  return (
-    <section className="mx-auto max-w-[1180px] px-7 py-[72px]">
-      <div className="mb-11 text-center">
-        <div className="mb-3 text-[13px] font-bold uppercase tracking-[0.06em] text-[#6366f1]">
-          Loved by creators
-        </div>
-        <h2 className="font-display text-[38px] font-extrabold leading-[1.12] tracking-[-0.025em]">
-          Built for people who actually post.
-        </h2>
-      </div>
-      <div className="pp-grid3">
-        {TESTIMONIALS.map((t) => (
-          <div
-            key={t.name}
-            className="flex flex-col rounded-[18px] border border-[#eceef4] bg-white p-[26px]"
-          >
-            <div className="mb-3.5 flex gap-[3px]">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <MsIcon key={i} name="star" size={18} className="text-[#f59e0b]" />
-              ))}
-            </div>
-            <p className="mb-5 flex-1 text-[15px] leading-[1.6] text-[#3f4a5e]">
-              &ldquo;{t.quote}&rdquo;
-            </p>
-            <div className="flex items-center gap-[11px]">
-              <div
-                className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-full font-display text-sm font-bold text-white"
-                style={{ background: t.color }}
-              >
-                {t.initials}
-              </div>
-              <div>
-                <div className="text-sm font-bold text-[#0f172a]">{t.name}</div>
-                <div className="text-[12.5px] text-[#94a3b8]">{t.role}</div>
-              </div>
-            </div>
-          </div>
-        ))}
       </div>
     </section>
   );

@@ -6,7 +6,7 @@ import { MsIcon } from "@/components/ui/ms-icon";
 const BENEFITS = [
   "Generate posts in your real voice",
   "Plan a full month in minutes",
-  "5 free posts — no credit card",
+  "5 free posts, no credit card",
 ];
 
 type AuthLayoutProps = {
@@ -34,21 +34,6 @@ export function AuthLayout({ children }: AuthLayoutProps) {
                 {b}
               </div>
             ))}
-          </div>
-          <div className="rounded-2xl border border-white/12 bg-white/[0.08] p-5">
-            <p className="text-[14.5px] leading-[1.6] text-white/[0.92]">
-              &ldquo;I went from posting twice a month to three times a week. The
-              drafts actually sound like me.&rdquo;
-            </p>
-            <div className="mt-3.5 flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#4f46e5] font-display text-xs font-bold">
-                DO
-              </div>
-              <div>
-                <div className="text-[13.5px] font-bold">Daniel Okafor</div>
-                <div className="text-xs text-white/60">Founder, Northbeam</div>
-              </div>
-            </div>
           </div>
         </div>
       </div>

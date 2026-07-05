@@ -88,7 +88,7 @@ export function ConnectLinkedInModal({
 
           <div className="mb-[22px] flex flex-col gap-3 rounded-[14px] border border-[#eef0f5] bg-[#f8f9fc] px-[18px] py-4">
             {[
-              { icon: "verified_user", text: "Secure OAuth — we never see your password" },
+              { icon: "verified_user", text: "Secure OAuth. We never see your password" },
               { icon: "touch_app", text: "Nothing posts without your approval" },
               { icon: "link_off", text: "Disconnect anytime from Settings" },
             ].map((item) => (

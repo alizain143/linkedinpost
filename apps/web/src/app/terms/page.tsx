@@ -4,7 +4,7 @@ import { TERMS_SECTIONS } from "@/lib/marketing-data";
 import { pageMetadata } from "@/lib/seo/metadata";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Terms & Conditions — linkedinpost.ai",
+  title: "Terms & Conditions | linkedinpost.ai",
   description: "Terms and conditions for using linkedinpost.ai.",
   path: "/terms",
 });
@@ -26,7 +26,7 @@ export default function TermsPage() {
       <section className="mx-auto max-w-[820px] px-7 pb-16 pt-11">
         <p className="mb-[30px] text-[15.5px] leading-[1.7] text-[#475569]">
           These terms govern your use of linkedinpost.ai. By using the service you
-          agree to them — please read them carefully.
+          agree to them. Please read them carefully.
         </p>
         <div className="flex flex-col gap-7">
           {TERMS_SECTIONS.map((s) => (

@@ -118,12 +118,12 @@ ${pages}
 
 ## Features
 
-- **AI Content Council** — Writer, reviewer, and editor agents improve every post before you see it.
-- **30-day content calendar** — Plan a month of LinkedIn posts mapped to your content pillars.
-- **Voice & tone presets** — Reusable content profiles that keep your writing recognizable.
-- **Media generator** — Images, text cards, and carousels designed for the LinkedIn feed.
-- **Autopilot** — Automatically prepares upcoming posts from your strategy.
-- **Agency workspaces** — Manage up to 5 client brands from one account.
+- **AI Content Council**: Writer, reviewer, and editor agents improve every post before you see it.
+- **30-day content calendar**: Plan a month of LinkedIn posts mapped to your content pillars.
+- **Voice & tone presets**: Reusable content profiles that keep your writing recognizable.
+- **Media generator**: Images, text cards, and carousels designed for the LinkedIn feed.
+- **Autopilot**: Automatically prepares upcoming posts from your strategy.
+- **Agency workspaces**: Manage up to 5 client brands from one account.
 
 ${pricingBlock()}
 

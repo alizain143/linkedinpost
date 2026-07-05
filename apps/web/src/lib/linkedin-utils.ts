@@ -62,7 +62,7 @@ export function getLinkedInEnrichmentLabel(
   if (profile.enrichmentStatus === "complete") {
     return "Full profile imported";
   }
-  return "Basic profile only — import for headline, About, and experience";
+  return "Basic profile only. Import for headline, About, and experience";
 }
 
 export function getLinkedInProfileSubtitle(

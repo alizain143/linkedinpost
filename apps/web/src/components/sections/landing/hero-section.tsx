@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { HeroDashboardMockup } from "@/components/sections/landing/hero-dashboard-mockup";
 import { MsIcon } from "@/components/ui/ms-icon";
-import { TRUST_LOGOS } from "@/lib/marketing-data";
 
 export function HeroSection() {
   return (
@@ -24,7 +23,7 @@ export function HeroSection() {
 
         <p className="mx-auto mt-[22px] max-w-[660px] text-[18.5px] leading-[1.55] text-[#5a667a]">
           linkedinpost.ai writes, reviews, designs, and schedules LinkedIn posts
-          through an AI content council — with your approval before anything goes
+          through an AI content council, with your approval before anything goes
           live.
         </p>
 
@@ -60,26 +59,6 @@ export function HeroSection() {
         </div>
 
         <HeroDashboardMockup />
-      </div>
-    </section>
-  );
-}
-
-export function TrustBar() {
-  return (
-    <section className="mx-auto max-w-[1180px] px-7 pb-2 pt-[34px]">
-      <p className="mb-[18px] text-center text-[12.5px] font-semibold uppercase tracking-[0.08em] text-[#94a3b8]">
-        Trusted by content teams and solo creators alike
-      </p>
-      <div className="flex flex-wrap items-center justify-center gap-[46px] opacity-[0.62]">
-        {TRUST_LOGOS.map((logo) => (
-          <span
-            key={logo}
-            className="font-display text-[19px] font-extrabold text-[#475569] tracking-tight"
-          >
-            {logo}
-          </span>
-        ))}
       </div>
     </section>
   );

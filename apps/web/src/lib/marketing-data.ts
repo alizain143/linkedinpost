@@ -12,7 +12,7 @@ export const PROBLEMS = [
   {
     icon: "smart_toy",
     title: "Generic AI posts sound robotic and damage trust.",
-    body: 'Em-dashes, "in today\'s fast-paced world," and hollow hooks. Your audience can smell autopilot — and it costs you credibility.',
+    body: 'Clichés like "in today\'s fast-paced world" and hollow hooks. Your audience can smell autopilot, and it costs you credibility.',
   },
 ] as const;
 
@@ -21,7 +21,7 @@ export const STEPS = [
     num: "01",
     icon: "badge",
     title: "Define your voice",
-    body: "Set your role, audience, tone, content pillars, and goals once — your whole team of agents works from it.",
+    body: "Set your role, audience, tone, content pillars, and goals once. Your whole team of agents works from it.",
   },
   {
     num: "02",
@@ -75,7 +75,7 @@ export const FEATURES = [
   {
     icon: "how_to_reg",
     title: "Approval Queue",
-    body: "Review every post package before it goes live — nothing publishes without you.",
+    body: "Review every post package before it goes live. Nothing publishes without you.",
     tint: "#fff8eb",
     color: "#d97706",
   },
@@ -222,7 +222,7 @@ export const FEATURE_DETAIL = [
   {
     kicker: "AI POST GENERATOR",
     title: "Posts that sound like you wrote them",
-    body: "Most AI tools produce the same hollow, em-dash-riddled posts. linkedinpost.ai learns your voice from a writing sample, your role, and your audience — then generates three distinct, ready-to-publish options every time.",
+    body: "Most AI tools produce the same hollow, generic posts. linkedinpost.ai learns your voice from a writing sample, your role, and your audience, then generates three distinct, ready-to-publish options every time.",
     bullets: [
       "Trained on your tone, niche, and past posts",
       "Hook, body, CTA, and hashtags in one pass",
@@ -245,12 +245,12 @@ export const FEATURE_DETAIL = [
     color: "#0891b2",
     tint: "#ecfeff",
     icon: "calendar_month",
-    img: "Content calendar — month view",
+    img: "Content calendar month view",
   },
   {
     kicker: "VOICE & TONE PRESETS",
     title: "One brand voice, infinite posts",
-    body: "Define your voice once in a content profile and reuse it everywhere. Switch tone per post — bold, thoughtful, contrarian — without losing the through-line that makes your writing recognizable.",
+    body: "Define your voice once in a content profile and reuse it everywhere. Switch tone per post (bold, thoughtful, contrarian) without losing the through-line that makes your writing recognizable.",
     bullets: [
       "Reusable content profiles per brand or client",
       "Per-post tone and goal controls",
@@ -264,7 +264,7 @@ export const FEATURE_DETAIL = [
   {
     kicker: "AGENCY WORKSPACES",
     title: "Run content for every client in one place",
-    body: "Agencies get separate workspaces per client — each with its own profile, drafts, calendar, and limits. Switch context in a click and keep every brand's voice perfectly distinct.",
+    body: "Agencies get separate workspaces per client, each with its own profile, drafts, calendar, and limits. Switch context in a click and keep every brand's voice distinct.",
     bullets: [
       "Up to 5 isolated client workspaces",
       "Per-client profiles and calendars",
@@ -277,37 +277,10 @@ export const FEATURE_DETAIL = [
   },
 ] as const;
 
-export const TESTIMONIALS = [
-  {
-    quote:
-      "I went from posting twice a month to three times a week. The drafts actually sound like me — my engagement is up 4x.",
-    name: "Daniel Okafor",
-    role: "Founder, Northbeam",
-    initials: "DO",
-    color: "#4f46e5",
-  },
-  {
-    quote:
-      "The calendar alone is worth it. I plan a month in 20 minutes and never scramble for ideas on a Monday morning.",
-    name: "Priya Nair",
-    role: "Marketing Consultant",
-    initials: "PN",
-    color: "#0891b2",
-  },
-  {
-    quote:
-      "As an agency we manage nine clients. Separate workspaces and voice profiles changed how our whole team operates.",
-    name: "Marcus Webb",
-    role: "Director, Loft & Co",
-    initials: "MW",
-    color: "#7c3aed",
-  },
-] as const;
-
 export const FAQS = [
   {
     q: "Will my posts sound like generic AI?",
-    a: "No — that's the entire point. linkedinpost.ai builds a voice profile from your writing sample, role, and audience, and strips out common AI tells with a words-to-avoid list. You get drafts you'd actually publish.",
+    a: "No. linkedinpost.ai builds a voice profile from your writing sample, role, and audience, and strips out common AI tells with a words-to-avoid list. You get drafts you'd actually publish.",
   },
   {
     q: "Does linkedinpost.ai post to LinkedIn automatically?",
@@ -319,23 +292,16 @@ export const FAQS = [
   },
   {
     q: "Can I use it for multiple brands or clients?",
-    a: "Yes. Pro supports multiple content profiles, and the Agency plan adds up to 5 isolated client workspaces — each with its own profile, drafts, and calendar.",
+    a: "Yes. Pro supports multiple content profiles, and the Agency plan adds up to 5 isolated client workspaces, each with its own profile, drafts, and calendar.",
   },
   {
     q: "Do I need a credit card to start?",
-    a: "No. The Free plan is genuinely free — 5 posts a month, no card required. Upgrade only when you're ready for more volume and the content calendar.",
+    a: "No. The Free plan is genuinely free: 5 posts a month, no card required. Upgrade only when you're ready for more volume and the content calendar.",
   },
   {
     q: "Can I cancel anytime?",
     a: "Absolutely. Cancel in one click from the billing page. You keep your paid features until the end of the billing period, then move to the Free plan.",
   },
-] as const;
-
-export const LANDING_STATS = [
-  { v: "1.2M+", l: "Posts generated" },
-  { v: "18k+", l: "Active creators" },
-  { v: "4.8/5", l: "Average rating" },
-  { v: "3.5x", l: "Avg. engagement lift" },
 ] as const;
 
 export const VALUES = [
@@ -367,14 +333,6 @@ export const COMPARE_ROWS = [
   { label: "Auto-publishing", free: false, starter: "Limited", pro: true, agency: true },
   { label: "Client approval", free: false, starter: false, pro: "Limited", agency: true },
   { label: "Client workspaces", free: false, starter: false, pro: false, agency: "5" },
-] as const;
-
-export const TRUST_LOGOS = [
-  "Northbeam",
-  "Loft&Co",
-  "Brightpath",
-  "Cadence",
-  "Veridian",
 ] as const;
 
 export const PRIVACY_SECTIONS = [

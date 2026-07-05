@@ -4,9 +4,9 @@ import { PRIVACY_SECTIONS } from "@/lib/marketing-data";
 import { pageMetadata } from "@/lib/seo/metadata";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Privacy Policy — linkedinpost.ai",
+  title: "Privacy Policy | linkedinpost.ai",
   description:
-    "Privacy policy for linkedinpost.ai — what we collect, how we use it, and your choices.",
+    "Privacy policy for linkedinpost.ai: what we collect, how we use it, and your choices.",
   path: "/privacy",
 });
 

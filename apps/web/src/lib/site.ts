@@ -3,9 +3,9 @@ export const SITE_NAME = "linkedinpost.ai";
 export const SITE_TAGLINE =
   "Create a month of LinkedIn content in minutes with AI";
 export const SITE_TITLE_DEFAULT =
-  "linkedinpost.ai — Create a Month of LinkedIn Content in Minutes with AI";
+  "linkedinpost.ai | Create a Month of LinkedIn Content in Minutes with AI";
 export const SITE_DESCRIPTION =
-  "linkedinpost.ai is the AI LinkedIn content engine for founders, creators, and agencies. Generate authentic posts, plan a 30-day content calendar, and schedule — without sounding like generic AI. Start free, no credit card.";
+  "linkedinpost.ai is the AI LinkedIn content engine for founders, creators, and agencies. Generate authentic posts, plan a 30-day content calendar, and schedule without sounding like generic AI. Start free, no credit card.";
 export const SITE_KEYWORDS = [
   "LinkedIn post generator",
   "AI LinkedIn content",
@@ -16,7 +16,7 @@ export const SITE_KEYWORDS = [
   "content creation for founders",
 ];
 export const OG_IMAGE_ALT =
-  "linkedinpost.ai — AI LinkedIn content engine dashboard";
+  "linkedinpost.ai AI LinkedIn content engine dashboard";
 export const LEGAL_ENTITY = "linkedinpost.ai";
 export const THEME_COLOR = "#5B3DF5";
 
