@@ -74,6 +74,8 @@ export type QuickDraftRequestBody = {
   additionalContext?: string;
   mediaCustomPrompt?: string;
   mediaMode?: "freestyle" | "template";
+  mediaFormat?: "single" | "carousel";
+  carouselSlideCount?: number;
   mediaTemplateId?: string;
 };
 
@@ -101,6 +103,8 @@ export type GenerateMediaRequestBody = {
   mediaCustomPrompt?: string;
   replace?: boolean;
   mediaMode?: "freestyle" | "template";
+  mediaFormat?: "single" | "carousel";
+  carouselSlideCount?: number;
   mediaTemplateId?: string;
 };
 
@@ -160,6 +164,10 @@ export type CalendarGenerateRequestBody = {
   postingDays?: number[];
   additionalContext?: string;
   slotGenerationMode?: "quick_draft" | "council";
+  mediaFormat?: "single" | "carousel";
+  carouselSlideCount?: number;
+  mediaMode?: "freestyle" | "template";
+  mediaTemplateId?: string;
 };
 
 export type MediaJobResult = {

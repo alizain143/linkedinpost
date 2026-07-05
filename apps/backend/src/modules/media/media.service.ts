@@ -7,8 +7,9 @@ import { LinkedInPublishError } from '../linkedin/linkedin-publish.error';
 import { R2BucketService } from '../storage/r2-bucket.service';
 import { R2StorageService } from '../storage/r2-storage.service';
 import { buildPostMediaStorageKey } from './media-storage-keys';
-import { PublishMediaPayload } from './media-publish.types';
+import { PublishMediaListPayload, PublishMediaPayload } from './media-publish.types';
 import {
+  AttachCarouselMediaInput,
   AttachCouncilMediaInput,
   PostMediaResponse,
   toPostMediaResponse,
@@ -23,6 +24,82 @@ export class MediaService {
     private readonly r2Storage: R2StorageService,
     private readonly r2BucketService: R2BucketService,
   ) {}
+
+  async attachCarouselMedia(
+    input: AttachCarouselMediaInput,
+  ): Promise<PostMediaResponse[]> {
+    const existing = await this.prisma.postMedia.findMany({
+      where: { generationJobId: input.generationJobId },
+    });
+
+    for (const row of existing) {
+      try {
+        await this.r2Storage.deleteObject(row.storageBucket, row.storageKey);
+      } catch (error) {
+        this.logger.warn(
+          `Failed to delete replaced media ${row.id} from R2: ${error}`,
+        );
+      }
+    }
+
+    if (existing.length > 0) {
+      await this.prisma.postMedia.deleteMany({
+        where: { generationJobId: input.generationJobId },
+      });
+    }
+
+    const created: PostMediaResponse[] = [];
+
+    for (const slide of input.slides) {
+      this.r2BucketService.assertPostMediaSize(slide.imageBuffer.length);
+
+      const postMediaId = randomUUID();
+      const storageBucket = this.r2BucketService.resolvePostMediaBucket();
+      const storageKey = buildPostMediaStorageKey(
+        input.workspaceId,
+        input.postPackageId,
+        postMediaId,
+      );
+
+      await this.r2Storage.putObject(
+        storageBucket,
+        storageKey,
+        slide.imageBuffer,
+        slide.mimeType,
+      );
+
+      try {
+        const media = await this.prisma.postMedia.create({
+          data: {
+            id: postMediaId,
+            postPackageId: input.postPackageId,
+            generationJobId: input.generationJobId,
+            mediaType: slide.mediaType,
+            storageKey,
+            storageBucket,
+            mimeType: slide.mimeType,
+            sizeBytes: slide.imageBuffer.length,
+            altText: slide.altText,
+            sortOrder: slide.sortOrder,
+          },
+        });
+
+        const url = await this.resolveUrl(media.storageBucket, media.storageKey);
+        created.push(toPostMediaResponse(media, url));
+      } catch (error) {
+        try {
+          await this.r2Storage.deleteObject(storageBucket, storageKey);
+        } catch (cleanupError) {
+          this.logger.warn(
+            `Failed to rollback R2 object after DB error: ${cleanupError}`,
+          );
+        }
+        throw error;
+      }
+    }
+
+    return created;
+  }
 
   async attachCouncilMedia(
     input: AttachCouncilMediaInput,
@@ -206,6 +283,53 @@ export class MediaService {
     }
 
     return this.r2Storage.createDownloadUrl(storageBucket, storageKey);
+  }
+
+  async getPublishMediaList(
+    postPackageId: string,
+  ): Promise<PublishMediaListPayload> {
+    const rows = await this.prisma.postMedia.findMany({
+      where: { postPackageId, archivedAt: null },
+      orderBy: { sortOrder: 'asc' },
+    });
+
+    if (rows.length === 0) {
+      return [];
+    }
+
+    const payloads: PublishMediaListPayload = [];
+
+    for (const media of rows) {
+      if (
+        !POST_MEDIA_MIME_TYPES.includes(
+          media.mimeType as (typeof POST_MEDIA_MIME_TYPES)[number],
+        )
+      ) {
+        throw new LinkedInPublishError(
+          `Unsupported post media mime type: ${media.mimeType}`,
+          'LINKEDIN_MEDIA_UNSUPPORTED',
+        );
+      }
+
+      try {
+        const buffer = await this.r2Storage.getObjectBuffer(
+          media.storageBucket,
+          media.storageKey,
+        );
+        payloads.push({
+          buffer,
+          mimeType: media.mimeType,
+          altText: media.altText,
+        });
+      } catch {
+        throw new LinkedInPublishError(
+          'Failed to read post media from storage',
+          'LINKEDIN_MEDIA_READ_FAILED',
+        );
+      }
+    }
+
+    return payloads;
   }
 
   async getPrimaryPublishMedia(

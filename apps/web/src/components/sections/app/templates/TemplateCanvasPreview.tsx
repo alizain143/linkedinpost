@@ -1,10 +1,19 @@
 "use client";
 
+import { useCallback, useRef, useState } from "react";
 import type {
   MediaTemplateLayout,
   TemplateElement,
 } from "@/lib/api/types/media-template";
-import { clampElement } from "@/lib/template-layout-bounds";
+import { clampElement, getElementBounds } from "@/lib/template-layout-bounds";
+import {
+  resolveBackgroundStyle,
+  resolveRectFill,
+} from "@/lib/template-layout-gradient";
+import { computeSnap, type SnapGuide } from "@/lib/template-layout-snap";
+
+const GUIDE_COLOR = "#FF2D55";
+const CROSSHAIR_SIZE = 12;
 
 type Props = {
   layout: MediaTemplateLayout;
@@ -75,7 +84,12 @@ export function TemplateCanvasPreview({
   headlineHighlight = "emphasis.",
   subhead = "Supporting line that explains the idea in one sentence.",
 }: Props) {
-  const dragRef = useRefDrag(onMove, layout.elements, width, height);
+  const { start: startDrag, guides } = useSnapDrag(
+    onMove,
+    layout.elements,
+    width,
+    height,
+  );
 
   return (
     <div
@@ -83,7 +97,7 @@ export function TemplateCanvasPreview({
       style={{
         width: width * scale,
         height: height * scale,
-        background: layout.background.color,
+        background: resolveBackgroundStyle(layout.background),
       }}
     >
       <div
@@ -97,7 +111,6 @@ export function TemplateCanvasPreview({
         {layout.elements.map((el) => {
           const selected = selectedId === el.id;
           const common = {
-            key: el.id,
             onClick: (e: React.MouseEvent) => {
               e.stopPropagation();
               onSelect?.(el.id);
@@ -106,7 +119,7 @@ export function TemplateCanvasPreview({
               if (!onMove) return;
               e.stopPropagation();
               onSelect?.(el.id);
-              dragRef.start(el, e.clientX, e.clientY, scale);
+              startDrag(el, e.clientX, e.clientY, scale);
             },
             className: `absolute cursor-move ${selected ? "outline outline-2 outline-[#5B3DF5]" : ""}`,
           };
@@ -114,6 +127,7 @@ export function TemplateCanvasPreview({
           if (el.type === "avatar") {
             return (
               <div
+                key={el.id}
                 {...common}
                 style={{
                   left: el.x,
@@ -152,13 +166,14 @@ export function TemplateCanvasPreview({
           if (el.type === "rect") {
             return (
               <div
+                key={el.id}
                 {...common}
                 style={{
                   left: el.x,
                   top: el.y,
                   width: el.w,
                   height: el.h,
-                  background: el.fill,
+                  background: resolveRectFill(el),
                   borderRadius: el.radius ?? 0,
                   opacity: el.opacity ?? 1,
                 }}
@@ -169,16 +184,45 @@ export function TemplateCanvasPreview({
           if (el.type === "visual_zone") {
             return (
               <div
+                key={el.id}
                 {...common}
                 style={{
                   left: el.x,
                   top: el.y,
                   width: el.w,
                   height: el.h,
-                  border: "1px dashed #cbd5e1",
-                  background: "rgba(148,163,184,0.08)",
+                  border: "1px dashed rgba(47,111,237,0.35)",
+                  background:
+                    "linear-gradient(180deg, rgba(74,143,240,0.12), rgba(47,111,237,0.06))",
+                  display: "grid",
+                  placeItems: "center",
+                  color: "rgba(47,111,237,0.55)",
+                  fontSize: 22,
+                  fontWeight: 600,
                 }}
-              />
+              >
+                Hero image
+              </div>
+            );
+          }
+
+          if (el.type === "carousel_nav") {
+            return (
+              <div
+                key={el.id}
+                {...common}
+                style={{
+                  left: el.x,
+                  top: el.y,
+                  fontFamily: el.style.fontFamily ?? "Inter, sans-serif",
+                  fontSize: el.style.fontSize,
+                  fontWeight: el.style.fontWeight ?? 600,
+                  color: el.style.color,
+                  textAlign: el.style.align ?? "right",
+                }}
+              >
+                {el.label}
+              </div>
             );
           }
 
@@ -196,6 +240,7 @@ export function TemplateCanvasPreview({
 
           return (
             <div
+              key={el.id}
               {...common}
               style={{
                 left: el.x,
@@ -225,18 +270,122 @@ export function TemplateCanvasPreview({
             </div>
           );
         })}
+        <AlignmentGuides guides={guides} width={width} height={height} />
       </div>
     </div>
   );
 }
 
-function useRefDrag(
+function AlignmentGuides({
+  guides,
+  width,
+  height,
+}: {
+  guides: SnapGuide[];
+  width: number;
+  height: number;
+}) {
+  if (!guides.length) return null;
+
+  const verticals = guides.filter((g) => g.orientation === "vertical");
+  const horizontals = guides.filter((g) => g.orientation === "horizontal");
+  const hasIntersection = verticals.length > 0 && horizontals.length > 0;
+
+  return (
+    <div className="pointer-events-none absolute inset-0 z-50">
+      {verticals.map((guide, i) => (
+        <div
+          key={`v-${guide.position}-${i}`}
+          className="absolute top-0 w-px"
+          style={{
+            left: guide.position,
+            height,
+            backgroundColor: GUIDE_COLOR,
+          }}
+        />
+      ))}
+      {horizontals.map((guide, i) => (
+        <div
+          key={`h-${guide.position}-${i}`}
+          className="absolute left-0 h-px"
+          style={{
+            top: guide.position,
+            width,
+            backgroundColor: GUIDE_COLOR,
+          }}
+        />
+      ))}
+      {hasIntersection
+        ? verticals.flatMap((v, vi) =>
+            horizontals.map((h, hi) => (
+              <Crosshair
+                key={`ix-${vi}-${hi}`}
+                x={v.position}
+                y={h.position}
+                emphasized
+              />
+            )),
+          )
+        : guides.map((guide, i) => (
+            <Crosshair
+              key={`c-${i}`}
+              x={
+                guide.orientation === "vertical" ? guide.position : guide.crossAt
+              }
+              y={
+                guide.orientation === "horizontal" ? guide.position : guide.crossAt
+              }
+            />
+          ))}
+    </div>
+  );
+}
+
+function Crosshair({
+  x,
+  y,
+  emphasized = false,
+}: {
+  x: number;
+  y: number;
+  emphasized?: boolean;
+}) {
+  const half = CROSSHAIR_SIZE / 2;
+  const stroke = emphasized ? 2 : 1.5;
+  return (
+    <svg
+      className="absolute overflow-visible"
+      style={{ left: x - half, top: y - half, width: CROSSHAIR_SIZE, height: CROSSHAIR_SIZE }}
+      aria-hidden
+    >
+      <line
+        x1={half}
+        y1={0}
+        x2={half}
+        y2={CROSSHAIR_SIZE}
+        stroke={GUIDE_COLOR}
+        strokeWidth={stroke}
+      />
+      <line
+        x1={0}
+        y1={half}
+        x2={CROSSHAIR_SIZE}
+        y2={half}
+        stroke={GUIDE_COLOR}
+        strokeWidth={stroke}
+      />
+    </svg>
+  );
+}
+
+function useSnapDrag(
   onMove?: (id: string, x: number, y: number) => void,
   elements: TemplateElement[] = [],
   canvasW = 1080,
   canvasH = 1080,
 ) {
-  const state = {
+  const [guides, setGuides] = useState<SnapGuide[]>([]);
+  const stateRef = useRef({
     id: "",
     startX: 0,
     startY: 0,
@@ -244,44 +393,64 @@ function useRefDrag(
     originY: 0,
     scale: 1,
     element: null as TemplateElement | null,
-  };
+  });
 
-  function start(
-    element: TemplateElement,
-    clientX: number,
-    clientY: number,
-    scale: number,
-  ) {
-    if (!onMove) return;
-    state.id = element.id;
-    state.element = element;
-    state.originX = element.x;
-    state.originY = element.y;
-    state.startX = clientX;
-    state.startY = clientY;
-    state.scale = scale;
+  const start = useCallback(
+    (
+      element: TemplateElement,
+      clientX: number,
+      clientY: number,
+      scale: number,
+    ) => {
+      if (!onMove) return;
+      const state = stateRef.current;
+      state.id = element.id;
+      state.element = element;
+      state.originX = element.x;
+      state.originY = element.y;
+      state.startX = clientX;
+      state.startY = clientY;
+      state.scale = scale;
 
-    const onMoveWindow = (e: MouseEvent) => {
-      const dx = (e.clientX - state.startX) / state.scale;
-      const dy = (e.clientY - state.startY) / state.scale;
-      const current =
-        state.element ?? elements.find((el) => el.id === state.id) ?? null;
-      if (!current) return;
+      const onMoveWindow = (e: MouseEvent) => {
+        const dx = (e.clientX - state.startX) / state.scale;
+        const dy = (e.clientY - state.startY) / state.scale;
+        const current =
+          state.element ?? elements.find((el) => el.id === state.id) ?? null;
+        if (!current) return;
 
-      const clamped = clampElement(
-        { ...current, x: Math.round(state.originX + dx), y: Math.round(state.originY + dy) },
-        canvasW,
-        canvasH,
-      );
-      onMove(state.id, clamped.x, clamped.y);
-    };
-    const onUp = () => {
-      window.removeEventListener("mousemove", onMoveWindow);
-      window.removeEventListener("mouseup", onUp);
-    };
-    window.addEventListener("mousemove", onMoveWindow);
-    window.addEventListener("mouseup", onUp);
-  }
+        const rawX = Math.round(state.originX + dx);
+        const rawY = Math.round(state.originY + dy);
+        const bounds = getElementBounds({ ...current, x: rawX, y: rawY });
+        const snap = computeSnap(
+          bounds,
+          canvasW,
+          canvasH,
+          elements,
+          state.id,
+        );
 
-  return { start };
+        const clamped = clampElement(
+          { ...current, x: snap.x, y: snap.y },
+          canvasW,
+          canvasH,
+        );
+
+        setGuides(snap.guides);
+        onMove(state.id, clamped.x, clamped.y);
+      };
+
+      const onUp = () => {
+        setGuides([]);
+        window.removeEventListener("mousemove", onMoveWindow);
+        window.removeEventListener("mouseup", onUp);
+      };
+
+      window.addEventListener("mousemove", onMoveWindow);
+      window.addEventListener("mouseup", onUp);
+    },
+    [onMove, elements, canvasW, canvasH],
+  );
+
+  return { start, guides };
 }

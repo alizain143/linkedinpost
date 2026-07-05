@@ -48,7 +48,10 @@ export class CalendarJobService {
     const postingDays = dto.postingDays ?? [...DEFAULT_POSTING_DAYS];
     const slotCount = calendarSlotCount(dto.durationDays);
     const slotGenerationMode = dto.slotGenerationMode ?? 'quick_draft';
-    const creditCost = calendarCreditCost(dto.durationDays, slotGenerationMode);
+    const creditCost = calendarCreditCost(dto.durationDays, slotGenerationMode, {
+      mediaFormat: dto.mediaFormat,
+      carouselSlideCount: dto.carouselSlideCount,
+    });
 
     await this.creditsService.assertHasCredits(userId, creditCost);
 
@@ -71,6 +74,10 @@ export class CalendarJobService {
       additionalContext: dto.additionalContext,
       slotDates,
       slotGenerationMode,
+      mediaFormat: dto.mediaFormat,
+      carouselSlideCount: dto.carouselSlideCount,
+      mediaMode: dto.mediaMode,
+      mediaTemplateId: dto.mediaTemplateId,
     };
 
     const job = await this.enqueueService.enqueue({

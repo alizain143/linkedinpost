@@ -1,5 +1,6 @@
 import { apiFetch } from "@/lib/api/fetch";
 import type {
+  AiDraftMediaTemplateBody,
   AiTemplateDraft,
   ApiMediaTemplate,
   CreateMediaTemplateBody,
@@ -113,14 +114,14 @@ export async function setDefaultMediaMode(
 export async function aiDraftMediaTemplate(
   token: string,
   workspaceId: string,
-  prompt: string,
+  body: AiDraftMediaTemplateBody,
 ): Promise<AiTemplateDraft> {
   return apiFetch<AiTemplateDraft>(
     token,
     templatesPath(workspaceId, "/ai-draft"),
     {
       method: "POST",
-      body: JSON.stringify({ prompt }),
+      body: JSON.stringify(body),
     },
   );
 }

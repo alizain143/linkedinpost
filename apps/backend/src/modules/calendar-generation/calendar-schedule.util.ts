@@ -1,5 +1,9 @@
 import { BadRequestException } from '@nestjs/common';
 import {
+  estimateCarouselSlideCount,
+  getCarouselCreditCost,
+} from '../media-generation/media-credit.util';
+import {
   DEFAULT_TIMEZONE,
   getLocalDateParts,
   getTodayDateKey,
@@ -182,9 +186,26 @@ export function localDateTimeToUtc(
 export function calendarCreditCost(
   durationDays: 7 | 30,
   mode: 'quick_draft' | 'council' = 'quick_draft',
+  options?: {
+    mediaFormat?: 'single' | 'carousel';
+    carouselSlideCount?: number | null;
+  },
 ): number {
-  const perSlot = mode === 'council' ? 3 : 1;
-  return calendarSlotCount(durationDays) * perSlot;
+  const slots = calendarSlotCount(durationDays);
+  if (mode === 'quick_draft') {
+    return slots;
+  }
+
+  if (options?.mediaFormat === 'carousel') {
+    const perSlot =
+      1 +
+      getCarouselCreditCost(
+        estimateCarouselSlideCount(options.carouselSlideCount),
+      );
+    return slots * perSlot;
+  }
+
+  return slots * 3;
 }
 
 export function calendarSlotCount(durationDays: 7 | 30): number {

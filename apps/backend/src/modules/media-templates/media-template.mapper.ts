@@ -1,7 +1,7 @@
 import { MediaTemplate } from '@prisma/client';
-import { parseMediaTemplateLayout } from './layout.validator';
+import { parseAnyMediaTemplateLayout } from './layout.validator';
 import {
-  MediaTemplateLayout,
+  AnyMediaTemplateLayout,
   ResolvedMediaTemplate,
 } from './layout.types';
 
@@ -12,7 +12,7 @@ export interface MediaTemplateResponse {
   description: string | null;
   width: number;
   height: number;
-  layout: MediaTemplateLayout;
+  layout: AnyMediaTemplateLayout;
   isSystem: boolean;
   isWorkspaceDefault: boolean;
   createdAt: string;
@@ -30,7 +30,7 @@ export function toMediaTemplateResponse(
     description: row.description,
     width: row.width,
     height: row.height,
-    layout: parseMediaTemplateLayout(row.layout),
+    layout: parseAnyMediaTemplateLayout(row.layout),
     isSystem: row.isSystem,
     isWorkspaceDefault: options?.isWorkspaceDefault ?? false,
     createdAt: row.createdAt.toISOString(),
@@ -47,7 +47,7 @@ export function toResolvedFromRow(
     description: row.description,
     width: row.width,
     height: row.height,
-    layout: parseMediaTemplateLayout(row.layout),
+    layout: parseAnyMediaTemplateLayout(row.layout),
     isSystem: row.isSystem,
     workspaceId: row.workspaceId,
   };

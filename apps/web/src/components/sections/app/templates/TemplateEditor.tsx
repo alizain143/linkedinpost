@@ -18,10 +18,18 @@ import { useContentProfiles } from "@/hooks/api/use-content-profiles-api";
 import { useLinkedInProfile } from "@/hooks/api/use-linkedin-api";
 import { useWorkspace } from "@/hooks/use-workspace";
 import type {
+  AnyMediaTemplateLayout,
+  CarouselPageRole,
   MediaTemplateLayout,
   TemplateElement,
   TextBind,
 } from "@/lib/api/types/media-template";
+import {
+  CAROUSEL_PAGE_TABS,
+  getEditablePageLayout,
+  isCarouselLayout,
+  setEditablePageLayout,
+} from "@/lib/template-layout-utils";
 import {
   ADDABLE_LAYER_OPTIONS,
   type AddableLayerType,
@@ -47,9 +55,26 @@ export function TemplateEditor() {
   const { data: contentProfiles } = useContentProfiles(workspaceId);
 
   const [name, setName] = useState("");
-  const [layout, setLayout] = useState<MediaTemplateLayout | null>(null);
+  const [rootLayout, setRootLayout] = useState<AnyMediaTemplateLayout | null>(
+    null,
+  );
+  const [carouselPage, setCarouselPage] = useState<CarouselPageRole>("first");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  const isCarousel = rootLayout ? isCarouselLayout(rootLayout) : false;
+  const layout: MediaTemplateLayout | null = rootLayout
+    ? getEditablePageLayout(rootLayout, carouselPage)
+    : null;
+
+  const commitPageLayout = useCallback(
+    (pageLayout: MediaTemplateLayout) => {
+      setRootLayout((prev) =>
+        prev ? setEditablePageLayout(prev, carouselPage, pageLayout) : prev,
+      );
+    },
+    [carouselPage],
+  );
 
   const canvasWidth = templateQuery.data?.width ?? 1080;
   const canvasHeight = templateQuery.data?.height ?? 1080;
@@ -74,12 +99,15 @@ export function TemplateEditor() {
   useEffect(() => {
     if (templateQuery.data) {
       setName(templateQuery.data.name);
-      setLayout(
-        clampLayout(
-          templateQuery.data.layout,
-          templateQuery.data.width,
-          templateQuery.data.height,
-        ),
+      const loaded = templateQuery.data.layout;
+      setRootLayout(
+        isCarouselLayout(loaded)
+          ? loaded
+          : clampLayout(
+              loaded,
+              templateQuery.data.width,
+              templateQuery.data.height,
+            ),
       );
     }
   }, [templateQuery.data]);
@@ -91,19 +119,18 @@ export function TemplateEditor() {
 
   const updateElement = useCallback(
     (elementId: string, patch: Partial<TemplateElement>) => {
-      setLayout((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          elements: prev.elements.map((el) => {
-            if (el.id !== elementId) return el;
-            const merged = { ...el, ...patch } as TemplateElement;
-            return clampElement(merged, canvasWidth, canvasHeight);
-          }),
-        };
-      });
+      if (!layout) return;
+      const nextPage: MediaTemplateLayout = {
+        ...layout,
+        elements: layout.elements.map((el) => {
+          if (el.id !== elementId) return el;
+          const merged = { ...el, ...patch } as TemplateElement;
+          return clampElement(merged, canvasWidth, canvasHeight);
+        }),
+      };
+      commitPageLayout(nextPage);
     },
-    [canvasWidth, canvasHeight],
+    [layout, canvasWidth, canvasHeight, commitPageLayout],
   );
 
   const moveElement = useCallback(
@@ -114,16 +141,14 @@ export function TemplateEditor() {
   );
 
   function removeElement(elementId: string) {
-    setLayout((prev) => {
-      if (!prev) return prev;
-      if (prev.elements.length <= 1) {
-        toast.error("Template must keep at least one layer");
-        return prev;
-      }
-      return {
-        ...prev,
-        elements: prev.elements.filter((el) => el.id !== elementId),
-      };
+    if (!layout) return;
+    if (layout.elements.length <= 1) {
+      toast.error("Template must keep at least one layer");
+      return;
+    }
+    commitPageLayout({
+      ...layout,
+      elements: layout.elements.filter((el) => el.id !== elementId),
     });
     setSelectedId((current) => (current === elementId ? null : current));
   }
@@ -143,21 +168,23 @@ export function TemplateEditor() {
       canvasHeight,
       layout.elements,
     );
-    setLayout((prev) => {
-      if (!prev) return prev;
-      return { ...prev, elements: [...prev.elements, next] };
+    commitPageLayout({
+      ...layout,
+      elements: [...layout.elements, next],
     });
     setSelectedId(next.id);
   }
 
   async function handleSave() {
-    if (!layout || !id) return;
+    if (!rootLayout || !id) return;
     try {
       await updateTemplate.mutateAsync({
         id,
         body: {
           name: name.trim() || "Untitled",
-          layout: clampLayout(layout, canvasWidth, canvasHeight),
+          layout: isCarouselLayout(rootLayout)
+            ? rootLayout
+            : clampLayout(rootLayout, canvasWidth, canvasHeight),
         },
       });
       toast.success("Template saved");
@@ -167,10 +194,13 @@ export function TemplateEditor() {
   }
 
   async function handlePreview() {
-    if (!layout) return;
+    if (!rootLayout) return;
     try {
       const result = await preview.mutateAsync({
-        body: { layout: clampLayout(layout, canvasWidth, canvasHeight) },
+        body: {
+          layout: rootLayout,
+          pageRole: carouselPage,
+        },
         templateId: id,
       });
       setPreviewUrl(`data:${result.mimeType};base64,${result.pngBase64}`);
@@ -219,6 +249,27 @@ export function TemplateEditor() {
       >
         {layout && templateQuery.data && (
           <div className="grid gap-4 lg:grid-cols-[220px_1fr_280px]">
+            {isCarousel && (
+              <div className="lg:col-span-3 flex flex-wrap gap-2">
+                {CAROUSEL_PAGE_TABS.map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => {
+                      setCarouselPage(tab.id);
+                      setSelectedId(null);
+                    }}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${
+                      carouselPage === tab.id
+                        ? "bg-[#5B3DF5] text-white"
+                        : "bg-[#f1f5f9] text-[#475569]"
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            )}
             <aside className="rounded-2xl border border-[#eceef3] bg-white p-3">
               <div className="mb-2 flex items-center justify-between gap-2">
                 <div className="text-xs font-semibold uppercase tracking-wide text-[#94a3b8]">

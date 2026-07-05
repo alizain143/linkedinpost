@@ -1,9 +1,12 @@
 import {
+  AnyMediaTemplateLayout,
+  CarouselMediaTemplateLayout,
   MediaTemplateLayout,
   TemplateElement,
   TextStyle,
 } from './layout.types';
 import { clampLayout } from './layout-bounds.util';
+import { parseLayoutGradient } from './layout-gradient.util';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value);
@@ -89,6 +92,7 @@ function parseElement(raw: unknown): TemplateElement | null {
         fill: raw.fill,
         radius: typeof raw.radius === 'number' ? raw.radius : 0,
         opacity: typeof raw.opacity === 'number' ? raw.opacity : 1,
+        gradient: parseLayoutGradient(raw.gradient),
       };
     }
     case 'post_headline':
@@ -115,12 +119,39 @@ function parseElement(raw: unknown): TemplateElement | null {
         h: raw.h,
       };
     }
+    case 'carousel_nav': {
+      const style = parseTextStyle(raw.style);
+      if (!style) return null;
+      return {
+        id: raw.id,
+        type: 'carousel_nav',
+        x,
+        y,
+        label: typeof raw.label === 'string' ? raw.label : 'Swipe →',
+        style,
+      };
+    }
     default:
       return null;
   }
 }
 
-export function parseMediaTemplateLayout(
+function validateSinglePageLayout(
+  elements: TemplateElement[],
+  label: string,
+): void {
+  if (elements.length === 0) {
+    throw new Error(`${label} must include at least one element`);
+  }
+  const visualZoneCount = elements.filter(
+    (element) => element.type === 'visual_zone',
+  ).length;
+  if (visualZoneCount > 1) {
+    throw new Error(`${label} may include at most one visual_zone`);
+  }
+}
+
+function parseSinglePageLayout(
   raw: unknown,
   canvas?: { width: number; height: number },
 ): MediaTemplateLayout {
@@ -129,7 +160,10 @@ export function parseMediaTemplateLayout(
   }
 
   const background = isRecord(raw.background)
-    ? { color: String(raw.background.color ?? '#FFFFFF') }
+    ? {
+        color: String(raw.background.color ?? '#FFFFFF'),
+        gradient: parseLayoutGradient(raw.background.gradient),
+      }
     : { color: '#FFFFFF' };
 
   const elementsRaw = Array.isArray(raw.elements) ? raw.elements : [];
@@ -137,16 +171,7 @@ export function parseMediaTemplateLayout(
     .map(parseElement)
     .filter((el): el is TemplateElement => el !== null);
 
-  if (elements.length === 0) {
-    throw new Error('Layout must include at least one element');
-  }
-
-  const visualZoneCount = elements.filter(
-    (element) => element.type === 'visual_zone',
-  ).length;
-  if (visualZoneCount > 1) {
-    throw new Error('Layout may include at most one visual_zone');
-  }
+  validateSinglePageLayout(elements, 'Layout');
 
   const layout: MediaTemplateLayout = {
     version: 1,
@@ -159,4 +184,75 @@ export function parseMediaTemplateLayout(
   }
 
   return layout;
+}
+
+function parseCarouselLayout(
+  raw: unknown,
+  canvas?: { width: number; height: number },
+): CarouselMediaTemplateLayout {
+  if (!isRecord(raw) || !isRecord(raw.pages)) {
+    throw new Error('Carousel layout must include pages');
+  }
+
+  const pages = raw.pages as Record<string, unknown>;
+  const first = parseSinglePageLayout(pages.first, canvas);
+  const middle = parseSinglePageLayout(pages.middle, canvas);
+  const last = parseSinglePageLayout(pages.last, canvas);
+
+  return {
+    version: 2,
+    kind: 'carousel',
+    pages: { first, middle, last },
+  };
+}
+
+export function parseMediaTemplateLayout(
+  raw: unknown,
+  canvas?: { width: number; height: number },
+): MediaTemplateLayout {
+  if (!isRecord(raw)) {
+    throw new Error('Layout must be an object');
+  }
+
+  if (raw.version === 2 && raw.kind === 'carousel') {
+    throw new Error(
+      'Use parseAnyMediaTemplateLayout for carousel (version 2) layouts',
+    );
+  }
+
+  return parseSinglePageLayout(raw, canvas);
+}
+
+export function parseAnyMediaTemplateLayout(
+  raw: unknown,
+  canvas?: { width: number; height: number },
+): AnyMediaTemplateLayout {
+  if (!isRecord(raw)) {
+    throw new Error('Layout must be an object');
+  }
+
+  if (raw.version === 2 && raw.kind === 'carousel') {
+    return parseCarouselLayout(raw, canvas);
+  }
+
+  return parseSinglePageLayout(raw, canvas);
+}
+
+export function clampAnyLayout(
+  layout: AnyMediaTemplateLayout,
+  canvasW: number,
+  canvasH: number,
+): AnyMediaTemplateLayout {
+  if (layout.version === 2 && layout.kind === 'carousel') {
+    return {
+      ...layout,
+      pages: {
+        first: clampLayout(layout.pages.first, canvasW, canvasH),
+        middle: clampLayout(layout.pages.middle, canvasW, canvasH),
+        last: clampLayout(layout.pages.last, canvasW, canvasH),
+      },
+    };
+  }
+
+  return clampLayout(layout as MediaTemplateLayout, canvasW, canvasH);
 }

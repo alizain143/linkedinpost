@@ -80,6 +80,19 @@ export function clampElement(
       const box = clampBox(el.x, el.y, el.w, el.h, canvasW, canvasH);
       return { ...el, ...box };
     }
+    case 'carousel_nav': {
+      const box = clampBox(
+        el.x,
+        el.y,
+        el.style.fontSize * 8,
+        el.style.fontSize * (el.style.lineHeight ?? 1.2),
+        canvasW,
+        canvasH,
+        MIN_TEXT_WIDTH,
+        1,
+      );
+      return { ...el, x: box.x, y: box.y };
+    }
     default:
       return el;
   }

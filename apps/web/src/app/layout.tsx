@@ -56,6 +56,7 @@ export default function RootLayout({
       <html
         lang="en"
         className={`${inter.variable} ${jakarta.variable} ${newsreader.variable} h-full antialiased`}
+        suppressHydrationWarning
       >
         <body className="min-h-full bg-[#f6f7f9] text-slate-900">
           <AppProviders>

@@ -91,6 +91,7 @@ Update this section as features land. Tell the agent to mark items `[x]` when do
 - [x] `AutopilotConfig` + cron engine (Slice 15)
 - [x] Media generation + attach to post — [SLICE-13](SLICE-13-media-generation.md)
 - [x] Media templates (layout JSON, editor, template lane) — [SLICE-22](SLICE-22-media-templates.md)
+- [x] Carousel templates + freestyle carousel + multi-slide generation — [SLICE-24 carousel](SLICE-24-carousel-templates.md)
 - [x] Bulk calendar generation job — [SLICE-14](SLICE-14-bulk-calendar-generation.md)
 - [x] Real image generation (Nano Banana 2) — [SLICE-17](SLICE-17-nano-banana-image-generation.md)
 

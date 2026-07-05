@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import {
   GenerationJobType,
+  MediaFormat,
   PostPackageStatus,
   PostSource,
   Prisma,
@@ -13,6 +14,7 @@ import { CouncilInput } from '../generation/generation.types';
 import { CouncilRequestDto } from './dto/council-request.dto';
 import { toCouncilTimelineResponse } from './council.mapper';
 import { toGenerationJobResponse } from '../generation/generation-job.mapper';
+import { toDbMediaTemplateId } from '../media-templates/media-template-id.util';
 
 export interface EnqueueCouncilOptions {
   source?: PostSource;
@@ -55,6 +57,8 @@ export class CouncilJobService {
       brief: dto.brief,
       mediaCustomPrompt: dto.mediaCustomPrompt,
       mediaMode: dto.mediaMode,
+      mediaFormat: dto.mediaFormat,
+      carouselSlideCount: dto.carouselSlideCount,
       mediaTemplateId: dto.mediaTemplateId,
     };
 
@@ -71,7 +75,9 @@ export class CouncilJobService {
         pillar: dto.pillar,
         mediaCustomPrompt: dto.mediaCustomPrompt,
         mediaMode: dto.mediaMode,
-        mediaTemplateId: dto.mediaTemplateId,
+        mediaFormat: dto.mediaFormat ?? MediaFormat.single,
+        carouselSlideCount: dto.carouselSlideCount ?? null,
+        mediaTemplateId: toDbMediaTemplateId(dto.mediaTemplateId) ?? null,
         source,
         status: PostPackageStatus.text_generating,
         ...(options?.scheduledAt ? { scheduledAt: options.scheduledAt } : {}),

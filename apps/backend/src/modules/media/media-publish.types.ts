@@ -3,3 +3,5 @@ export interface PublishMediaPayload {
   mimeType: string;
   altText: string;
 }
+
+export type PublishMediaListPayload = PublishMediaPayload[];

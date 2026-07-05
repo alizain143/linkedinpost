@@ -4,13 +4,13 @@ import { NOT_DELETED } from '../../common/constants/soft-delete.constants';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   ResolvedMediaTemplate,
+  SYSTEM_CAROUSEL_IDENTITY_PRESET_ID,
   SYSTEM_IDENTITY_CARD_PRESET_ID,
 } from './layout.types';
 import { toResolvedFromRow } from './media-template.mapper';
-import {
-  getSystemIdentityCardPreset,
-  SYSTEM_PRESETS,
-} from './presets/identity-card.preset';
+import { getSystemIdentityCardPreset } from './presets/identity-card.preset';
+import { getSystemCarouselIdentityPreset } from './presets/carousel-identity.preset';
+import { SYSTEM_PRESETS } from './presets/system-presets';
 
 export interface ResolveMediaOptions {
   workspaceId: string;
@@ -86,6 +86,10 @@ export class MediaTemplateResolveService {
   ): Promise<ResolvedMediaTemplate> {
     if (templateId === SYSTEM_IDENTITY_CARD_PRESET_ID) {
       return getSystemIdentityCardPreset();
+    }
+
+    if (templateId === SYSTEM_CAROUSEL_IDENTITY_PRESET_ID) {
+      return getSystemCarouselIdentityPreset();
     }
 
     const row = await this.prisma.mediaTemplate.findFirst({

@@ -3,7 +3,6 @@ import {
   ResolvedMediaTemplate,
   SYSTEM_IDENTITY_CARD_PRESET_ID,
 } from '../layout.types';
-
 /** Four-corner identity card with AI-filled visual zone (reference slide style). */
 export const IDENTITY_CARD_LAYOUT: MediaTemplateLayout = {
   version: 1,
@@ -139,6 +138,3 @@ export function getSystemIdentityCardPreset(): ResolvedMediaTemplate {
   };
 }
 
-export const SYSTEM_PRESETS: ResolvedMediaTemplate[] = [
-  getSystemIdentityCardPreset(),
-];

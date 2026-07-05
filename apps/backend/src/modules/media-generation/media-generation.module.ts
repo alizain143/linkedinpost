@@ -14,6 +14,8 @@ import { MediaJobHandlerRegistrar } from './media-job-handler.registrar';
 import { MediaJobService } from './media-job.service';
 import { MediaOnlyOrchestrator } from './media-only-orchestrator';
 import { MediaRenderService } from './media-render.service';
+import { FreestyleCarouselPlanParser } from './freestyle-carousel-plan.parser';
+import { FreestyleCarouselRenderService } from './freestyle-carousel-render.service';
 
 @Module({
   imports: [
@@ -29,11 +31,13 @@ import { MediaRenderService } from './media-render.service';
   ],
   providers: [
     MediaRenderService,
+    FreestyleCarouselPlanParser,
+    FreestyleCarouselRenderService,
     MediaOnlyOrchestrator,
     MediaJobService,
     MediaJobHandler,
     MediaJobHandlerRegistrar,
   ],
-  exports: [MediaJobService, MediaRenderService],
+  exports: [MediaJobService, MediaRenderService, FreestyleCarouselRenderService],
 })
 export class MediaGenerationModule {}

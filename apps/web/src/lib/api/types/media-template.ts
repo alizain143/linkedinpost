@@ -1,4 +1,6 @@
 export type MediaMode = "freestyle" | "template";
+export type MediaFormat = "single" | "carousel";
+export type CarouselPageRole = "first" | "middle" | "last";
 
 export type TextBind =
   | "static"
@@ -6,6 +8,12 @@ export type TextBind =
   | "profile.roleTitle"
   | "profile.currentCompany"
   | "profile.industry";
+
+export type LayoutGradient = {
+  from: string;
+  to: string;
+  angle?: number;
+};
 
 export type TextStyle = {
   fontFamily?: string;
@@ -46,6 +54,7 @@ export type TemplateElement =
       fill: string;
       radius?: number;
       opacity?: number;
+      gradient?: LayoutGradient;
     }
   | {
       id: string;
@@ -70,13 +79,35 @@ export type TemplateElement =
       y: number;
       w: number;
       h: number;
+    }
+  | {
+      id: string;
+      type: "carousel_nav";
+      x: number;
+      y: number;
+      label: string;
+      style: TextStyle;
     };
 
 export type MediaTemplateLayout = {
   version: 1;
-  background: { color: string };
+  background: { color: string; gradient?: LayoutGradient };
   elements: TemplateElement[];
 };
+
+export type CarouselMediaTemplateLayout = {
+  version: 2;
+  kind: "carousel";
+  pages: {
+    first: MediaTemplateLayout;
+    middle: MediaTemplateLayout;
+    last: MediaTemplateLayout;
+  };
+};
+
+export type AnyMediaTemplateLayout =
+  | MediaTemplateLayout
+  | CarouselMediaTemplateLayout;
 
 export type ApiMediaTemplate = {
   id: string;
@@ -85,7 +116,7 @@ export type ApiMediaTemplate = {
   description: string | null;
   width: number;
   height: number;
-  layout: MediaTemplateLayout;
+  layout: AnyMediaTemplateLayout;
   isSystem: boolean;
   isWorkspaceDefault: boolean;
   createdAt: string;
@@ -98,7 +129,7 @@ export type ApiMediaTemplatePreset = {
   description: string | null;
   width: number;
   height: number;
-  layout: MediaTemplateLayout;
+  layout: AnyMediaTemplateLayout;
   isSystem: boolean;
   workspaceId: string | null;
 };
@@ -108,6 +139,17 @@ export type MediaTemplatesListResponse = {
   presets: ApiMediaTemplatePreset[];
   defaultMediaMode: MediaMode;
   defaultMediaTemplateId: string | null;
+};
+
+export type AiTemplateReferenceFile = {
+  mimeType: string;
+  data: string;
+  fileName?: string;
+};
+
+export type AiDraftMediaTemplateBody = {
+  prompt?: string;
+  referenceFile?: AiTemplateReferenceFile;
 };
 
 export type AiTemplateDraft = {
@@ -123,13 +165,14 @@ export type CreateMediaTemplateBody = {
   description?: string;
   width?: number;
   height?: number;
-  layout: MediaTemplateLayout;
+  layout: AnyMediaTemplateLayout;
 };
 
 export type UpdateMediaTemplateBody = Partial<CreateMediaTemplateBody>;
 
 export type PreviewMediaTemplateBody = {
-  layout?: MediaTemplateLayout;
+  layout?: AnyMediaTemplateLayout;
+  pageRole?: CarouselPageRole;
   headline?: string;
   headlineHighlight?: string;
   subhead?: string;

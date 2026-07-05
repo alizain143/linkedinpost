@@ -51,11 +51,16 @@ import type { QuickDraftVariant, TopicSuggestion } from "@/lib/api/types/generat
 import type { PostType } from "@/lib/api/types/enums";
 import {
   COUNCIL_CREDIT_COST,
-  MEDIA_GENERATION_CREDIT_COST,
-  MEDIA_TEMPLATE_CREDIT_COST,
   QUICK_DRAFT_CREDIT_COST,
   getGenerationModeCost,
+  resolveCouncilCreditCost,
+  resolveMediaGenerationCreditCost,
 } from "@/lib/credit-costs";
+import {
+  MediaFormatFields,
+  mediaFormatValuesToRequestBody,
+} from "@/components/ui/media-format-fields";
+import type { MediaFormat } from "@/lib/api/types/media-template";
 import {
   buildMediaTemplateSelectOptions,
   resolveDefaultMediaTemplateId,
@@ -70,7 +75,10 @@ import {
 } from "@/lib/generation-utils";
 import { CouncilTimeline } from "@/components/sections/app/generate/CouncilTimeline";
 import { LinkedInFeedPreview } from "@/components/sections/app/generate/LinkedInFeedPreview";
-import { PostMediaImage } from "@/components/ui/post-media-image";
+import {
+  PostMediaCarouselViewer,
+  PostMediaImage,
+} from "@/components/ui/post-media-image";
 import { MediaGeneratingSkeleton } from "@/components/ui/media-generating-skeleton";
 import { GenerationHistoryPanel } from "@/components/sections/app/generate/GenerationHistoryPanel";
 import {
@@ -119,6 +127,9 @@ type GenerateFormState = {
   brief: string;
   mediaCustomPrompt: string;
   mediaTemplateId: string;
+  mediaFormat: MediaFormat;
+  carouselSlideCount: number | null;
+  carouselStyle: "template" | "freestyle";
 };
 
 export default function Generate() {
@@ -166,6 +177,9 @@ export default function Generate() {
     brief: "",
     mediaCustomPrompt: "",
     mediaTemplateId: "",
+    mediaFormat: "single",
+    carouselSlideCount: null,
+    carouselStyle: "freestyle",
   });
   const [variants, setVariants] = useState<QuickDraftVariant[]>([]);
   const [originalVariants, setOriginalVariants] = useState<QuickDraftVariant[]>(
@@ -416,9 +430,18 @@ export default function Generate() {
   const buildGenerateMediaModalValues = useCallback(
     (): GenerateMediaModalValues => ({
       mediaTemplateId: form.mediaTemplateId,
-      direction: "",
+      mediaFormat: form.mediaFormat,
+      carouselSlideCount: form.carouselSlideCount,
+      carouselStyle: form.carouselStyle,
+      direction: form.mediaCustomPrompt,
     }),
-    [form.mediaTemplateId],
+    [
+      form.mediaTemplateId,
+      form.mediaFormat,
+      form.carouselSlideCount,
+      form.carouselStyle,
+      form.mediaCustomPrompt,
+    ],
   );
 
   const restoreQuickDraft = useCallback((snapshot: StoredQuickDraftSession) => {
@@ -825,7 +848,21 @@ export default function Generate() {
     }));
   };
 
-  const modeCost = getGenerationModeCost(mode);
+  const modeCost =
+    mode === "council"
+      ? resolveCouncilCreditCost({
+          mediaFormat: form.mediaFormat,
+          carouselSlideCount: form.carouselSlideCount,
+        })
+      : getGenerationModeCost(mode);
+  const variantMediaCreditCost = resolveMediaGenerationCreditCost(
+    mediaFormatValuesToRequestBody({
+      mediaTemplateId: form.mediaTemplateId,
+      mediaFormat: form.mediaFormat,
+      carouselSlideCount: form.carouselSlideCount,
+      carouselStyle: form.carouselStyle,
+    }),
+  );
   const canAffordMode = canAfford(modeCost);
   const selectedMode = GEN_MODES.find((item) => item.id === mode) ?? GEN_MODES[0];
   const quickGenerating = quickDraft.isPending;
@@ -870,14 +907,14 @@ export default function Generate() {
   const councilPostReady =
     councilJobComplete &&
     Boolean(councilPostQuery.data?.hook?.trim()) &&
-    Boolean(councilPostQuery.data?.media[0]?.url);
+    (councilPostQuery.data?.media ?? []).some((item) => item.url);
   const councilMediaGenerating =
     councilPostId != null &&
     (isCouncilRunning ||
       isMediaJobRunning ||
       (councilJobComplete &&
         Boolean(councilPostQuery.data?.hook?.trim()) &&
-        !councilPostQuery.data?.media[0]?.url));
+        !(councilPostQuery.data?.media ?? []).some((item) => item.url)));
 
   const canSubmitGenerate =
     form.topic.trim().length > 0 &&
@@ -897,12 +934,12 @@ export default function Generate() {
       contentProfileId: form.contentProfileId || undefined,
       additionalContext: form.additionalContext.trim() || undefined,
       mediaCustomPrompt: form.mediaCustomPrompt.trim() || undefined,
-      ...(form.mediaTemplateId
-        ? {
-            mediaMode: "template" as const,
-            mediaTemplateId: form.mediaTemplateId,
-          }
-        : {}),
+      ...mediaFormatValuesToRequestBody({
+        mediaFormat: form.mediaFormat,
+        carouselSlideCount: form.carouselSlideCount,
+        carouselStyle: form.carouselStyle,
+        mediaTemplateId: form.mediaTemplateId,
+      }),
     };
   }, [effectiveTone, form]);
 
@@ -1410,13 +1447,17 @@ export default function Generate() {
       replace?: boolean;
       postType?: PostType;
       tone?: string;
+      mediaFormat?: MediaFormat;
+      carouselSlideCount?: number;
+      mediaMode?: "freestyle" | "template";
       mediaTemplateId?: string;
     } = {},
   ) => {
-    const usesTemplate = Boolean(options.mediaTemplateId?.trim());
-    const creditCost = usesTemplate
-      ? MEDIA_TEMPLATE_CREDIT_COST
-      : MEDIA_GENERATION_CREDIT_COST;
+    const creditCost = resolveMediaGenerationCreditCost({
+      mediaFormat: options.mediaFormat ?? "single",
+      mediaMode: options.mediaMode,
+      carouselSlideCount: options.carouselSlideCount,
+    });
 
     if (!canAfford(creditCost)) {
       showToast(`You need ${creditCost} credits to generate media.`, "error");
@@ -1442,12 +1483,14 @@ export default function Generate() {
         postId,
         mediaCustomPrompt: options.mediaCustomPrompt?.trim() || undefined,
         replace: options.replace,
-        ...(usesTemplate
-          ? {
-              mediaMode: "template" as const,
-              mediaTemplateId: options.mediaTemplateId,
-            }
-          : { mediaMode: "freestyle" as const }),
+        mediaFormat: options.mediaFormat ?? "single",
+        ...(options.carouselSlideCount != null
+          ? { carouselSlideCount: options.carouselSlideCount }
+          : {}),
+        mediaMode: options.mediaMode ?? "freestyle",
+        ...(options.mediaTemplateId
+          ? { mediaTemplateId: options.mediaTemplateId }
+          : {}),
       });
       if (options.mediaCustomPrompt?.trim()) {
         trackProductEvent("media_generated_with_prompt");
@@ -1466,14 +1509,18 @@ export default function Generate() {
     mediaCustomPrompt?: string;
     postType?: PostType;
     tone?: string;
+    mediaFormat?: MediaFormat;
+    carouselSlideCount?: number;
+    mediaMode?: "freestyle" | "template";
     mediaTemplateId?: string;
   }) => {
     if (!councilPostId) return;
 
-    const usesTemplate = Boolean(options.mediaTemplateId?.trim());
-    const creditCost = usesTemplate
-      ? MEDIA_TEMPLATE_CREDIT_COST
-      : MEDIA_GENERATION_CREDIT_COST;
+    const creditCost = resolveMediaGenerationCreditCost({
+      mediaFormat: options.mediaFormat ?? "single",
+      mediaMode: options.mediaMode,
+      carouselSlideCount: options.carouselSlideCount,
+    });
 
     if (!canAfford(creditCost)) {
       showToast(`You need ${creditCost} credits to generate media.`, "error");
@@ -1497,12 +1544,14 @@ export default function Generate() {
         postId: councilPostId,
         mediaCustomPrompt: options.mediaCustomPrompt?.trim() || undefined,
         replace: true,
-        ...(usesTemplate
-          ? {
-              mediaMode: "template" as const,
-              mediaTemplateId: options.mediaTemplateId,
-            }
-          : { mediaMode: "freestyle" as const }),
+        mediaFormat: options.mediaFormat ?? "single",
+        ...(options.carouselSlideCount != null
+          ? { carouselSlideCount: options.carouselSlideCount }
+          : {}),
+        mediaMode: options.mediaMode ?? "freestyle",
+        ...(options.mediaTemplateId
+          ? { mediaTemplateId: options.mediaTemplateId }
+          : {}),
       });
       trackProductEvent("council_media_regenerated");
       setActiveMediaJobId(job.id);
@@ -1533,12 +1582,14 @@ export default function Generate() {
     setForm((current) => ({
       ...current,
       mediaTemplateId: values.mediaTemplateId,
+      mediaFormat: values.mediaFormat,
+      carouselSlideCount: values.carouselSlideCount,
+      carouselStyle: values.carouselStyle,
+      mediaCustomPrompt: values.direction,
     }));
 
-    const usesTemplate = Boolean(values.mediaTemplateId);
-    const creditCost = usesTemplate
-      ? MEDIA_TEMPLATE_CREDIT_COST
-      : MEDIA_GENERATION_CREDIT_COST;
+    const mediaBody = mediaFormatValuesToRequestBody(values);
+    const creditCost = resolveMediaGenerationCreditCost(mediaBody);
     const replace =
       kind === "council"
         ? true
@@ -1552,7 +1603,7 @@ export default function Generate() {
       () => {
         const payload = {
           mediaCustomPrompt: values.direction,
-          mediaTemplateId: values.mediaTemplateId || undefined,
+          ...mediaBody,
           replace,
         };
         if (kind === "council") {
@@ -1784,23 +1835,21 @@ export default function Generate() {
       ) : null}
 
       {mode === "council" ? (
-        <SelectField
-          label="Media template"
-          fieldClassName="mb-4"
-          options={
-            mediaTemplateOptions.length > 0
-              ? mediaTemplateOptions
-              : [{ value: "", label: "Freestyle image (no template)" }]
-          }
-          value={form.mediaTemplateId}
-          onChange={(event) =>
-            setForm((current) => ({
-              ...current,
-              mediaTemplateId: event.target.value,
-            }))
-          }
-          disabled={formDisabled || mediaTemplateOptions.length === 0}
-        />
+        <div className="mb-4">
+          <MediaFormatFields
+            values={{
+              mediaFormat: form.mediaFormat,
+              carouselSlideCount: form.carouselSlideCount,
+              carouselStyle: form.carouselStyle,
+              mediaTemplateId: form.mediaTemplateId,
+            }}
+            templateOptions={mediaTemplateOptions}
+            disabled={formDisabled}
+            onChange={(patch) =>
+              setForm((current) => ({ ...current, ...patch }))
+            }
+          />
+        </div>
       ) : null}
 
       {mode === "council" ? (
@@ -2058,13 +2107,9 @@ export default function Generate() {
                   <div className="p-[18px]">
                     {isMediaJobRunning && councilPostId ? (
                       <MediaGeneratingSkeleton label="Generating media…" />
-                    ) : councilPostQuery.data.media[0]?.url ? (
-                      <PostMediaImage
-                        className="mb-4"
-                        src={councilPostQuery.data.media[0].url}
-                        alt={
-                          councilPostQuery.data.media[0].altText ?? "Post media"
-                        }
+                    ) : (councilPostQuery.data.media ?? []).some((item) => item.url) ? (
+                      <PostMediaCarouselViewer
+                        items={councilPostQuery.data.media}
                       />
                     ) : null}
                     <p className="mb-3 font-display text-[16.5px] font-bold leading-snug text-[#0f172a]">
@@ -2206,7 +2251,7 @@ export default function Generate() {
                 disabled={!canSubmitGenerate}
               >
                 <MsIcon name="groups" size={18} />
-                {`Run AI Council (${COUNCIL_CREDIT_COST} credits)`}
+                {`Run AI Council (${modeCost} credits)`}
               </Button>
             </div>
           )
@@ -2736,8 +2781,8 @@ export default function Generate() {
                           {isGeneratingMedia
                             ? "Generating…"
                             : mediaPreviewUrl
-                              ? `Regenerate Media (${MEDIA_GENERATION_CREDIT_COST} cr)`
-                              : `Generate Media (${MEDIA_GENERATION_CREDIT_COST} cr)`}
+                              ? `Regenerate Media (${variantMediaCreditCost} cr)`
+                              : `Generate Media (${variantMediaCreditCost} cr)`}
                         </Button>
                       </span>
                       <Button

@@ -2,15 +2,15 @@
 
 import { useEffect, useId, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { SelectField } from "@/components/ui/select";
 import { VoiceMicButton } from "@/components/ui/voice-mic-button";
 import {
-  MEDIA_GENERATION_CREDIT_COST,
-  MEDIA_TEMPLATE_CREDIT_COST,
-} from "@/lib/credit-costs";
+  MediaFormatFields,
+  type MediaFormatFieldValues,
+  mediaFormatValuesToRequestBody,
+} from "@/components/ui/media-format-fields";
+import { resolveMediaGenerationCreditCost } from "@/lib/credit-costs";
 
-export type GenerateMediaModalValues = {
-  mediaTemplateId: string;
+export type GenerateMediaModalValues = MediaFormatFieldValues & {
   direction: string;
 };
 
@@ -41,10 +41,9 @@ export function GenerateMediaModal({
   const directionId = useId();
   const cancelRef = useRef<HTMLButtonElement>(null);
 
-  const usesTemplate = Boolean(values.mediaTemplateId);
-  const creditCost = usesTemplate
-    ? MEDIA_TEMPLATE_CREDIT_COST
-    : MEDIA_GENERATION_CREDIT_COST;
+  const creditCost = resolveMediaGenerationCreditCost(
+    mediaFormatValuesToRequestBody(values),
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -65,23 +64,15 @@ export function GenerateMediaModal({
           {title}
         </h3>
         <p className="mt-1.5 text-[13px] leading-relaxed text-[#64748b]">
-          Pick a template for the image layout, or add optional direction for
-          the AI.
+          Choose single image or carousel, then optional AI direction.
         </p>
 
         <div className="mt-4 space-y-3">
-          <SelectField
-            label="Template"
-            options={
-              templateOptions.length > 0
-                ? templateOptions
-                : [{ value: "", label: "No templates — freestyle image" }]
-            }
-            value={values.mediaTemplateId}
-            onChange={(event) =>
-              onChange({ mediaTemplateId: event.target.value })
-            }
-            disabled={isSubmitting || templateOptions.length === 0}
+          <MediaFormatFields
+            values={values}
+            templateOptions={templateOptions}
+            disabled={isSubmitting}
+            onChange={onChange}
           />
 
           <div>
@@ -112,8 +103,7 @@ export function GenerateMediaModal({
         </div>
 
         <p className="mt-2 text-[12px] text-[#94a3b8]">
-          Uses {creditCost} credit{creditCost === 1 ? "" : "s"}
-          {usesTemplate ? " (template layout)" : " (freestyle image)"}
+          Total: {creditCost} credit{creditCost === 1 ? "" : "s"}
         </p>
 
         <div className="mt-4 flex justify-end gap-2">

@@ -13,6 +13,7 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
+import { IsMediaTemplateId } from '../../../common/validators/media-template-id.validator';
 
 export class CalendarGenerateRequestDto {
   @ApiProperty({ enum: [7, 30], example: 7 })
@@ -68,4 +69,28 @@ export class CalendarGenerateRequestDto {
   @IsOptional()
   @IsIn(['quick_draft', 'council'])
   slotGenerationMode?: 'quick_draft' | 'council';
+
+  @ApiPropertyOptional({ enum: ['single', 'carousel'], default: 'single' })
+  @IsOptional()
+  @IsIn(['single', 'carousel'])
+  mediaFormat?: 'single' | 'carousel';
+
+  @ApiPropertyOptional({ minimum: 3, maximum: 10 })
+  @IsOptional()
+  @IsInt()
+  @Min(3)
+  @Max(10)
+  carouselSlideCount?: number;
+
+  @ApiPropertyOptional({ enum: ['freestyle', 'template'] })
+  @IsOptional()
+  @IsIn(['freestyle', 'template'])
+  mediaMode?: 'freestyle' | 'template';
+
+  @ApiPropertyOptional({
+    description: 'Workspace template UUID or system preset id (e.g. system:carousel-identity)',
+  })
+  @IsOptional()
+  @IsMediaTemplateId()
+  mediaTemplateId?: string;
 }

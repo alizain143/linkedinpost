@@ -1,10 +1,12 @@
 import type { UserPlan } from "@/lib/api/types/enums";
+import type { MediaFormat } from "@/lib/api/types/media-template";
 import type { CalendarJobResult } from "@/lib/api/types/generation";
 import {
   getTodayDateKey,
   shiftAnchorDate,
 } from "@/lib/calendar-utils";
 import {
+  calendarCreditCost,
   COUNCIL_CREDIT_COST,
   type CalendarSlotGenerationMode,
   QUICK_DRAFT_CREDIT_COST,
@@ -27,16 +29,28 @@ export const POSTING_DAY_OPTIONS: Array<{ value: number; label: string }> = [
 export function getCalendarCreditCost(
   durationDays: 7 | 30,
   mode: CalendarSlotGenerationMode = "quick_draft",
+  options?: {
+    mediaFormat?: MediaFormat;
+    carouselSlideCount?: number | null;
+  },
 ): number {
-  const perSlot =
-    mode === "council" ? COUNCIL_CREDIT_COST : QUICK_DRAFT_CREDIT_COST;
-  return durationDays * perSlot;
+  return calendarCreditCost(durationDays, mode, options);
 }
 
 export function getCalendarPerSlotCreditCost(
   mode: CalendarSlotGenerationMode,
+  options?: {
+    mediaFormat?: MediaFormat;
+    carouselSlideCount?: number | null;
+  },
 ): number {
-  return mode === "council" ? COUNCIL_CREDIT_COST : QUICK_DRAFT_CREDIT_COST;
+  if (mode === "quick_draft") {
+    return QUICK_DRAFT_CREDIT_COST;
+  }
+  if (options?.mediaFormat === "carousel") {
+    return calendarCreditCost(1, "council", options);
+  }
+  return COUNCIL_CREDIT_COST;
 }
 
 export function canUse30DayCalendar(plan: UserPlan): boolean {
@@ -68,12 +82,18 @@ export function normalizePostingTime(value: string): string {
 export function formatCalendarCreditBreakdown(
   durationDays: 7 | 30,
   mode: CalendarSlotGenerationMode,
+  options?: {
+    mediaFormat?: MediaFormat;
+    carouselSlideCount?: number | null;
+  },
 ): string {
-  const perSlot = getCalendarPerSlotCreditCost(mode);
-  const total = getCalendarCreditCost(durationDays, mode);
+  const perSlot = getCalendarPerSlotCreditCost(mode, options);
+  const total = getCalendarCreditCost(durationDays, mode, options);
   const modeNote =
     mode === "council"
-      ? " (includes reviewed post + image per slot)"
+      ? options?.mediaFormat === "carousel"
+        ? " (reviewed post + carousel per slot)"
+        : " (includes reviewed post + image per slot)"
       : " (text only per slot)";
   return `${durationDays} posts × ${perSlot} credit${perSlot === 1 ? "" : "s"} = ${total} credits${modeNote}`;
 }

@@ -11,8 +11,12 @@ import { CreateMediaTemplateDto } from './dto/create-media-template.dto';
 import { PreviewMediaTemplateDto } from './dto/preview-media-template.dto';
 import { SetDefaultMediaTemplateDto } from './dto/set-default-media-template.dto';
 import { UpdateMediaTemplateDto } from './dto/update-media-template.dto';
-import { parseMediaTemplateLayout } from './layout.validator';
+import { parseAnyMediaTemplateLayout, parseMediaTemplateLayout } from './layout.validator';
 import {
+  AnyMediaTemplateLayout,
+  CarouselPageRole,
+  isCarouselLayout,
+  SYSTEM_CAROUSEL_IDENTITY_PRESET_ID,
   SYSTEM_IDENTITY_CARD_PRESET_ID,
   TemplateBindContext,
 } from './layout.types';
@@ -21,6 +25,10 @@ import {
   toMediaTemplateResponse,
 } from './media-template.mapper';
 import { MediaTemplateResolveService } from './media-template-resolve.service';
+import {
+  getSystemCarouselIdentityPreset,
+  CAROUSEL_IDENTITY_LAYOUT,
+} from './presets/carousel-identity.preset';
 import {
   getSystemIdentityCardPreset,
   IDENTITY_CARD_LAYOUT,
@@ -83,6 +91,23 @@ export class MediaTemplatesService {
       } satisfies MediaTemplateResponse;
     }
 
+    if (id === SYSTEM_CAROUSEL_IDENTITY_PRESET_ID) {
+      const preset = getSystemCarouselIdentityPreset();
+      return {
+        id: preset.id,
+        workspaceId,
+        name: preset.name,
+        description: preset.description,
+        width: preset.width,
+        height: preset.height,
+        layout: preset.layout,
+        isSystem: true,
+        isWorkspaceDefault: false,
+        createdAt: new Date(0).toISOString(),
+        updatedAt: new Date(0).toISOString(),
+      } satisfies MediaTemplateResponse;
+    }
+
     const workspace = await this.prisma.workspace.findFirstOrThrow({
       where: { id: workspaceId, ...NOT_DELETED },
       select: { defaultMediaTemplateId: true },
@@ -102,7 +127,7 @@ export class MediaTemplatesService {
     await this.workspacesService.assertMember(userId, workspaceId);
     const width = dto.width ?? 1080;
     const height = dto.height ?? 1080;
-    const layout = parseMediaTemplateLayout(dto.layout, { width, height });
+    const layout = parseAnyMediaTemplateLayout(dto.layout, { width, height });
 
     const row = await this.prisma.mediaTemplate.create({
       data: {
@@ -121,14 +146,25 @@ export class MediaTemplatesService {
   async createFromPreset(workspaceId: string, userId: string, presetId: string) {
     await this.workspacesService.assertMember(userId, workspaceId);
 
-    if (presetId !== SYSTEM_IDENTITY_CARD_PRESET_ID) {
+    if (
+      presetId !== SYSTEM_IDENTITY_CARD_PRESET_ID &&
+      presetId !== SYSTEM_CAROUSEL_IDENTITY_PRESET_ID
+    ) {
       throw new NotFoundException({
         error: 'Preset not found',
         code: 'RESOURCE_NOT_FOUND',
       });
     }
 
-    const preset = getSystemIdentityCardPreset();
+    const preset =
+      presetId === SYSTEM_CAROUSEL_IDENTITY_PRESET_ID
+        ? getSystemCarouselIdentityPreset()
+        : getSystemIdentityCardPreset();
+    const layout =
+      presetId === SYSTEM_CAROUSEL_IDENTITY_PRESET_ID
+        ? CAROUSEL_IDENTITY_LAYOUT
+        : IDENTITY_CARD_LAYOUT;
+
     const row = await this.prisma.mediaTemplate.create({
       data: {
         workspaceId,
@@ -136,7 +172,7 @@ export class MediaTemplatesService {
         description: preset.description,
         width: preset.width,
         height: preset.height,
-        layout: IDENTITY_CARD_LAYOUT as unknown as Prisma.InputJsonValue,
+        layout: layout as unknown as Prisma.InputJsonValue,
         isSystem: false,
       },
     });
@@ -163,7 +199,7 @@ export class MediaTemplatesService {
     if (dto.layout !== undefined) {
       const canvasWidth = dto.width ?? existing.width;
       const canvasHeight = dto.height ?? existing.height;
-      data.layout = parseMediaTemplateLayout(dto.layout, {
+      data.layout = parseAnyMediaTemplateLayout(dto.layout, {
         width: canvasWidth,
         height: canvasHeight,
       }) as unknown as Prisma.InputJsonValue;
@@ -275,23 +311,33 @@ export class MediaTemplatesService {
 
     let width = 1080;
     let height = 1080;
-    let layout = IDENTITY_CARD_LAYOUT;
+    let layout: AnyMediaTemplateLayout = IDENTITY_CARD_LAYOUT;
 
-    if (id && id !== SYSTEM_IDENTITY_CARD_PRESET_ID) {
+    if (id && id !== SYSTEM_IDENTITY_CARD_PRESET_ID && id !== SYSTEM_CAROUSEL_IDENTITY_PRESET_ID) {
       const row = await this.findInWorkspace(workspaceId, id);
       width = row.width;
       height = row.height;
-      layout = parseMediaTemplateLayout(row.layout);
+      layout = parseAnyMediaTemplateLayout(row.layout);
     } else if (id === SYSTEM_IDENTITY_CARD_PRESET_ID) {
       const preset = getSystemIdentityCardPreset();
+      width = preset.width;
+      height = preset.height;
+      layout = preset.layout;
+    } else if (id === SYSTEM_CAROUSEL_IDENTITY_PRESET_ID) {
+      const preset = getSystemCarouselIdentityPreset();
       width = preset.width;
       height = preset.height;
       layout = preset.layout;
     }
 
     if (dto.layout) {
-      layout = parseMediaTemplateLayout(dto.layout, { width, height });
+      layout = parseAnyMediaTemplateLayout(dto.layout, { width, height });
     }
+
+    const pageRole: CarouselPageRole = dto.pageRole ?? 'first';
+    const pageLayout = isCarouselLayout(layout)
+      ? layout.pages[pageRole]
+      : layout;
 
     const resolved = await this.templateProfileResolver.resolveForWorkspace(
       workspaceId,
@@ -322,7 +368,7 @@ export class MediaTemplatesService {
       },
     };
 
-    const png = await this.pngRenderer.renderPng(layout, width, height, ctx);
+    const png = await this.pngRenderer.renderPng(pageLayout, width, height, ctx);
     return {
       pngBase64: png.toString('base64'),
       mimeType: 'image/png',

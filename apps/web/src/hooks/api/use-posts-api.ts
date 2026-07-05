@@ -21,6 +21,7 @@ import {
   updatePost,
 } from "@/lib/api/posts";
 import { queryKeys } from "@/lib/api/query-keys";
+import type { GenerateMediaRequestBody } from "@/lib/api/types/generation";
 import { invalidateNotificationQueries } from "@/lib/notification-query-invalidation";
 import { invalidatePostQueries } from "@/lib/post-query-invalidation";
 import type { ApiGenerationJob } from "@/lib/api/types/generation";
@@ -195,29 +196,12 @@ export function useGeneratePostMediaMutation(
   return useMutation<
     ApiGenerationJob,
     Error,
-    {
-      postId: string;
-      mediaCustomPrompt?: string;
-      replace?: boolean;
-      mediaMode?: "freestyle" | "template";
-      mediaTemplateId?: string;
-    }
+    { postId: string } & GenerateMediaRequestBody
   >({
-    mutationFn: async ({
-      postId,
-      mediaCustomPrompt,
-      replace,
-      mediaMode,
-      mediaTemplateId,
-    }) => {
+    mutationFn: async ({ postId, ...body }) => {
       const token = await getToken();
       if (!token || !workspaceId) throw new Error("Not authenticated");
-      return generatePostMedia(token, workspaceId, postId, {
-        mediaCustomPrompt,
-        replace,
-        mediaMode,
-        mediaTemplateId,
-      });
+      return generatePostMedia(token, workspaceId, postId, body);
     },
     onSuccess: (job) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.credits });

@@ -46,6 +46,8 @@ export class MediaOnlyOrchestrator {
     const jobInput = (job.input ?? {}) as {
       mediaCustomPrompt?: string;
       mediaMode?: 'freestyle' | 'template';
+      mediaFormat?: 'single' | 'carousel';
+      carouselSlideCount?: number | null;
       mediaTemplateId?: string | null;
       previousStatus?: PostPackageStatus;
     };
@@ -58,6 +60,9 @@ export class MediaOnlyOrchestrator {
         jobInput.mediaCustomPrompt,
       ),
       mediaMode: jobInput.mediaMode ?? post.mediaMode ?? undefined,
+      mediaFormat: jobInput.mediaFormat ?? post.mediaFormat ?? undefined,
+      carouselSlideCount:
+        jobInput.carouselSlideCount ?? post.carouselSlideCount ?? undefined,
       mediaTemplateId:
         jobInput.mediaTemplateId ?? post.mediaTemplateId ?? undefined,
     };
@@ -147,18 +152,44 @@ export class MediaOnlyOrchestrator {
         throw new Error('Media review failed after max regenerations');
       }
 
-      const attachedMedia = await this.mediaService.attachCouncilMedia({
-        workspaceId: post.workspaceId,
-        postPackageId: post.id,
-        generationJobId,
-        mediaType:
-          media.mediaType === 'template'
-            ? PostMediaType.template
-            : PostMediaType.generated,
-        altText: media.spec.altText,
-        imageBuffer: media.imageBuffer,
-        mimeType: media.mimeType,
-      });
+      let attachedMedia: Awaited<
+        ReturnType<MediaService['attachCouncilMedia']>
+      >;
+      let attachedCarousel: Awaited<
+        ReturnType<MediaService['attachCarouselMedia']>
+      > | null = null;
+
+      if (media.isCarousel && media.slides && media.slides.length > 0) {
+        attachedCarousel = await this.mediaService.attachCarouselMedia({
+          workspaceId: post.workspaceId,
+          postPackageId: post.id,
+          generationJobId,
+          slides: media.slides.map((slide) => ({
+            mediaType:
+              slide.mediaType === 'template'
+                ? PostMediaType.template
+                : PostMediaType.generated,
+            altText: slide.altText,
+            imageBuffer: slide.imageBuffer,
+            mimeType: slide.mimeType,
+            sortOrder: slide.sortOrder,
+          })),
+        });
+        attachedMedia = attachedCarousel[0];
+      } else {
+        attachedMedia = await this.mediaService.attachCouncilMedia({
+          workspaceId: post.workspaceId,
+          postPackageId: post.id,
+          generationJobId,
+          mediaType:
+            media.mediaType === 'template'
+              ? PostMediaType.template
+              : PostMediaType.generated,
+          altText: media.spec.altText,
+          imageBuffer: media.imageBuffer,
+          mimeType: media.mimeType,
+        });
+      }
 
       await this.prisma.councilEvent.update({
         where: { id: media.eventId },
@@ -166,6 +197,8 @@ export class MediaOnlyOrchestrator {
           output: {
             ...media.spec,
             postMediaId: attachedMedia.id,
+            postMediaIds: attachedCarousel?.map((row) => row.id),
+            slideCount: attachedCarousel?.length ?? 1,
             url: attachedMedia.url,
             imageModel: media.imageModel,
           },

@@ -199,6 +199,13 @@ Council jobs use this status exclusively (no separate run status).
 | `freestyle` | AI image model invents the full visual |
 | `template` | Layout JSON + slot-fill → SVG/PNG |
 
+### `MediaFormat`
+
+| Value | Meaning |
+|-------|---------|
+| `single` | One image attached to the post |
+| `carousel` | Multi-slide carousel (3–10 slides); 2 credits per slide |
+
 ### `CouncilAgentRole`
 
 | Value | Pipeline step |
@@ -480,7 +487,9 @@ Named themes under a content profile. Autopilot rotates through pillars.
 | `pillar` | String | Yes | — | Pillar **name** snapshot (not FK) |
 | `mediaCustomPrompt` | Text | Yes | — | Optional user direction for media generation |
 | `mediaMode` | MediaMode | Yes | — | Per-post override; null inherits workspace default |
-| `mediaTemplateId` | UUID | Yes | — | FK → `media_templates.id` SET NULL. Per-post template override |
+| `mediaTemplateId` | String | Yes | — | Template id (UUID or `system:*` preset id). Per-post override |
+| `mediaFormat` | MediaFormat | No | `single` | Single image or multi-slide carousel |
+| `carouselSlideCount` | Int | Yes | — | Optional user override for carousel slide count (3–10) |
 | `source` | PostSource | No | `manual` | Origin of post |
 | `status` | PostPackageStatus | No | `draft` | Pipeline state |
 | `score` | Int | Yes | — | 0–100 council reviewer score. Shown in approvals |

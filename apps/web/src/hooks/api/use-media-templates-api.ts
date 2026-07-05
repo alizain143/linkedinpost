@@ -16,6 +16,7 @@ import {
 } from "@/lib/api/media-templates";
 import { queryKeys } from "@/lib/api/query-keys";
 import type {
+  AiDraftMediaTemplateBody,
   AiTemplateDraft,
   ApiMediaTemplate,
   CreateMediaTemplateBody,
@@ -187,11 +188,11 @@ export function useAiDraftMediaTemplate(
 ) {
   const { getToken } = useAuth();
 
-  return useMutation<AiTemplateDraft, Error, string>({
-    mutationFn: async (prompt) => {
+  return useMutation<AiTemplateDraft, Error, AiDraftMediaTemplateBody>({
+    mutationFn: async (body) => {
       const token = await getToken();
       if (!token || !workspaceId) throw new Error("Not authenticated");
-      return aiDraftMediaTemplate(token, workspaceId, prompt);
+      return aiDraftMediaTemplate(token, workspaceId, body);
     },
   });
 }

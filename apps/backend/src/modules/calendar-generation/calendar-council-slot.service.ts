@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import {
   GenerationJobStatus,
   GenerationJobType,
+  MediaFormat,
+  MediaMode,
   PostPackageStatus,
   PostSource,
   Prisma,
@@ -10,6 +12,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { CouncilOrchestrator } from '../council/council-orchestrator';
 import { CouncilInput } from '../generation/generation.types';
 import { CalendarPlannerOutput } from './parsers/calendar-planner-output.parser';
+import { toDbMediaTemplateId } from '../media-templates/media-template-id.util';
 
 @Injectable()
 export class CalendarCouncilSlotService {
@@ -27,6 +30,10 @@ export class CalendarCouncilSlotService {
     additionalContext?: string;
     slot: CalendarPlannerOutput['slots'][number];
     scheduledAt: Date;
+    mediaFormat?: 'single' | 'carousel';
+    carouselSlideCount?: number;
+    mediaMode?: 'freestyle' | 'template';
+    mediaTemplateId?: string;
   }): Promise<{ postPackageId: string; hook: string; pillar: string | null }> {
     const councilInput: CouncilInput = {
       workspaceId: params.workspaceId,
@@ -37,6 +44,10 @@ export class CalendarCouncilSlotService {
       pillar: params.slot.pillar,
       contentProfileId: params.contentProfileId,
       additionalContext: params.additionalContext,
+      mediaFormat: params.mediaFormat,
+      carouselSlideCount: params.carouselSlideCount,
+      mediaMode: params.mediaMode,
+      mediaTemplateId: params.mediaTemplateId,
     };
 
     const post = await this.prisma.postPackage.create({
@@ -51,6 +62,15 @@ export class CalendarCouncilSlotService {
         source: PostSource.calendar,
         status: PostPackageStatus.text_generating,
         scheduledAt: params.scheduledAt,
+        mediaFormat:
+          params.mediaFormat === 'carousel'
+            ? MediaFormat.carousel
+            : MediaFormat.single,
+        carouselSlideCount: params.carouselSlideCount ?? null,
+        mediaMode: params.mediaMode
+          ? (params.mediaMode as MediaMode)
+          : undefined,
+        mediaTemplateId: toDbMediaTemplateId(params.mediaTemplateId) ?? null,
       },
     });
 

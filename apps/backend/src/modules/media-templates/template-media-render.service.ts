@@ -8,6 +8,7 @@ import type {
 import { MODEL_ROUTER } from '../generation/llm/model-capability.types';
 import type { ModelRouter } from '../generation/llm/model-capability.types';
 import {
+  isCarouselLayout,
   MediaTemplateLayout,
   ResolvedMediaTemplate,
   TemplateSlotContent,
@@ -48,7 +49,14 @@ export class TemplateMediaRenderService {
     resolvedProfile?: ResolvedTemplateProfile;
     avatarUrl?: string | null;
   }): Promise<TemplateMediaRenderResult> {
-    const visualZones = this.findVisualZones(params.template.layout);
+    if (isCarouselLayout(params.template.layout)) {
+      throw new Error(
+        'Use TemplateCarouselRenderService for carousel templates',
+      );
+    }
+
+    const layout = params.template.layout;
+    const visualZones = this.findVisualZones(layout);
     const slots = await this.fillSlots(params, visualZones.length > 0);
 
     const profileName =
@@ -87,7 +95,7 @@ export class TemplateMediaRenderService {
     }
 
     const imageBuffer = await this.pngRenderer.renderPng(
-      params.template.layout,
+      layout,
       params.template.width,
       params.template.height,
       {

@@ -121,6 +121,10 @@ export class CalendarOrchestrator {
               additionalContext: input.additionalContext,
               slot,
               scheduledAt,
+              mediaFormat: input.mediaFormat,
+              carouselSlideCount: input.carouselSlideCount ?? undefined,
+              mediaMode: input.mediaMode,
+              mediaTemplateId: input.mediaTemplateId,
             },
           );
           postPackageId = councilResult.postPackageId;

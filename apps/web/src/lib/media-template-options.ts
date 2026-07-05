@@ -5,12 +5,19 @@ export function buildMediaTemplateSelectOptions(
 ): { value: string; label: string }[] {
   if (!data) return [];
 
-  return data.templates.map((template) => ({
+  const presetOptions = data.presets.map((preset) => ({
+    value: preset.id,
+    label: preset.name,
+  }));
+
+  const templateOptions = data.templates.map((template) => ({
     value: template.id,
     label: template.isWorkspaceDefault
       ? `${template.name} (Default)`
       : template.name,
   }));
+
+  return [...presetOptions, ...templateOptions];
 }
 
 export function resolveDefaultMediaTemplateId(

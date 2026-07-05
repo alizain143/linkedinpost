@@ -217,7 +217,8 @@ Council agent pipeline: writer → reviewer → editor → media_creator → med
 | Billing | `GET /v1/billing`, checkout, cancel, XPay webhook |
 | Scheduling | schedule/unschedule/reschedule on posts |
 | LinkedIn | Per-workspace direct OAuth (`GET .../linkedin/oauth/start` + callback); tokens on `Workspace`; publish uses workspace token; Clerk OAuth retained for sign-in only (one LinkedIn per user) |
-| Media templates | CRUD + preview `/v1/workspaces/:workspaceId/media-templates`; layout JSON editor; template lane in council media |
+| Media templates | CRUD + preview `/v1/workspaces/:workspaceId/media-templates`; layout JSON editor (v2 carousel pages); system presets `system:identity-card`, `system:carousel-identity`; AI draft from text and/or image/PDF reference (`POST .../ai-draft`); template or freestyle carousel generation |
+| LinkedIn publish | Single image via `content.media`; 2–20 carousel slides via `content.multiImage` |
 | Autopilot | `GET/PUT .../autopilot`, planned posts |
 | Approval share | create/list/revoke tokens + public approve endpoints |
 | Dashboard | `GET .../dashboard/stats` |

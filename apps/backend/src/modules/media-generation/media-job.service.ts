@@ -5,14 +5,12 @@ import {
 } from '@nestjs/common';
 import {
   GenerationJobType,
+  MediaFormat,
   MediaMode,
   PostPackageStatus,
   Prisma,
 } from '@prisma/client';
-import {
-  MEDIA_GENERATION_CREDIT_COST,
-  MEDIA_TEMPLATE_CREDIT_COST,
-} from '../../common/constants/media.constants';
+import { resolveMediaGenerationCreditCost } from './media-credit.util';
 import { NOT_DELETED } from '../../common/constants/soft-delete.constants';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreditsService } from '../credits/credits.service';
@@ -20,6 +18,7 @@ import { GenerateMediaRequestDto } from '../generation/dto/generate-media-reques
 import { GenerationJobEnqueueService } from '../job-queue/generation-job-enqueue.service';
 import { MediaService } from '../media/media.service';
 import { MediaTemplateResolveService } from '../media-templates/media-template-resolve.service';
+import { toDbMediaTemplateId } from '../media-templates/media-template-id.util';
 import { WorkspacesService } from '../workspaces/workspaces.service';
 import { toGenerationJobResponse } from '../generation/generation-job.mapper';
 import { MediaJobInput } from './media-generation.types';
@@ -102,13 +101,20 @@ export class MediaJobService {
         contentProfileId: post.contentProfileId,
       }));
 
+    const mediaFormat =
+      dto.mediaFormat ?? post.mediaFormat ?? MediaFormat.single;
+
+    const carouselSlideCount =
+      dto.carouselSlideCount ?? post.carouselSlideCount ?? undefined;
+
     const mediaTemplateId =
       dto.mediaTemplateId ?? post.mediaTemplateId ?? undefined;
 
-    const creditCost =
-      mediaMode === MediaMode.template
-        ? MEDIA_TEMPLATE_CREDIT_COST
-        : MEDIA_GENERATION_CREDIT_COST;
+    const creditCost = resolveMediaGenerationCreditCost({
+      mediaFormat,
+      mediaMode,
+      carouselSlideCount,
+    });
 
     await this.creditsService.assertHasCredits(userId, creditCost);
 
@@ -122,8 +128,19 @@ export class MediaJobService {
     if (dto.mediaMode !== undefined) {
       postUpdate.mediaMode = dto.mediaMode;
     }
+    if (dto.mediaFormat !== undefined) {
+      postUpdate.mediaFormat = dto.mediaFormat;
+    }
+    if (dto.carouselSlideCount !== undefined) {
+      postUpdate.carouselSlideCount = dto.carouselSlideCount;
+    }
     if (dto.mediaTemplateId !== undefined) {
-      postUpdate.mediaTemplate = { connect: { id: dto.mediaTemplateId } };
+      const dbTemplateId = toDbMediaTemplateId(dto.mediaTemplateId);
+      if (dbTemplateId) {
+        postUpdate.mediaTemplate = { connect: { id: dbTemplateId } };
+      } else {
+        postUpdate.mediaTemplate = { disconnect: true };
+      }
     } else if (mediaMode === MediaMode.template && !post.mediaMode) {
       postUpdate.mediaMode = MediaMode.template;
     }
@@ -146,6 +163,8 @@ export class MediaJobService {
       contentProfileId: post.contentProfileId,
       mediaCustomPrompt,
       mediaMode,
+      mediaFormat,
+      carouselSlideCount,
       mediaTemplateId,
       previousStatus: post.status,
     };

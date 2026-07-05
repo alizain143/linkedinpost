@@ -11,7 +11,7 @@ import type {
   TransitionPostStatusBody,
   UpdatePostBody,
 } from "@/lib/api/types/post";
-import type { ApiGenerationJob } from "@/lib/api/types/generation";
+import type { ApiGenerationJob, GenerateMediaRequestBody } from "@/lib/api/types/generation";
 import type { SchedulePostBody } from "@/lib/api/types/scheduling";
 
 function postsPath(workspaceId: string, postId?: string, suffix?: string): string {
@@ -166,12 +166,7 @@ export async function generatePostMedia(
   token: string,
   workspaceId: string,
   postId: string,
-  body: {
-    mediaCustomPrompt?: string;
-    replace?: boolean;
-    mediaMode?: "freestyle" | "template";
-    mediaTemplateId?: string;
-  } = {},
+  body: GenerateMediaRequestBody = {},
 ): Promise<ApiGenerationJob> {
   return apiFetch<ApiGenerationJob>(
     token,

@@ -23,6 +23,8 @@ export interface QuickDraftInput {
   additionalContext?: string;
   mediaCustomPrompt?: string;
   mediaMode?: 'freestyle' | 'template';
+  mediaFormat?: 'single' | 'carousel';
+  carouselSlideCount?: number | null;
   mediaTemplateId?: string;
   revisionPrompt?: string;
   previousVariant?: PreviousVariantInput;
@@ -56,6 +58,10 @@ export interface CalendarInput {
   additionalContext?: string;
   slotDates: string[];
   slotGenerationMode?: 'quick_draft' | 'council';
+  mediaFormat?: 'single' | 'carousel';
+  carouselSlideCount?: number | null;
+  mediaMode?: 'freestyle' | 'template';
+  mediaTemplateId?: string;
 }
 
 export interface CouncilPriorStep {

@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { QueryState } from "@/components/app/query-state";
 import { Button } from "@/components/ui/button";
+import { MsIcon } from "@/components/ui/ms-icon";
 import {
   useAiDraftMediaTemplate,
   useCreateMediaTemplate,
@@ -17,6 +18,13 @@ import {
 } from "@/hooks/api/use-media-templates-api";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { TemplateCanvasPreview } from "@/components/sections/app/templates/TemplateCanvasPreview";
+import { getPreviewLayout } from "@/lib/template-layout-utils";
+import type { AiTemplateReferenceFile } from "@/lib/api/types/media-template";
+import {
+  readTemplateReferenceFile,
+  TEMPLATE_REFERENCE_ACCEPT,
+  templateReferencePreviewUrl,
+} from "@/lib/template-reference-file";
 
 export function TemplatesList() {
   const router = useRouter();
@@ -29,7 +37,12 @@ export function TemplatesList() {
   const setMode = useSetDefaultMediaMode(workspaceId);
   const aiDraft = useAiDraftMediaTemplate(workspaceId);
   const [aiPrompt, setAiPrompt] = useState("");
+  const [aiReference, setAiReference] = useState<AiTemplateReferenceFile | null>(
+    null,
+  );
   const [aiOpen, setAiOpen] = useState(false);
+  const [referenceDragOver, setReferenceDragOver] = useState(false);
+  const referenceInputRef = useRef<HTMLInputElement>(null);
 
   const data = listQuery.data;
 
@@ -43,13 +56,37 @@ export function TemplatesList() {
     }
   }
 
+  function closeAiModal() {
+    setAiOpen(false);
+    setAiPrompt("");
+    setAiReference(null);
+    setReferenceDragOver(false);
+  }
+
+  async function handleReferenceFiles(files: FileList | File[] | null) {
+    const file = files?.[0];
+    if (!file) return;
+    try {
+      const reference = await readTemplateReferenceFile(file);
+      setAiReference(reference);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not read file");
+    }
+  }
+
   async function handleAiCreate() {
-    if (aiPrompt.trim().length < 10) {
-      toast.error("Describe the template in a bit more detail");
+    const prompt = aiPrompt.trim();
+    if (!aiReference && prompt.length < 10) {
+      toast.error(
+        "Upload a reference image/PDF or describe the template in more detail",
+      );
       return;
     }
     try {
-      const draft = await aiDraft.mutateAsync(aiPrompt.trim());
+      const draft = await aiDraft.mutateAsync({
+        prompt: prompt || undefined,
+        referenceFile: aiReference ?? undefined,
+      });
       const created = await createTemplate.mutateAsync({
         name: draft.name,
         description: draft.description ?? undefined,
@@ -58,8 +95,7 @@ export function TemplatesList() {
         layout: draft.layout,
       });
       toast.success("AI template created — tweak it in the editor");
-      setAiOpen(false);
-      setAiPrompt("");
+      closeAiModal();
       router.push(`/app/templates/${created.id}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "AI draft failed");
@@ -147,7 +183,7 @@ export function TemplatesList() {
                       className="rounded-2xl border border-[#eceef3] bg-white p-4"
                     >
                       <TemplateCanvasPreview
-                        layout={preset.layout}
+                        layout={getPreviewLayout(preset.layout)}
                         width={preset.width}
                         height={preset.height}
                         scale={0.28}
@@ -193,7 +229,7 @@ export function TemplatesList() {
                     >
                       <Link href={`/app/templates/${template.id}`}>
                         <TemplateCanvasPreview
-                          layout={template.layout}
+                          layout={getPreviewLayout(template.layout)}
                           width={template.width}
                           height={template.height}
                           scale={0.28}
@@ -268,18 +304,89 @@ export function TemplatesList() {
               AI create template
             </h3>
             <p className="mt-1 text-sm text-[#64748b]">
-              Describe the layout. You can edit positions and bindings after it
-              is created.
+              Describe the layout, upload a reference image or PDF, or both. You
+              can edit positions and bindings after it is created.
             </p>
             <textarea
               className="mt-4 w-full rounded-xl border border-[#e5e7eb] p-3 text-sm outline-none focus:border-[#5B3DF5]"
               rows={4}
               value={aiPrompt}
               onChange={(e) => setAiPrompt(e.target.value)}
-              placeholder="Minimal white card, avatar and name top left, title top right, skills bottom left, Save & Repost bottom right, big headline center"
+              placeholder="Optional notes — e.g. keep the headline large in the center, identity corners like the reference"
             />
+            <input
+              ref={referenceInputRef}
+              type="file"
+              accept={TEMPLATE_REFERENCE_ACCEPT}
+              className="hidden"
+              onChange={(e) => void handleReferenceFiles(e.target.files)}
+            />
+            {aiReference ? (
+              <div className="mt-4 flex items-start gap-3 rounded-xl border border-[#e5e7eb] bg-[#fafafa] p-3">
+                {templateReferencePreviewUrl(aiReference) ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={templateReferencePreviewUrl(aiReference)!}
+                    alt=""
+                    className="h-20 w-20 shrink-0 rounded-lg border border-[#e5e7eb] object-cover"
+                  />
+                ) : (
+                  <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-lg border border-[#e5e7eb] bg-white text-[#64748b]">
+                    <MsIcon name="picture_as_pdf" size={28} />
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-medium text-[#0f172a]">
+                    {aiReference.fileName ?? "Reference file"}
+                  </div>
+                  <p className="mt-1 text-xs text-[#64748b]">
+                    AI will use this as a layout reference when generating the
+                    template.
+                  </p>
+                  <button
+                    type="button"
+                    className="mt-2 text-xs font-semibold text-[#5B3DF5] hover:underline"
+                    onClick={() => setAiReference(null)}
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className={`mt-4 flex w-full flex-col items-center justify-center rounded-xl border border-dashed px-4 py-6 text-center transition-colors ${
+                  referenceDragOver
+                    ? "border-[#5B3DF5] bg-[#f5f3ff]"
+                    : "border-[#d1d5db] bg-[#fafafa] hover:border-[#5B3DF5] hover:bg-[#f8f7ff]"
+                }`}
+                onClick={() => referenceInputRef.current?.click()}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setReferenceDragOver(true);
+                }}
+                onDragLeave={() => setReferenceDragOver(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setReferenceDragOver(false);
+                  void handleReferenceFiles(e.dataTransfer.files);
+                }}
+              >
+                <MsIcon
+                  name="upload_file"
+                  size={24}
+                  className="text-[#5B3DF5]"
+                />
+                <span className="mt-2 text-sm font-medium text-[#0f172a]">
+                  Add reference image or PDF
+                </span>
+                <span className="mt-1 text-xs text-[#64748b]">
+                  PNG, JPG, WebP, GIF, or PDF up to 6 MB
+                </span>
+              </button>
+            )}
             <div className="mt-4 flex justify-end gap-2">
-              <Button variant="ghost" onClick={() => setAiOpen(false)}>
+              <Button variant="ghost" onClick={closeAiModal}>
                 Cancel
               </Button>
               <Button

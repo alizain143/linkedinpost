@@ -1,4 +1,4 @@
-import { CouncilAgentRole, PostMediaType } from '@prisma/client';
+import { CouncilAgentRole, PostMediaType, MediaFormat } from '@prisma/client';
 import { CouncilInput, CouncilPriorStep } from '../generation/generation.types';
 import { PostPackage } from '@prisma/client';
 
@@ -13,6 +13,8 @@ export interface MediaJobInput {
   contentProfileId?: string | null;
   mediaCustomPrompt?: string;
   mediaMode?: PostPackage['mediaMode'];
+  mediaFormat?: MediaFormat;
+  carouselSlideCount?: number | null;
   mediaTemplateId?: string | null;
   previousStatus?: PostPackage['status'];
 }
@@ -33,6 +35,8 @@ export function toCouncilInputFromPost(
     mediaCustomPrompt:
       mediaCustomPrompt ?? post.mediaCustomPrompt ?? undefined,
     mediaMode: post.mediaMode ?? undefined,
+    mediaFormat: post.mediaFormat ?? undefined,
+    carouselSlideCount: post.carouselSlideCount ?? undefined,
     mediaTemplateId: post.mediaTemplateId ?? undefined,
   };
 }

@@ -18,7 +18,17 @@ import {
   useCalendarGenerateMutation,
   useGenerationJob,
 } from "@/hooks/api/use-generation-api";
+import { useMediaTemplates } from "@/hooks/api/use-media-templates-api";
 import { useWorkspace } from "@/hooks/use-workspace";
+import {
+  MediaFormatFields,
+  mediaFormatValuesToRequestBody,
+} from "@/components/ui/media-format-fields";
+import type { MediaFormat } from "@/lib/api/types/media-template";
+import {
+  buildMediaTemplateSelectOptions,
+  resolveDefaultMediaTemplateId,
+} from "@/lib/media-template-options";
 import { getApiErrorMessage } from "@/lib/api-error-messages";
 import type { CalendarSlotGenerationMode } from "@/lib/credit-costs";
 import {
@@ -71,6 +81,10 @@ type CalendarFormState = {
   postingTime: string;
   postingDays: number[];
   additionalContext: string;
+  mediaFormat: MediaFormat;
+  carouselSlideCount: number | null;
+  carouselStyle: "template" | "freestyle";
+  mediaTemplateId: string;
 };
 
 export default function CalendarGenerate() {
@@ -90,6 +104,12 @@ export default function CalendarGenerate() {
   } = useContentProfiles(activeWorkspaceId);
 
   const calendarMutation = useCalendarGenerateMutation(activeWorkspaceId);
+  const { data: mediaTemplatesData } = useMediaTemplates(activeWorkspaceId);
+
+  const mediaTemplateOptions = useMemo(
+    () => buildMediaTemplateSelectOptions(mediaTemplatesData),
+    [mediaTemplatesData],
+  );
 
   const [form, setForm] = useState<CalendarFormState>({
     slotGenerationMode: "quick_draft",
@@ -99,6 +119,10 @@ export default function CalendarGenerate() {
     postingTime: DEFAULT_POSTING_TIME,
     postingDays: [...DEFAULT_POSTING_DAYS],
     additionalContext: "",
+    mediaFormat: "single",
+    carouselSlideCount: null,
+    carouselStyle: "freestyle",
+    mediaTemplateId: "",
   });
   const [activeCalendarJobId, setActiveCalendarJobId] = useState<string | null>(
     null,
@@ -185,6 +209,15 @@ export default function CalendarGenerate() {
   }, [activeWorkspaceId, profiles]);
 
   useEffect(() => {
+    if (!mediaTemplatesData) return;
+    const defaultId = resolveDefaultMediaTemplateId(mediaTemplatesData);
+    if (!defaultId) return;
+    setForm((current) =>
+      current.mediaTemplateId ? current : { ...current, mediaTemplateId: defaultId },
+    );
+  }, [mediaTemplatesData]);
+
+  useEffect(() => {
     if (!activeWorkspaceId) return;
     saveGenerationSession(activeWorkspaceId, { activeCalendarJobId });
   }, [activeCalendarJobId, activeWorkspaceId]);
@@ -206,13 +239,23 @@ export default function CalendarGenerate() {
     }
   };
 
+  const carouselCreditOptions =
+    form.slotGenerationMode === "council"
+      ? {
+          mediaFormat: form.mediaFormat,
+          carouselSlideCount: form.carouselSlideCount,
+        }
+      : undefined;
+
   const creditCost = getCalendarCreditCost(
     form.durationDays,
     form.slotGenerationMode,
+    carouselCreditOptions,
   );
   const creditBreakdown = formatCalendarCreditBreakdown(
     form.durationDays,
     form.slotGenerationMode,
+    carouselCreditOptions,
   );
   const selectedMode =
     CALENDAR_GEN_MODES.find((item) => item.id === form.slotGenerationMode) ??
@@ -262,6 +305,16 @@ export default function CalendarGenerate() {
   };
 
   const buildRequestBody = useCallback(() => {
+    const mediaBody =
+      form.slotGenerationMode === "council"
+        ? mediaFormatValuesToRequestBody({
+            mediaFormat: form.mediaFormat,
+            carouselSlideCount: form.carouselSlideCount,
+            carouselStyle: form.carouselStyle,
+            mediaTemplateId: form.mediaTemplateId,
+          })
+        : { mediaFormat: "single" as const };
+
     return {
       durationDays: form.durationDays,
       slotGenerationMode: form.slotGenerationMode,
@@ -270,6 +323,7 @@ export default function CalendarGenerate() {
       postingTime: normalizePostingTime(form.postingTime),
       postingDays: form.postingDays,
       additionalContext: form.additionalContext.trim() || undefined,
+      ...mediaBody,
     };
   }, [form]);
 
@@ -386,6 +440,24 @@ export default function CalendarGenerate() {
         ))}
       </div>
 
+      {form.slotGenerationMode === "council" ? (
+        <div className="mb-4">
+          <MediaFormatFields
+            values={{
+              mediaFormat: form.mediaFormat,
+              carouselSlideCount: form.carouselSlideCount,
+              carouselStyle: form.carouselStyle,
+              mediaTemplateId: form.mediaTemplateId,
+            }}
+            templateOptions={mediaTemplateOptions}
+            disabled={formDisabled}
+            onChange={(patch) =>
+              setForm((current) => ({ ...current, ...patch }))
+            }
+          />
+        </div>
+      ) : null}
+
       <label className={appLabel}>Duration</label>
       <div className="mb-4 flex gap-1 rounded-[10px] bg-[#eef0f5] p-0.5">
         {([7, 30] as const).map((days) => {
@@ -408,7 +480,7 @@ export default function CalendarGenerate() {
             >
               <span className="text-[13px] font-bold">{days}-day</span>
               <span className="text-[10.5px]">
-                {getCalendarCreditCost(days, form.slotGenerationMode)} credits
+                {getCalendarCreditCost(days, form.slotGenerationMode, carouselCreditOptions)} credits
               </span>
             </button>
           );

@@ -493,10 +493,46 @@ export class LinkedInPublishService {
 
     try {
       const commentary = buildPostCommentary(post);
-      const media = await this.mediaService.getPrimaryPublishMedia(post.id);
+      const mediaList = await this.mediaService.getPublishMediaList(post.id);
       let result;
 
-      if (media) {
+      if (mediaList.length >= 2) {
+        const ownerUrn = `urn:li:person:${memberId}`;
+        const uploaded: { imageUrn: string; altText: string }[] = [];
+
+        for (const media of mediaList) {
+          const { uploadUrl, imageUrn } =
+            await this.linkedInApiClient.initializeImageUpload({
+              accessToken,
+              ownerUrn,
+            });
+
+          try {
+            await this.linkedInApiClient.uploadImageBinary({
+              uploadUrl,
+              buffer: media.buffer,
+              mimeType: media.mimeType,
+            });
+          } catch (error) {
+            throw new LinkedInPublishError(
+              error instanceof Error
+                ? error.message
+                : 'LinkedIn image upload failed',
+              'LINKEDIN_IMAGE_UPLOAD_FAILED',
+            );
+          }
+
+          uploaded.push({ imageUrn, altText: media.altText });
+        }
+
+        result = await this.linkedInApiClient.publishPost({
+          accessToken,
+          memberId,
+          commentary,
+          multiImage: { images: uploaded },
+        });
+      } else if (mediaList.length === 1) {
+        const media = mediaList[0];
         const ownerUrn = `urn:li:person:${memberId}`;
         const { uploadUrl, imageUrn } =
           await this.linkedInApiClient.initializeImageUpload({

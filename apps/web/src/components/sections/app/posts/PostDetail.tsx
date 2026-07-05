@@ -33,14 +33,27 @@ import {
 } from "@/hooks/api/use-posts-api";
 import { PromptModal } from "@/components/modals/prompt-modal";
 import {
+  GenerateMediaModal,
+  type GenerateMediaModalValues,
+} from "@/components/modals/generate-media-modal";
+import {
   PostMediaVersionPreviewModal,
   PostTextVersionPreviewModal,
 } from "@/components/modals/post-version-preview-modal";
 import { trackProductEvent } from "@/lib/product-events";
 import { useCancelScheduleMutation } from "@/hooks/api/use-scheduling-api";
 import { useCredits } from "@/hooks/api/use-credits-api";
+import { useMediaTemplates } from "@/hooks/api/use-media-templates-api";
 import { useWorkspace } from "@/hooks/use-workspace";
-import { MEDIA_GENERATION_CREDIT_COST, QUICK_DRAFT_CREDIT_COST } from "@/lib/credit-costs";
+import {
+  QUICK_DRAFT_CREDIT_COST,
+  resolveMediaGenerationCreditCost,
+} from "@/lib/credit-costs";
+import { mediaFormatValuesToRequestBody } from "@/components/ui/media-format-fields";
+import {
+  buildMediaTemplateSelectOptions,
+  resolveDefaultMediaTemplateId,
+} from "@/lib/media-template-options";
 import { getApiErrorMessage } from "@/lib/api-error-messages";
 import type { ApiPostMedia, ApiPostPackage, ApiPostVersion } from "@/lib/api/types/post";
 import type { PostType } from "@/lib/api/types/enums";
@@ -167,10 +180,23 @@ export default function PostDetail({ postId }: PostDetailProps) {
   );
   const cancelSchedule = useCancelScheduleMutation(activeWorkspaceId);
   const { canAfford } = useCredits();
+  const { data: mediaTemplatesData } = useMediaTemplates(activeWorkspaceId);
+
+  const mediaTemplateOptions = useMemo(
+    () => buildMediaTemplateSelectOptions(mediaTemplatesData),
+    [mediaTemplatesData],
+  );
 
   const [activeMediaJobId, setActiveMediaJobId] = useState<string | null>(null);
-  const [mediaPromptOpen, setMediaPromptOpen] = useState(false);
-  const [mediaPrompt, setMediaPrompt] = useState("");
+  const [generateMediaModalOpen, setGenerateMediaModalOpen] = useState(false);
+  const [generateMediaValues, setGenerateMediaValues] =
+    useState<GenerateMediaModalValues>({
+      mediaFormat: "single",
+      carouselSlideCount: null,
+      carouselStyle: "freestyle",
+      mediaTemplateId: "",
+      direction: "",
+    });
   const [textRegenPromptOpen, setTextRegenPromptOpen] = useState(false);
   const [textRegenPrompt, setTextRegenPrompt] = useState("");
   const [previewTextVersion, setPreviewTextVersion] =
@@ -207,6 +233,19 @@ export default function PostDetail({ postId }: PostDetailProps) {
   useEffect(() => {
     if (post) setForm(postToForm(post));
   }, [post]);
+
+  useEffect(() => {
+    if (!mediaTemplatesData) return;
+    const defaultId = resolveDefaultMediaTemplateId(mediaTemplatesData);
+    if (!defaultId) return;
+    setGenerateMediaValues((current) =>
+      current.mediaTemplateId ? current : { ...current, mediaTemplateId: defaultId },
+    );
+  }, [mediaTemplatesData]);
+
+  const mediaCreditCost = resolveMediaGenerationCreditCost(
+    mediaFormatValuesToRequestBody(generateMediaValues),
+  );
 
   const handleSave = async () => {
     if (!form || !isEditable) return;
@@ -300,30 +339,31 @@ export default function PostDetail({ postId }: PostDetailProps) {
   };
 
   const handleGenerateMedia = () => {
-    setMediaPrompt("");
-    setMediaPromptOpen(true);
+    setGenerateMediaModalOpen(true);
   };
 
   const confirmGenerateMedia = async () => {
-    if (!canAfford(MEDIA_GENERATION_CREDIT_COST)) {
-      showToast(
-        `You need ${MEDIA_GENERATION_CREDIT_COST} credits to generate an image.`,
-        "error",
-      );
+    const creditCost = resolveMediaGenerationCreditCost(
+      mediaFormatValuesToRequestBody(generateMediaValues),
+    );
+    if (!canAfford(creditCost)) {
+      showToast(`You need ${creditCost} credits to generate media.`, "error");
       return;
     }
 
     try {
       const hasMedia = (post?.media.length ?? 0) > 0;
+      const mediaBody = mediaFormatValuesToRequestBody(generateMediaValues);
       const job = await generatePostMedia.mutateAsync({
         postId,
-        mediaCustomPrompt: mediaPrompt.trim() || undefined,
+        mediaCustomPrompt: generateMediaValues.direction.trim() || undefined,
         replace: hasMedia,
+        ...mediaBody,
       });
-      if (mediaPrompt.trim()) {
+      if (generateMediaValues.direction.trim()) {
         trackProductEvent("media_generated_with_prompt");
       }
-      setMediaPromptOpen(false);
+      setGenerateMediaModalOpen(false);
       setActiveMediaJobId(job.id);
       void refetch();
     } catch (err) {
@@ -760,8 +800,8 @@ export default function PostDetail({ postId }: PostDetailProps) {
                       {isMediaGenerating
                         ? "Generating…"
                         : post.media.length > 0
-                          ? `Regenerate (${MEDIA_GENERATION_CREDIT_COST} cr)`
-                          : `Generate (${MEDIA_GENERATION_CREDIT_COST} cr)`}
+                          ? `Regenerate (${mediaCreditCost} cr)`
+                          : `Generate (${mediaCreditCost} cr)`}
                     </Button>
                   ) : null}
                 </div>
@@ -945,17 +985,18 @@ export default function PostDetail({ postId }: PostDetailProps) {
         ) : null}
       </QueryState>
 
-      <PromptModal
-        open={mediaPromptOpen}
-        title="Image direction"
-        description="Optional. Leave blank to let AI decide."
+      <GenerateMediaModal
+        open={generateMediaModalOpen}
+        title={post?.media.length ? "Regenerate media" : "Generate media"}
         confirmLabel={post?.media.length ? "Regenerate" : "Generate"}
-        value={mediaPrompt}
-        onChange={setMediaPrompt}
-        onClose={() => setMediaPromptOpen(false)}
+        values={generateMediaValues}
+        templateOptions={mediaTemplateOptions}
+        onChange={(patch) =>
+          setGenerateMediaValues((current) => ({ ...current, ...patch }))
+        }
+        onClose={() => setGenerateMediaModalOpen(false)}
         onConfirm={() => void confirmGenerateMedia()}
         isSubmitting={generatePostMedia.isPending}
-        creditCost={MEDIA_GENERATION_CREDIT_COST}
       />
 
       <PromptModal

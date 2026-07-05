@@ -4,6 +4,7 @@ import {
   TemplateElement,
   TextStyle,
 } from './layout.types';
+import { gradientToSvgCoords } from './layout-gradient.util';
 
 function escapeXml(value: string): string {
   return value
@@ -138,10 +139,42 @@ function renderAvatar(
   `;
 }
 
-function renderElement(el: TemplateElement, ctx: TemplateBindContext): string {
+function renderRectFill(
+  el: Extract<TemplateElement, { type: 'rect' }>,
+  gradientId: string,
+): string {
+  if (el.gradient) {
+    return `url(#${gradientId})`;
+  }
+  return escapeXml(el.fill);
+}
+
+function renderRectGradientDef(
+  id: string,
+  gradient: NonNullable<
+    Extract<TemplateElement, { type: 'rect' }>['gradient']
+  >,
+): string {
+  const coords = gradientToSvgCoords(gradient.angle ?? 180);
+  return `<linearGradient id="${id}" x1="${coords.x1}" y1="${coords.y1}" x2="${coords.x2}" y2="${coords.y2}">
+    <stop offset="0%" stop-color="${escapeXml(gradient.from)}" />
+    <stop offset="100%" stop-color="${escapeXml(gradient.to)}" />
+  </linearGradient>`;
+}
+
+function renderElement(
+  el: TemplateElement,
+  ctx: TemplateBindContext,
+  gradientDefs: string[],
+): string {
   switch (el.type) {
-    case 'rect':
-      return `<rect x="${el.x}" y="${el.y}" width="${el.w}" height="${el.h}" rx="${el.radius ?? 0}" fill="${escapeXml(el.fill)}" opacity="${el.opacity ?? 1}" />`;
+    case 'rect': {
+      const gradientId = `grad-${el.id}`;
+      if (el.gradient) {
+        gradientDefs.push(renderRectGradientDef(gradientId, el.gradient));
+      }
+      return `<rect x="${el.x}" y="${el.y}" width="${el.w}" height="${el.h}" rx="${el.radius ?? 0}" fill="${renderRectFill(el, gradientId)}" opacity="${el.opacity ?? 1}" />`;
+    }
     case 'avatar':
       return renderAvatar(el, ctx);
     case 'text': {
@@ -180,6 +213,14 @@ function renderElement(el: TemplateElement, ctx: TemplateBindContext): string {
       <image href="${dataUrl}" x="${el.x}" y="${el.y}" width="${el.w}" height="${el.h}" clip-path="url(#${clipId})" preserveAspectRatio="xMidYMid slice" />
     `;
     }
+    case 'carousel_nav':
+      return renderTextBlock(
+        el.label,
+        el.x,
+        el.y,
+        el.style.fontSize * 8,
+        el.style,
+      );
     default:
       return '';
   }
@@ -191,10 +232,28 @@ export function renderTemplateSvg(
   height: number,
   ctx: TemplateBindContext,
 ): string {
-  const body = layout.elements.map((el) => renderElement(el, ctx)).join('\n');
+  const gradientDefs: string[] = [];
+  const body = layout.elements
+    .map((el) => renderElement(el, ctx, gradientDefs))
+    .join('\n');
+
+  const bgGradientId = 'bg-gradient';
+  let bgFill = escapeXml(layout.background.color);
+  if (layout.background.gradient) {
+    gradientDefs.unshift(
+      renderRectGradientDef(bgGradientId, layout.background.gradient),
+    );
+    bgFill = `url(#${bgGradientId})`;
+  }
+
+  const defs =
+    gradientDefs.length > 0
+      ? `<defs>\n${gradientDefs.join('\n')}\n</defs>\n`
+      : '';
+
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
-  <rect width="100%" height="100%" fill="${escapeXml(layout.background.color)}" />
+  ${defs}<rect width="100%" height="100%" fill="${bgFill}" />
   ${body}
 </svg>`;
 }

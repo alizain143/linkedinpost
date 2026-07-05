@@ -151,6 +151,7 @@ Registry keys: `quick-draft` v1, `quick-draft-single` v1 (calendar slots), `coun
 - **Council `priorSteps`** are projected per agent (`prior-steps-projector.ts`) and serialized compactly (no pretty-print).
 - **Calendar slots** use `quick-draft-single` (1 post) instead of `quick-draft` (3 variants) to cut output tokens.
 - **Image generation** composes `headlineText` + `styleNotes` + visual `imagePrompt` in `GoogleImageGenerationProvider.buildPrompt()`.
+- **Carousel** (`mediaFormat: carousel`): AI picks slide count (3–10) or user override via `carouselSlideCount`. Template lane uses `TemplateCarouselRenderService` + carousel slot-fill LLM; freestyle lane uses `FreestyleCarouselRenderService`. Credits: **2 per slide**. Multiple `PostMedia` rows attached with `sortOrder`; LinkedIn publish uses `multiImage` when 2+ slides.
 - **Reviewer threshold** uses `{{council.passScore}}` from orchestrator (75 standard, 90 premium).
 
 ## LLM layer

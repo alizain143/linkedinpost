@@ -4,6 +4,41 @@ const MIN_VISUAL_ZONE_SIZE = 64;
 const MIN_AVATAR_SIZE = 16;
 const MIN_TEXT_WIDTH = 32;
 
+export type ElementBounds = {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+};
+
+export function getElementBounds(el: TemplateElement): ElementBounds {
+  switch (el.type) {
+    case "avatar":
+      return { x: el.x, y: el.y, w: el.size, h: el.size };
+    case "rect":
+    case "visual_zone":
+      return { x: el.x, y: el.y, w: el.w, h: el.h };
+    case "text":
+    case "post_headline":
+    case "post_subhead":
+      return {
+        x: el.x,
+        y: el.y,
+        w: el.w,
+        h: el.style.fontSize * (el.style.lineHeight ?? 1.2),
+      };
+    case "carousel_nav":
+      return {
+        x: el.x,
+        y: el.y,
+        w: el.style.fontSize * 8,
+        h: el.style.fontSize * (el.style.lineHeight ?? 1.2),
+      };
+    default:
+      return { x: el.x, y: el.y, w: 0, h: 0 };
+  }
+}
+
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
@@ -79,6 +114,19 @@ export function clampElement(
     case "rect": {
       const box = clampBox(el.x, el.y, el.w, el.h, canvasW, canvasH);
       return { ...el, ...box };
+    }
+    case "carousel_nav": {
+      const box = clampBox(
+        el.x,
+        el.y,
+        el.style.fontSize * 8,
+        el.style.fontSize * (el.style.lineHeight ?? 1.2),
+        canvasW,
+        canvasH,
+        MIN_TEXT_WIDTH,
+        1,
+      );
+      return { ...el, x: box.x, y: box.y };
     }
     default:
       return el;

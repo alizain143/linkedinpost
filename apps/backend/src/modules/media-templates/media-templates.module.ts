@@ -12,6 +12,8 @@ import { TemplateMediaRenderService } from './template-media-render.service';
 import { TemplatePngRenderer } from './template-png.renderer';
 import { TemplateProfileResolverService } from './template-profile-resolver.service';
 import { TemplateSlotFillParser } from './template-slot-fill.parser';
+import { CarouselSlotFillParser } from './carousel-slot-fill.parser';
+import { TemplateCarouselRenderService } from './template-carousel-render.service';
 
 @Module({
   imports: [
@@ -28,13 +30,16 @@ import { TemplateSlotFillParser } from './template-slot-fill.parser';
     MediaTemplateResolveService,
     TemplatePngRenderer,
     TemplateSlotFillParser,
+    CarouselSlotFillParser,
     TemplateMediaRenderService,
+    TemplateCarouselRenderService,
     TemplateProfileResolverService,
   ],
   exports: [
     MediaTemplatesService,
     MediaTemplateResolveService,
     TemplateMediaRenderService,
+    TemplateCarouselRenderService,
     TemplateProfileResolverService,
   ],
 })

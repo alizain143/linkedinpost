@@ -23,6 +23,21 @@ export interface AttachCouncilMediaInput {
   mimeType: string;
 }
 
+export interface AttachCarouselSlideInput {
+  mediaType: PostMediaType;
+  altText: string;
+  imageBuffer: Buffer;
+  mimeType: string;
+  sortOrder: number;
+}
+
+export interface AttachCarouselMediaInput {
+  workspaceId: string;
+  postPackageId: string;
+  generationJobId: string;
+  slides: AttachCarouselSlideInput[];
+}
+
 export function toPostMediaResponse(
   media: PostMedia,
   url: string,

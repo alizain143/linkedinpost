@@ -228,6 +228,7 @@ export class CouncilOrchestrator {
         totalSteps,
         imageBuffer: media.imageBuffer,
         mimeType: media.mimeType,
+        slides: media.isCarousel ? media.slides : undefined,
       });
       completedSteps++;
 
@@ -268,6 +269,7 @@ export class CouncilOrchestrator {
           totalSteps,
           imageBuffer: media.imageBuffer,
           mimeType: media.mimeType,
+          slides: media.isCarousel ? media.slides : undefined,
         });
         completedSteps++;
       }
@@ -276,18 +278,44 @@ export class CouncilOrchestrator {
         throw new Error('Media review failed after max regenerations');
       }
 
-      const attachedMedia = await this.mediaService.attachCouncilMedia({
-        workspaceId,
-        postPackageId,
-        generationJobId,
-        mediaType:
-          media.mediaType === 'template'
-            ? PostMediaType.template
-            : PostMediaType.generated,
-        altText: media.spec.altText,
-        imageBuffer: media.imageBuffer,
-        mimeType: media.mimeType,
-      });
+      let attachedMedia: Awaited<
+        ReturnType<MediaService['attachCouncilMedia']>
+      >;
+      let attachedCarousel: Awaited<
+        ReturnType<MediaService['attachCarouselMedia']>
+      > | null = null;
+
+      if (media.isCarousel && media.slides && media.slides.length > 0) {
+        attachedCarousel = await this.mediaService.attachCarouselMedia({
+          workspaceId,
+          postPackageId,
+          generationJobId,
+          slides: media.slides.map((slide) => ({
+            mediaType:
+              slide.mediaType === 'template'
+                ? PostMediaType.template
+                : PostMediaType.generated,
+            altText: slide.altText,
+            imageBuffer: slide.imageBuffer,
+            mimeType: slide.mimeType,
+            sortOrder: slide.sortOrder,
+          })),
+        });
+        attachedMedia = attachedCarousel[0];
+      } else {
+        attachedMedia = await this.mediaService.attachCouncilMedia({
+          workspaceId,
+          postPackageId,
+          generationJobId,
+          mediaType:
+            media.mediaType === 'template'
+              ? PostMediaType.template
+              : PostMediaType.generated,
+          altText: media.spec.altText,
+          imageBuffer: media.imageBuffer,
+          mimeType: media.mimeType,
+        });
+      }
 
       await this.prisma.councilEvent.update({
         where: { id: lastMediaCreatorEventId },
@@ -295,6 +323,8 @@ export class CouncilOrchestrator {
           output: {
             ...media.spec,
             postMediaId: attachedMedia.id,
+            postMediaIds: attachedCarousel?.map((row) => row.id),
+            slideCount: attachedCarousel?.length ?? 1,
             url: attachedMedia.url,
             imageModel: media.imageModel,
           },

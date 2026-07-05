@@ -270,6 +270,7 @@ export class LinkedInApiClient {
     memberId: string;
     commentary: string;
     media?: { imageUrn: string; altText: string };
+    multiImage?: { images: { imageUrn: string; altText: string }[] };
   }): Promise<LinkedInPublishResult> {
     if (this.isMock()) {
       return {
@@ -286,7 +287,16 @@ export class LinkedInApiClient {
       lifecycleState: 'PUBLISHED',
     };
 
-    if (input.media) {
+    if (input.multiImage && input.multiImage.images.length >= 2) {
+      body.content = {
+        multiImage: {
+          images: input.multiImage.images.map((image) => ({
+            id: image.imageUrn,
+            altText: image.altText,
+          })),
+        },
+      };
+    } else if (input.media) {
       body.content = {
         media: {
           id: input.media.imageUrn,

@@ -79,7 +79,8 @@ export class MediaTemplatesController {
 
   @Post('ai-draft')
   @ApiOperation({
-    summary: 'AI-author a template layout draft (not saved until create)',
+    summary:
+      'AI-author a template layout draft from text and/or an image/PDF reference (not saved until create)',
   })
   @ApiParam({ name: 'workspaceId', format: 'uuid' })
   aiDraft(
@@ -87,11 +88,10 @@ export class MediaTemplatesController {
     @Param('workspaceId') workspaceId: string,
     @Body() dto: AiCreateMediaTemplateDto,
   ) {
-    return this.mediaTemplateAiService.draftFromPrompt(
-      workspaceId,
-      user.id,
-      dto.prompt,
-    );
+    return this.mediaTemplateAiService.draftFromInput(workspaceId, user.id, {
+      prompt: dto.prompt,
+      referenceFile: dto.referenceFile,
+    });
   }
 
   @Post('preview')

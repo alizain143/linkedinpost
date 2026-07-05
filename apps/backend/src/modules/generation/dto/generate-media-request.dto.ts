@@ -1,14 +1,21 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { MediaMode } from '@prisma/client';
+import { MediaFormat, MediaMode } from '@prisma/client';
 import {
   IsBoolean,
   IsEnum,
+  IsInt,
   IsOptional,
   IsString,
-  IsUUID,
+  Max,
   MaxLength,
+  Min,
 } from 'class-validator';
-import { MEDIA_CUSTOM_PROMPT_MAX_LENGTH } from '../../../common/constants/media.constants';
+import { IsMediaTemplateId } from '../../../common/validators/media-template-id.validator';
+import {
+  CAROUSEL_MAX_SLIDES,
+  CAROUSEL_MIN_SLIDES,
+  MEDIA_CUSTOM_PROMPT_MAX_LENGTH,
+} from '../../../common/constants/media.constants';
 
 export class GenerateMediaRequestDto {
   @ApiPropertyOptional({
@@ -33,8 +40,26 @@ export class GenerateMediaRequestDto {
   @IsEnum(MediaMode)
   mediaMode?: MediaMode;
 
-  @ApiPropertyOptional({ format: 'uuid' })
+  @ApiPropertyOptional({ enum: MediaFormat, default: MediaFormat.single })
   @IsOptional()
-  @IsUUID()
+  @IsEnum(MediaFormat)
+  mediaFormat?: MediaFormat;
+
+  @ApiPropertyOptional({
+    description: 'Total carousel slides when mediaFormat is carousel; omit for AI auto',
+    minimum: CAROUSEL_MIN_SLIDES,
+    maximum: CAROUSEL_MAX_SLIDES,
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(CAROUSEL_MIN_SLIDES)
+  @Max(CAROUSEL_MAX_SLIDES)
+  carouselSlideCount?: number;
+
+  @ApiPropertyOptional({
+    description: 'Workspace template UUID or system preset id (e.g. system:carousel-identity)',
+  })
+  @IsOptional()
+  @IsMediaTemplateId()
   mediaTemplateId?: string;
 }

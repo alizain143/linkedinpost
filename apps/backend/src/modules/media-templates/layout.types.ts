@@ -1,3 +1,5 @@
+import type { LayoutGradient } from './layout-gradient.util';
+
 export type TextBind =
   | 'static'
   | 'profile.name'
@@ -47,6 +49,7 @@ export interface TemplateRectElement {
   fill: string;
   radius?: number;
   opacity?: number;
+  gradient?: LayoutGradient;
 }
 
 export interface TemplateHeadlineElement {
@@ -76,18 +79,61 @@ export interface TemplateVisualZoneElement {
   h: number;
 }
 
+export interface TemplateCarouselNavElement {
+  id: string;
+  type: 'carousel_nav';
+  x: number;
+  y: number;
+  label: string;
+  style: TextStyle;
+}
+
 export type TemplateElement =
   | TemplateTextElement
   | TemplateAvatarElement
   | TemplateRectElement
   | TemplateHeadlineElement
   | TemplateSubheadElement
-  | TemplateVisualZoneElement;
+  | TemplateVisualZoneElement
+  | TemplateCarouselNavElement;
 
 export interface MediaTemplateLayout {
   version: 1;
-  background: { color: string };
+  background: { color: string; gradient?: LayoutGradient };
   elements: TemplateElement[];
+}
+
+export type CarouselPageRole = 'first' | 'middle' | 'last';
+
+export interface CarouselMediaTemplateLayout {
+  version: 2;
+  kind: 'carousel';
+  pages: {
+    first: MediaTemplateLayout;
+    middle: MediaTemplateLayout;
+    last: MediaTemplateLayout;
+  };
+}
+
+export type AnyMediaTemplateLayout =
+  | MediaTemplateLayout
+  | CarouselMediaTemplateLayout;
+
+export function isCarouselLayout(
+  layout: AnyMediaTemplateLayout,
+): layout is CarouselMediaTemplateLayout {
+  return (
+    layout.version === 2 &&
+    'kind' in layout &&
+    layout.kind === 'carousel'
+  );
+}
+
+export function getCarouselPageLayout(
+  layout: CarouselMediaTemplateLayout,
+  role: CarouselPageRole,
+): MediaTemplateLayout {
+  return layout.pages[role];
 }
 
 export interface TemplateSlotContent {
@@ -97,6 +143,15 @@ export interface TemplateSlotContent {
   /** Image-model brief for visual_zone inset(s). */
   visualPrompt?: string;
   altText: string;
+}
+
+export interface CarouselSlideSlotContent extends TemplateSlotContent {
+  role: CarouselPageRole;
+}
+
+export interface CarouselSlotFillResult {
+  totalSlides: number;
+  slides: CarouselSlideSlotContent[];
 }
 
 export interface TemplateBindContext {
@@ -113,6 +168,7 @@ export interface TemplateBindContext {
 }
 
 export const SYSTEM_IDENTITY_CARD_PRESET_ID = 'system:identity-card';
+export const SYSTEM_CAROUSEL_IDENTITY_PRESET_ID = 'system:carousel-identity';
 
 export interface ResolvedMediaTemplate {
   id: string;
@@ -120,7 +176,16 @@ export interface ResolvedMediaTemplate {
   description: string | null;
   width: number;
   height: number;
-  layout: MediaTemplateLayout;
+  layout: AnyMediaTemplateLayout;
   isSystem: boolean;
   workspaceId: string | null;
+}
+
+export function isCarouselTemplate(
+  template: ResolvedMediaTemplate,
+): boolean {
+  return (
+    template.id === SYSTEM_CAROUSEL_IDENTITY_PRESET_ID ||
+    isCarouselLayout(template.layout)
+  );
 }

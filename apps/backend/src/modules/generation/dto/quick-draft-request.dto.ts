@@ -1,7 +1,21 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { MediaMode, PostType } from '@prisma/client';
-import { IsEnum, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
-import { MEDIA_CUSTOM_PROMPT_MAX_LENGTH } from '../../../common/constants/media.constants';
+import { MediaFormat, MediaMode, PostType } from '@prisma/client';
+import {
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
+import { IsMediaTemplateId } from '../../../common/validators/media-template-id.validator';
+import {
+  CAROUSEL_MAX_SLIDES,
+  CAROUSEL_MIN_SLIDES,
+  MEDIA_CUSTOM_PROMPT_MAX_LENGTH,
+} from '../../../common/constants/media.constants';
 
 export class QuickDraftRequestDto {
   @ApiProperty({ example: 'Shipping weekly as a founder' })
@@ -48,8 +62,25 @@ export class QuickDraftRequestDto {
   @IsEnum(MediaMode)
   mediaMode?: MediaMode;
 
-  @ApiPropertyOptional({ format: 'uuid' })
+  @ApiPropertyOptional({ enum: MediaFormat, default: MediaFormat.single })
   @IsOptional()
-  @IsUUID()
+  @IsEnum(MediaFormat)
+  mediaFormat?: MediaFormat;
+
+  @ApiPropertyOptional({
+    minimum: CAROUSEL_MIN_SLIDES,
+    maximum: CAROUSEL_MAX_SLIDES,
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(CAROUSEL_MIN_SLIDES)
+  @Max(CAROUSEL_MAX_SLIDES)
+  carouselSlideCount?: number;
+
+  @ApiPropertyOptional({
+    description: 'Workspace template UUID or system preset id (e.g. system:carousel-identity)',
+  })
+  @IsOptional()
+  @IsMediaTemplateId()
   mediaTemplateId?: string;
 }
