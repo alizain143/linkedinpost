@@ -33,7 +33,7 @@ export function BillingPlanCard({
 
   return (
     <div
-      className="relative rounded-[18px] px-[22px] py-[26px]"
+      className="relative flex h-full min-w-0 flex-col rounded-[18px] px-[22px] py-[26px]"
       style={{
         background: s.cardBg,
         border: s.cardBorder,
@@ -56,10 +56,9 @@ export function BillingPlanCard({
       >
         {plan.name}
       </div>
-      <div className="mb-[5px] flex items-baseline gap-[3px]">
+      <div className="mb-[5px] flex min-w-0 flex-wrap items-baseline gap-x-1 gap-y-0">
         <PlanPrice
           amountUsd={plan.monthlyUsd}
-          className="font-display text-[38px] font-extrabold tracking-[-0.03em]"
           style={{ color: s.priceColor }}
         />
         <span className="text-sm font-medium" style={{ color: s.muted }}>

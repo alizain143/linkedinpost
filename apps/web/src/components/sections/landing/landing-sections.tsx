@@ -137,7 +137,7 @@ export function PricingSection() {
             Start free, upgrade when you&apos;re ready. No credit card to begin.
           </p>
         </div>
-        <div className="pp-grid4 items-start">
+        <div className="pp-grid4 items-stretch pt-3">
           {PLANS.map((plan) => (
             <PlanCard key={plan.name} {...plan} />
           ))}

@@ -51,7 +51,7 @@ export default async function PricingPage() {
         </section>
 
         <section className="mx-auto max-w-[1180px] px-7 pb-6 pt-2">
-          <div className="pp-grid4 items-start">
+          <div className="pp-grid4 items-stretch pt-3">
             {PLANS.map((plan) => (
               <PlanCard key={plan.name} {...plan} />
             ))}
