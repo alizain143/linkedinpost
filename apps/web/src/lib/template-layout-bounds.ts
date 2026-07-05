@@ -34,8 +34,6 @@ export function getElementBounds(el: TemplateElement): ElementBounds {
         w: el.style.fontSize * 8,
         h: el.style.fontSize * (el.style.lineHeight ?? 1.2),
       };
-    default:
-      return { x: el.x, y: el.y, w: 0, h: 0 };
   }
 }
 

@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Screenshot 3</title>
+    <link rel="stylesheet" href="_shared.css" />
+    <style>
+      body {
+        background: rgba(15, 23, 42, 0.42);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .backdrop-app {
+        position: absolute;
+        inset: 0;
+        background: #f4f6fb;
+        opacity: 0.35;
+      }
+
+      .modal {
+        position: relative;
+        width: 520px;
+        max-height: 720px;
+        background: #fff;
+        border-radius: 18px;
+        border: 1px solid #eceef4;
+        box-shadow: 0 30px 80px rgba(15, 23, 42, 0.25);
+        padding: 22px 22px 18px;
+      }
+
+      .modal h2 {
+        font-family: "Plus Jakarta Sans", Inter, sans-serif;
+        font-size: 18px;
+        font-weight: 800;
+        margin-bottom: 8px;
+      }
+
+      .modal .lead {
+        font-size: 14px;
+        color: #64748b;
+        line-height: 1.5;
+        margin-bottom: 18px;
+      }
+
+      .preview-card {
+        border: 1px solid #eceef4;
+        border-radius: 12px;
+        background: #f8f9fc;
+        padding: 16px;
+      }
+
+      .preview-section {
+        margin-bottom: 16px;
+      }
+
+      .preview-section:last-child {
+        margin-bottom: 0;
+      }
+
+      .label {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: #94a3b8;
+        margin-bottom: 6px;
+      }
+
+      .value {
+        font-size: 14px;
+        color: #0f172a;
+        line-height: 1.5;
+      }
+
+      .value.muted {
+        color: #475569;
+      }
+
+      .position {
+        padding: 10px 0;
+        border-top: 1px solid #eceef4;
+      }
+
+      .position:first-of-type {
+        border-top: none;
+        padding-top: 0;
+      }
+
+      .position .role {
+        font-weight: 600;
+        font-size: 14px;
+      }
+
+      .position .company {
+        font-size: 13px;
+        color: #64748b;
+        margin-top: 2px;
+      }
+
+      .modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        margin-top: 18px;
+      }
+
+      .btn-ghost {
+        padding: 10px 14px;
+        border-radius: 10px;
+        background: transparent;
+        border: none;
+        color: #64748b;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .tag-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .tag {
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: #eef2ff;
+        color: #4338ca;
+        font-size: 12px;
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="backdrop-app"></div>
+
+    <div class="modal">
+      <h2>Review imported profile</h2>
+      <p class="lead">
+        Here is what we fetched. Save to update your workspace, or re-import if
+        something looks wrong.
+      </p>
+
+      <div class="preview-card">
+        <div class="preview-section">
+          <div class="label">Headline</div>
+          <div class="value">
+            Marketing Director · B2B SaaS · Content strategy
+          </div>
+        </div>
+
+        <div class="preview-section">
+          <div class="label">About</div>
+          <div class="value muted">
+            I help B2B teams turn expertise into LinkedIn content that builds
+            pipeline. 10+ years in demand gen, brand, and founder-led marketing.
+          </div>
+        </div>
+
+        <div class="preview-section">
+          <div class="label">Experience</div>
+          <div class="position">
+            <div class="role">Director of Marketing</div>
+            <div class="company">Northstar SaaS · 2021 – Present</div>
+          </div>
+          <div class="position">
+            <div class="role">Senior Content Strategist</div>
+            <div class="company">Brightlane · 2017 – 2021</div>
+          </div>
+        </div>
+
+        <div class="preview-section">
+          <div class="label">Skills</div>
+          <div class="tag-row">
+            <span class="tag">Content strategy</span>
+            <span class="tag">B2B marketing</span>
+            <span class="tag">LinkedIn</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-ghost" type="button">Cancel</button>
+        <button class="btn-secondary" type="button">Re-import</button>
+        <button class="btn-primary" type="button">Save profile</button>
+      </div>
+    </div>
+  </body>
+</html>
