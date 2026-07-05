@@ -12,6 +12,7 @@ import { MsIcon } from "@/components/ui/ms-icon";
 import { clerkErrorMessage } from "@/lib/auth/clerk";
 import { syncCurrentUser } from "@/lib/auth/finish-session";
 import { DASHBOARD_ROUTE } from "@/lib/auth/routes";
+import { trackSignUpComplete } from "@/lib/analytics/events";
 
 const OTP_LENGTH = 6;
 
@@ -71,6 +72,7 @@ export function VerifyEmailForm() {
           return;
         }
 
+        trackSignUpComplete("email");
         router.replace(DASHBOARD_ROUTE);
         return;
       }

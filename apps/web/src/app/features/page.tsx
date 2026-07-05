@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { MarketingLayout } from "@/components/layout/marketing-layout";
+import { BreadcrumbJsonLd } from "@/components/seo/json-ld";
 import { FeatureDetailMock } from "@/components/sections/marketing/feature-detail-mocks";
 import { MsIcon } from "@/components/ui/ms-icon";
 import { FEATURE_DETAIL } from "@/lib/marketing-data";
@@ -11,11 +12,19 @@ export const metadata: Metadata = pageMetadata({
   description:
     "Everything you need to post on LinkedIn consistently. AI post generator, content calendar, voice presets, and agency workspaces.",
   path: "/features",
+  openGraphImage: "/features/opengraph-image",
+  openGraphImageAlt: "linkedinpost.ai features",
 });
 
 export default function FeaturesPage() {
   return (
     <MarketingLayout>
+      <BreadcrumbJsonLd
+        items={[
+          { name: "Home", path: "/" },
+          { name: "Features", path: "/features" },
+        ]}
+      />
       <section className="border-b border-[#eef0f5] bg-[radial-gradient(120%_100%_at_50%_-10%,#eef0ff_0%,#f6f7f9_52%)]">
         <div className="mx-auto max-w-[920px] px-7 pb-[52px] pt-[66px] text-center">
           <div className="mb-3.5 text-[13px] font-bold uppercase tracking-[0.06em] text-[#6366f1]">

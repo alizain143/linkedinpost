@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { MarketingLayout } from "@/components/layout/marketing-layout";
+import { BreadcrumbJsonLd } from "@/components/seo/json-ld";
 import { MsIcon } from "@/components/ui/ms-icon";
 import { STEPS } from "@/lib/marketing-data";
 import { pageMetadata } from "@/lib/seo/metadata";
@@ -15,6 +16,12 @@ export const metadata: Metadata = pageMetadata({
 export default function HowItWorksPage() {
   return (
     <MarketingLayout>
+      <BreadcrumbJsonLd
+        items={[
+          { name: "Home", path: "/" },
+          { name: "How it works", path: "/how-it-works" },
+        ]}
+      />
       <section className="border-b border-[#eef0f5] bg-[radial-gradient(120%_100%_at_50%_-10%,#eef0ff_0%,#f6f7f9_52%)]">
         <div className="mx-auto max-w-[920px] px-7 pb-[52px] pt-[66px] text-center">
           <div className="mb-3.5 text-[13px] font-bold uppercase tracking-[0.06em] text-[#6366f1]">

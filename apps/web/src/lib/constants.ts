@@ -1,6 +1,7 @@
 export const MARKETING_NAV = [
   { label: "Features", href: "/features" },
   { label: "How it works", href: "/how-it-works" },
+  { label: "Guides", href: "/guides" },
   { label: "Pricing", href: "/pricing" },
   { label: "About", href: "/about" },
 ] as const;
@@ -8,6 +9,7 @@ export const MARKETING_NAV = [
 export const FOOTER_PRODUCT = [
   { label: "How it works", href: "/how-it-works" },
   { label: "All features", href: "/features" },
+  { label: "Guides", href: "/guides" },
   { label: "Plans & pricing", href: "/pricing" },
   { label: "Start free", href: "/sign-up" },
 ];

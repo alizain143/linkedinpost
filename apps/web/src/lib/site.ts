@@ -41,6 +41,10 @@ export const TWITTER_URL = "https://x.com/linkedinpostai";
 export const LINKEDIN_COMPANY_URL =
   "https://www.linkedin.com/company/linkedinpost-ai";
 
+export function socialProfileUrls(): string[] {
+  return [TWITTER_URL, LINKEDIN_COMPANY_URL];
+}
+
 export const FOOTER_SOCIAL = [
   {
     icon: "groups",

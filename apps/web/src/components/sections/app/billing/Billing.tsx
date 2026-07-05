@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { QueryState } from "@/components/app/query-state";
+import { usePricingLocale } from "@/components/pricing/pricing-locale-provider";
 import { BillingPlanCard } from "@/components/sections/app/billing/BillingPlanCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +25,7 @@ import {
   formatSubscriptionStatusLabel,
 } from "@/lib/billing-utils";
 import { formatResetDate } from "@/lib/format-relative-time";
+import { trackCheckoutStart } from "@/lib/analytics/events";
 import { PLANS } from "@/lib/marketing-data";
 import { getPlanLabel } from "@/lib/plan-labels";
 import { useAppUi } from "@/providers/app-ui-provider";
@@ -59,6 +61,7 @@ export default function Billing() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { showToast } = useAppUi();
+  const { formatPrice } = usePricingLocale();
   const invalidateBilling = useInvalidateBilling();
 
   const {
@@ -115,6 +118,7 @@ export default function Billing() {
     setPhoneError(null);
     setLoadingPlan(plan);
     setBillingUnavailable(false);
+    trackCheckoutStart(plan);
 
     checkoutMutation.mutate(
       { plan, phone: trimmedPhone },
@@ -188,7 +192,7 @@ export default function Billing() {
                 {getPlanLabel(billing.plan)}
               </div>
               <div className="mt-1 text-xs text-[#94a3b8]">
-                {formatSubscriptionRenewal(billing, balance)}
+                {formatSubscriptionRenewal(billing, balance, formatPrice)}
               </div>
             </div>
 

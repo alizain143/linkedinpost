@@ -1,5 +1,6 @@
 "use client";
 
+import { PlanPrice } from "@/components/pricing/plan-price";
 import { MsIcon } from "@/components/ui/ms-icon";
 import type { CheckoutPlan } from "@/lib/api/types/billing";
 import type { UserPlan } from "@/lib/api/types/enums";
@@ -56,12 +57,11 @@ export function BillingPlanCard({
         {plan.name}
       </div>
       <div className="mb-[5px] flex items-baseline gap-[3px]">
-        <span
+        <PlanPrice
+          amountUsd={plan.monthlyUsd}
           className="font-display text-[38px] font-extrabold tracking-[-0.03em]"
           style={{ color: s.priceColor }}
-        >
-          {plan.price}
-        </span>
+        />
         <span className="text-sm font-medium" style={{ color: s.muted }}>
           /month
         </span>

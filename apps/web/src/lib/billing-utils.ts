@@ -9,6 +9,7 @@ import {
   QUICK_DRAFT_CREDIT_COST,
 } from "@/lib/credit-costs";
 import { formatResetDate } from "@/lib/format-relative-time";
+import { formatUsdPrice } from "@/lib/currency/format";
 import { PLANS } from "@/lib/marketing-data";
 import { getPlanLabel } from "@/lib/plan-labels";
 
@@ -55,11 +56,19 @@ export function planNameToUserPlan(name: string): UserPlan | null {
   return PLAN_NAME_MAP[name.toLowerCase()] ?? null;
 }
 
-export function getPlanPriceLabel(plan: UserPlan): string | null {
+export function getPlanMonthlyUsd(plan: UserPlan): number | null {
   const marketingPlan = PLANS.find(
     (entry) => planNameToUserPlan(entry.name) === plan,
   );
-  return marketingPlan?.price ?? null;
+  return marketingPlan?.monthlyUsd ?? null;
+}
+
+export function getPlanPriceLabel(
+  plan: UserPlan,
+  formatPrice: (amountUsd: number) => string = formatUsdPrice,
+): string | null {
+  const amount = getPlanMonthlyUsd(plan);
+  return amount == null ? null : formatPrice(amount);
 }
 
 export function isCheckoutPlan(plan: UserPlan): plan is CheckoutPlan {
@@ -100,8 +109,9 @@ export function formatSubscriptionStatusLabel(
 export function formatSubscriptionRenewal(
   billing: ApiBillingStatus,
   credits: ApiCreditsBalance,
+  formatPrice: (amountUsd: number) => string = formatUsdPrice,
 ): string {
-  const price = getPlanPriceLabel(billing.plan);
+  const price = getPlanPriceLabel(billing.plan, formatPrice);
 
   if (billing.plan === "free") {
     return "Free tier";

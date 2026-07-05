@@ -16,9 +16,9 @@ describe('BillingService', () => {
   const xpayClient = {
     isCheckoutConfigured: jest.fn().mockReturnValue(true),
     getAmountConfig: jest.fn().mockReturnValue({
-      amountStarter: 900,
-      amountPro: 1900,
-      amountAgency: 4900,
+      amountStarter: 999,
+      amountPro: 1999,
+      amountAgency: 6999,
     }),
     getCurrency: jest.fn().mockReturnValue('USD'),
     getCycleCount: jest.fn().mockReturnValue(120),
@@ -69,7 +69,7 @@ describe('BillingService', () => {
     });
     expect(xpayClient.createSubscription).toHaveBeenCalledWith(
       expect.objectContaining({
-        amount: 1900,
+        amount: 1999,
         currency: 'USD',
         interval: 'MONTH',
         intervalCount: 1,

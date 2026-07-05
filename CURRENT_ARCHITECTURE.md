@@ -245,9 +245,9 @@ Council agent pipeline: writer → reviewer → editor → media_creator → med
 | Plan | Credits/mo | Highlights |
 |------|------------|------------|
 | free | 5 | Basic generator |
-| starter | $9 / 50 | Drafts, templates |
-| pro | $19 / 200 | Calendar, autopilot, scheduling |
-| agency | $49 / 1000 | 5 client workspaces, approval links |
+| starter | $9.99 / 50 | Drafts, templates |
+| pro | $19.99 / 200 | Calendar, autopilot, scheduling |
+| agency | $69.99 / 1000 | 5 client workspaces, approval links |
 
 Credit costs (from product spec): Quick Draft 1 · Council 3 · Post+Media 10 · Regenerate Media 5 · 7-day Calendar 10 · 30-day Calendar 30 · Autopilot 10 · AI Content Profile 1 (on approve)
 

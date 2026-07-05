@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PlanPrice } from "@/components/pricing/plan-price";
 import { MsIcon } from "@/components/ui/ms-icon";
 import { COMPARE_ROWS } from "@/lib/marketing-data";
 import type { PlanTier } from "@/lib/marketing-data";
@@ -58,7 +59,7 @@ type PlanCardProps = PlanTier & { ctaHref?: string };
 
 export function PlanCard({
   name,
-  price,
+  monthlyUsd,
   blurb,
   cta,
   features,
@@ -87,12 +88,11 @@ export function PlanCard({
         {name}
       </div>
       <div className="mb-[5px] flex items-baseline gap-[3px]">
-        <span
+        <PlanPrice
+          amountUsd={monthlyUsd}
           className="font-display text-[38px] font-extrabold tracking-[-0.03em]"
           style={{ color: s.priceColor }}
-        >
-          {price}
-        </span>
+        />
         <span className="text-sm font-medium" style={{ color: s.muted }}>
           /month
         </span>

@@ -116,9 +116,13 @@ export type PlanStyle = {
   btnColor: string;
 };
 
+export const STARTER_MONTHLY_USD = 9.99;
+export const PRO_MONTHLY_USD = 19.99;
+export const AGENCY_MONTHLY_USD = 69.99;
+
 export type PlanTier = {
   name: string;
-  price: string;
+  monthlyUsd: number;
   blurb: string;
   cta: string;
   popular?: boolean;
@@ -143,7 +147,7 @@ const basePlanStyle: PlanStyle = {
 export const PLANS: PlanTier[] = [
   {
     name: "Free",
-    price: "$0",
+    monthlyUsd: 0,
     blurb: "Everything you need to try your first AI posts.",
     cta: "Start Free",
     features: [
@@ -156,7 +160,7 @@ export const PLANS: PlanTier[] = [
   },
   {
     name: "Starter",
-    price: "$9",
+    monthlyUsd: STARTER_MONTHLY_USD,
     blurb: "For getting into a consistent posting rhythm.",
     cta: "Start Starter",
     features: [
@@ -169,7 +173,7 @@ export const PLANS: PlanTier[] = [
   },
   {
     name: "Pro",
-    price: "$19",
+    monthlyUsd: PRO_MONTHLY_USD,
     blurb: "The full content system for serious creators.",
     cta: "Start Pro",
     popular: true,
@@ -196,7 +200,7 @@ export const PLANS: PlanTier[] = [
   },
   {
     name: "Agency",
-    price: "$49",
+    monthlyUsd: AGENCY_MONTHLY_USD,
     blurb: "Manage content for a roster of clients.",
     cta: "Start Agency",
     features: [

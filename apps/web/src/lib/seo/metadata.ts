@@ -91,7 +91,7 @@ export function pageMetadata({
   openGraphImageAlt,
 }: PageMetaInput): Metadata {
   const shouldIndex = isIndexingAllowed() && !noIndex;
-  const ogImage = openGraphImage ?? OG_IMAGE_PATH;
+  const ogImage = openGraphImage ?? "/opengraph-image";
   const ogAlt = openGraphImageAlt ?? title;
 
   return {
@@ -132,10 +132,10 @@ export function rootMetadata(): Metadata {
       apple: [{ url: APPLE_ICON_PATH, sizes: "180x180", type: "image/png" }],
     },
     openGraph: {
-      ...defaultOpenGraph(SITE_TITLE_DEFAULT, SITE_DESCRIPTION),
+      ...defaultOpenGraph(SITE_TITLE_DEFAULT, SITE_DESCRIPTION, "/opengraph-image"),
       url: "/",
     },
-    twitter: defaultTwitter(SITE_TITLE_DEFAULT, SITE_DESCRIPTION),
+    twitter: defaultTwitter(SITE_TITLE_DEFAULT, SITE_DESCRIPTION, "/opengraph-image"),
     robots: shouldIndex ? INDEX_ROBOTS : NOINDEX_ROBOTS,
     other: { "theme-color": THEME_COLOR },
   };

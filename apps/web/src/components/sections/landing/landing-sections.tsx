@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PricingCurrencyNote } from "@/components/pricing/plan-price";
 import { MsIcon } from "@/components/ui/ms-icon";
 import { PlanCard, SectionHeader } from "@/components/sections/marketing/shared";
 import {
@@ -143,6 +144,7 @@ export function PricingSection() {
             <PlanCard key={plan.name} {...plan} />
           ))}
         </div>
+        <PricingCurrencyNote className="mt-5" />
       </div>
     </section>
   );
