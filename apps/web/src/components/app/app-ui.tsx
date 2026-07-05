@@ -35,7 +35,6 @@ export const STATUS_STYLES: Record<string, { bg: string; text: string }> = {
   "Text Generating": { bg: "#f5f0ff", text: "#7c3aed" },
   "Text Reviewing": { bg: "#f5f0ff", text: "#7c3aed" },
   "Media Generating": { bg: "#ecfeff", text: "#0891b2" },
-  "Needs Approval": { bg: "#fff8eb", text: "#d97706" },
 };
 
 export function StatusBadge({

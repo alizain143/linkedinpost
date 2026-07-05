@@ -42,8 +42,8 @@ export function getPostStatusLabel(status: PostPackageStatus): string {
 }
 
 export const CALENDAR_LEGEND_STATUSES: PostPackageStatus[] = [
+  "ready_for_approval",
   "scheduled",
   "published",
   "failed",
-  "ready_for_approval",
 ];

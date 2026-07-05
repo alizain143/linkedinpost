@@ -7,6 +7,7 @@ type CreditConfirmModalProps = {
   open: boolean;
   cost: number;
   actionLabel: string;
+  details?: string;
   onClose: () => void;
   onConfirm: (skipFuture: boolean) => void;
 };
@@ -15,6 +16,7 @@ export function CreditConfirmModal({
   open,
   cost,
   actionLabel,
+  details,
   onClose,
   onConfirm,
 }: CreditConfirmModalProps) {
@@ -44,6 +46,11 @@ export function CreditConfirmModal({
         <p className="mt-2 text-[13px] leading-relaxed text-[#64748b]">
           {actionLabel} uses {cost} credit{cost === 1 ? "" : "s"}. Continue?
         </p>
+        {details ? (
+          <p className="mt-2 rounded-[9px] border border-[#fde68a] bg-[#fffbeb] px-3 py-2 text-[12.5px] leading-relaxed text-[#92400e]">
+            {details}
+          </p>
+        ) : null}
         <label className="mt-4 flex items-center gap-2 text-[12.5px] text-[#475569]">
           <input
             type="checkbox"

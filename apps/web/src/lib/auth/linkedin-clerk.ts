@@ -10,6 +10,7 @@ const LINKEDIN_PROVIDERS = new Set([
 ]);
 
 export type LinkedInExternalAccount = {
+  id: string;
   provider: string;
   firstName: string | null;
   lastName: string | null;
@@ -53,6 +54,19 @@ export function listLinkedInExternalAccounts(
       isLinkedInProvider(account.provider),
     ) ?? []
   );
+}
+
+/** Clerk supports multiple LinkedIn external accounts — keep each workspace bound to its own. */
+export async function destroyAllLinkedInExternalAccounts(
+  user: ClerkUserWithExternalAccounts & { reload?: () => Promise<unknown> },
+  destroy: (account: LinkedInExternalAccount) => Promise<unknown>,
+) {
+  for (const account of listLinkedInExternalAccounts(user)) {
+    if (account.destroy) {
+      await destroy(account);
+    }
+  }
+  await user.reload?.();
 }
 
 /** Prefer verified + publish-ready; otherwise resume an in-progress link. */

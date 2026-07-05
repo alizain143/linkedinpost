@@ -6,6 +6,7 @@ describe('renderTemplateSvg', () => {
     const svg = renderTemplateSvg(IDENTITY_CARD_LAYOUT, 1080, 1080, {
       profileName: 'Ali Zain Shah',
       roleTitle: 'Software Engineer',
+      currentCompany: 'Acme Corp',
       industry: 'Tech',
       avatarUrl: null,
       slots: {
@@ -29,6 +30,7 @@ describe('renderTemplateSvg', () => {
     const svg = renderTemplateSvg(IDENTITY_CARD_LAYOUT, 1080, 1080, {
       profileName: 'Ali',
       roleTitle: 'Engineer',
+      currentCompany: '',
       industry: 'Tech',
       slots: {
         headline: 'Headline',

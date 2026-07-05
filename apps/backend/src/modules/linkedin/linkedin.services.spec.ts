@@ -11,12 +11,18 @@ import {
   LinkedInProfileService,
   LinkedInPublishService,
 } from './linkedin.services';
+import { LinkedInOAuthService } from './linkedin-oauth.service';
 
 describe('LinkedInPublishService', () => {
   let service: LinkedInPublishService;
   const prisma = createMockPrismaService();
   const clerkOAuthService = {
     getLinkedInAccessToken: jest.fn(),
+    listVerifiedLinkedInExternalAccounts: jest.fn(),
+  };
+  const linkedInOAuthService = {
+    workspaceHasStoredToken: jest.fn(),
+    getWorkspaceAccessToken: jest.fn(),
   };
   const linkedInApiClient = {
     initializeImageUpload: jest.fn(),
@@ -46,8 +52,18 @@ describe('LinkedInPublishService', () => {
       clerkId: 'clerk-1',
       linkedInMemberId: 'member-1',
     });
+    prisma.workspace.findUniqueOrThrow.mockResolvedValue({
+      id: 'workspace-1',
+      type: 'personal',
+      linkedInClerkExternalAccountId: null,
+      linkedInMemberId: null,
+      linkedInAccessToken: null,
+      linkedInRefreshToken: null,
+      linkedInTokenExpiresAt: null,
+    });
     prisma.postPackage.findUniqueOrThrow.mockResolvedValue({
       ...approvedPost,
+      workspaceId: 'workspace-1',
       _count: { versions: 1 },
     });
     prisma.postPackage.updateMany.mockResolvedValue({ count: 1 });
@@ -57,6 +73,9 @@ describe('LinkedInPublishService', () => {
       _count: { versions: 1 },
     }));
     clerkOAuthService.getLinkedInAccessToken.mockResolvedValue('token');
+    clerkOAuthService.listVerifiedLinkedInExternalAccounts.mockResolvedValue([]);
+    linkedInOAuthService.workspaceHasStoredToken.mockReturnValue(false);
+    linkedInOAuthService.getWorkspaceAccessToken.mockResolvedValue(null);
     linkedInApiClient.publishPost.mockResolvedValue({
       linkedInPostId: 'urn:li:share:123',
       linkedInPostUrl: null,
@@ -68,6 +87,7 @@ describe('LinkedInPublishService', () => {
         LinkedInPublishService,
         { provide: PrismaService, useValue: prisma },
         { provide: ClerkOAuthService, useValue: clerkOAuthService },
+        { provide: LinkedInOAuthService, useValue: linkedInOAuthService },
         { provide: LinkedInApiClient, useValue: linkedInApiClient },
         { provide: LinkedInProfileService, useValue: linkedInProfileService },
         { provide: MediaService, useValue: mediaService },

@@ -1,4 +1,12 @@
-/** OIDC userinfo + optional best-effort identityMe. Not a full LinkedIn profile export. */
+export type LinkedInEnrichmentStatus =
+  | 'none'
+  | 'pending'
+  | 'complete'
+  | 'failed';
+
+export type LinkedInEnrichmentSource = 'api_only' | 'user_import' | null;
+
+/** OIDC userinfo + optional best-effort identityMe + optional user import. */
 export interface LinkedInProfileData {
   memberId: string;
   fullName: string | null;
@@ -6,18 +14,23 @@ export interface LinkedInProfileData {
   lastName: string | null;
   email: string | null;
   pictureUrl: string | null;
-  /** Always null with OIDC-only sync (not available without legacy/partner APIs). */
+  /** Filled by user import; null with OIDC-only sync. */
   headline: string | null;
-  /** Always null with OIDC-only sync (not available without legacy/partner APIs). */
+  /** About section; filled by user import. */
   summary: string | null;
   currentTitle: string | null;
   currentCompany: string | null;
   profileUrl: string | null;
   locale: string | null;
-  /** 0–1 entries from identityMe primaryCurrentPosition when LinkedIn returns it. */
+  /** 0–1 from identityMe; full history from user import. */
   positions: LinkedInPositionSummary[];
   education: LinkedInEducationSummary[];
   syncedAt: string;
+  enrichmentStatus: LinkedInEnrichmentStatus;
+  enrichmentSource: LinkedInEnrichmentSource;
+  enrichedAt: string | null;
+  /** Field names last written by user import (e.g. headline, summary, positions). */
+  importedFields: string[];
 }
 
 export interface LinkedInPositionSummary {
@@ -42,6 +55,7 @@ export interface LinkedInConnectionStatus {
   profileName: string | null;
   approvedScopes: string[];
   linkedInMemberId: string | null;
+  clerkExternalAccountId: string | null;
 }
 
 export interface LinkedInPublishResult {

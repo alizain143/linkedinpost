@@ -21,6 +21,7 @@ import type { User } from '@prisma/client';
 import { ApiDataResponse } from '../../common/swagger/api-data-response.decorator';
 import {
   DeletePostResponseDto,
+  PostMediaResponseDto,
   PostPackageResponseDto,
   PostVersionResponseDto,
 } from '../../common/swagger/responses/post-response.dto';
@@ -232,5 +233,60 @@ export class PostsController {
     @Param('id') id: string,
   ) {
     return this.postsService.listVersions(workspaceId, id, user.id);
+  }
+
+  @Post(':id/versions/:versionNumber/apply')
+  @ApiOperation({
+    summary: 'Restore a previous text version onto the post without creating a new version entry',
+  })
+  @ApiParam({ name: 'workspaceId', format: 'uuid' })
+  @ApiParam({ name: 'id', format: 'uuid' })
+  @ApiParam({ name: 'versionNumber', type: Number })
+  @ApiDataResponse(PostPackageResponseDto)
+  applyVersion(
+    @CurrentUser() user: User,
+    @Param('workspaceId') workspaceId: string,
+    @Param('id') id: string,
+    @Param('versionNumber') versionNumber: string,
+  ) {
+    return this.postsService.applyVersion(
+      workspaceId,
+      id,
+      user.id,
+      Number(versionNumber),
+    );
+  }
+
+  @Get(':id/media-versions')
+  @ApiOperation({ summary: 'List media generation history for a post' })
+  @ApiParam({ name: 'workspaceId', format: 'uuid' })
+  @ApiParam({ name: 'id', format: 'uuid' })
+  @ApiDataResponse(PostMediaResponseDto, { isArray: true })
+  listMediaVersions(
+    @CurrentUser() user: User,
+    @Param('workspaceId') workspaceId: string,
+    @Param('id') id: string,
+  ) {
+    return this.postsService.listMediaVersions(workspaceId, id, user.id);
+  }
+
+  @Post(':id/media/:mediaId/apply')
+  @ApiOperation({ summary: 'Restore a previous media version as the active image' })
+  @ApiParam({ name: 'workspaceId', format: 'uuid' })
+  @ApiParam({ name: 'id', format: 'uuid' })
+  @ApiParam({ name: 'mediaId', format: 'uuid' })
+  @ApiDataResponse(PostPackageResponseDto)
+  applyMediaVersion(
+    @CurrentUser() user: User,
+    @Param('workspaceId') workspaceId: string,
+    @Param('id') id: string,
+    @Param('mediaId') mediaId: string,
+  ) {
+    return this.postsService.applyMediaVersion(
+      workspaceId,
+      id,
+      user.id,
+      mediaId,
+    );
   }
 }

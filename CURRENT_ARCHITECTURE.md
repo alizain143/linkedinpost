@@ -42,13 +42,13 @@ AI LinkedIn content engine: generate posts → AI Council pipeline → human app
 | documents | R2 presigned upload (profile images) |
 | workspaces | Personal + client workspaces, soft-delete cascade |
 | content-profiles | Voice profile + pillars CRUD |
-| posts | PostPackage CRUD, status machine, versions |
+| posts | PostPackage CRUD, status machine, text versions (apply), media versions (archive + apply) |
 | pipeline | Kanban by PostPackageStatus |
 | calendar | Month/week/list views (scheduledAt on PostPackage) |
 | approvals | Approval queue tabs |
 | approval-share | Tokenized public approve/reject links |
 | scheduling | Schedule/unschedule/reschedule |
-| linkedin | Profile sync, publish now, scheduled publish worker |
+| linkedin | Per-workspace connection bind, profile sync, **user-initiated profile import** (extension DOM capture → LLM extract + paste fallback), publish now, scheduled publish worker |
 | credits | Ledger with billing-aligned credit period |
 | billing | XPay checkout, cancel, webhooks |
 | generation | Quick draft (sync) |
@@ -92,7 +92,7 @@ BillingWebhookEvent (idempotency)
 **Not implemented as separate models (by design):**
 
 - `CalendarEntry` — uses `PostPackage.scheduledAt`
-- `LinkedInConnection` — dropped; LinkedIn data stored on `User` JSON
+- `LinkedInConnection` table — dropped; per-workspace tokens on `Workspace.linkedIn*` (`linkedInAccessToken`, refresh, profile cache); Clerk OAuth for app sign-in only (one LinkedIn per user). See [apps/backend/LINKEDIN-OAUTH.md](apps/backend/LINKEDIN-OAUTH.md).
 - Full-text search — not built
 
 **Notifications:** `Notification`, `PushDeviceToken`, `NotificationDelivery` tables. Email via Resend; push via Firebase FCM (web). See [apps/backend/NOTIFICATIONS.md](apps/backend/NOTIFICATIONS.md).
@@ -181,6 +181,8 @@ Three transition maps govern different subsystems:
 
 Council agent pipeline: writer → reviewer → editor → media_creator → media_reviewer
 
+**Media templates (template lane):** layout JSON with bound profile fields (`profile.name`, `profile.roleTitle`, `profile.industry`, `profile.avatar`) and AI-filled slots (`post_headline`, `post_subhead`, `visual_zone`). Identity binds resolve in order: workspace LinkedIn profile → content profile → Clerk user → placeholders. Layout elements are clamped to template width/height on save. Content-profile AI suggest uses **workspace** LinkedIn profile (`getWorkspaceProfile`), not user-level cache.
+
 ---
 
 ## Credits
@@ -214,7 +216,8 @@ Council agent pipeline: writer → reviewer → editor → media_creator → med
 | Notifications | `GET /v1/notifications`, unread count, mark read, device tokens |
 | Billing | `GET /v1/billing`, checkout, cancel, XPay webhook |
 | Scheduling | schedule/unschedule/reschedule on posts |
-| LinkedIn | connection, profile sync, publish |
+| LinkedIn | Per-workspace direct OAuth (`GET .../linkedin/oauth/start` + callback); tokens on `Workspace`; publish uses workspace token; Clerk OAuth retained for sign-in only (one LinkedIn per user) |
+| Media templates | CRUD + preview `/v1/workspaces/:workspaceId/media-templates`; layout JSON editor; template lane in council media |
 | Autopilot | `GET/PUT .../autopilot`, planned posts |
 | Approval share | create/list/revoke tokens + public approve endpoints |
 | Dashboard | `GET .../dashboard/stats` |
@@ -225,7 +228,7 @@ Council agent pipeline: writer → reviewer → editor → media_creator → med
 
 | Service | Usage |
 |---------|-------|
-| Clerk | Auth + LinkedIn OAuth token for publish |
+| Clerk | App auth (email, Google); optional single LinkedIn sign-in — not used for per-workspace publish |
 | XPay | Subscriptions; plan synced to `User.plan` |
 | R2 | Profile images, post media (AI feed images) |
 | OpenAI | Text generation (GPT-5.4 default) |
@@ -267,7 +270,6 @@ Cascade soft-delete when an agency client workspace is deleted. Individual post 
 | `PostPackage.pillar` string not FK | Rename pillar → old posts keep old name |
 | R2 orphan cleanup | Media objects may remain in R2 after post soft-delete |
 | `CouncilEvent.output` retention | No TTL; large agent outputs accumulate |
-| Per-workspace LinkedIn connections | LinkedIn tokens/profile stay on `User`, not workspace |
 | Full-text search | Not built |
 | Document enums | Duplicated in Prisma schema and `document.constants.ts` |
 | Quick draft async queue | Sync only today; optional future move to BullMQ |

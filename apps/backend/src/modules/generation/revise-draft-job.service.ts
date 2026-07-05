@@ -80,11 +80,26 @@ export class ReviseDraftJobService {
     const revisionPrompt =
       dto.additionalFeedback?.trim() ||
       post.approvalFeedback?.trim() ||
-      'Regenerate this post while keeping the same topic and voice.';
+      'Regenerate with completely fresh wording while keeping the same topic, core idea, and voice. Do not reuse phrases from any existing version.';
 
     await this.creditsService.assertHasCredits(userId, 1);
 
     const previousStatus = post.status;
+
+    const storedVersions = await this.prisma.postVersion.findMany({
+      where: { postPackageId: postId },
+      orderBy: { versionNumber: 'desc' },
+      take: 8,
+    });
+    const avoidVariants = storedVersions
+      .map((version) => ({
+        hook: version.hook ?? '',
+        body: version.body ?? '',
+        cta: version.cta ?? '',
+        tags: version.tags,
+      }))
+      .filter((version) => version.hook || version.body);
+
     const input: QuickDraftInput = {
       workspaceId,
       userId,
@@ -101,6 +116,7 @@ export class ReviseDraftJobService {
         cta: post.cta ?? '',
         tags: post.tags,
       },
+      avoidVariants,
     };
 
     const job = await this.prisma.generationJob.create({

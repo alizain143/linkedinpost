@@ -4,6 +4,7 @@ export type TextBind =
   | "static"
   | "profile.name"
   | "profile.roleTitle"
+  | "profile.currentCompany"
   | "profile.industry";
 
 export type TextStyle = {

@@ -257,16 +257,52 @@ export class MockTextCompletionProvider implements TextCompletionProvider {
     }
 
     if (system.includes('exactly 1 post')) {
-      return {
-        content: JSON.stringify({
-          hook: 'Most founders skip this step.',
-          body: 'I spent years posting without a system. Then I built one.',
-          cta: 'What is your content system?',
-          tags: ['founders', 'linkedin'],
+      const user =
+        request.messages.find((m) => m.role === 'user')?.content ?? '';
+      const avoidCount = (user.match(/variant_\d+:/g) ?? []).length;
+      const regenVariants = [
+        {
+          hook: 'Your content strategy is missing this layer.',
+          body: 'Everyone talks about posting more. Almost nobody talks about the system underneath.\n\nI rebuilt mine from scratch last year. Three shifts changed everything.',
+          cta: 'What layer is missing in yours?',
+          tags: ['contentstrategy', 'founders', 'systems'],
+          postType: PostType.how_to,
+          tone: 'Direct',
+          pillar: 'Founder lessons',
+        },
+        {
+          hook: 'I stopped chasing reach and started doing this instead.',
+          body: 'Vanity metrics lied to me for two years.\n\nThe fix was not more posts. It was sharper positioning and one repeatable format.',
+          cta: 'What metric do you ignore now?',
+          tags: ['linkedin', 'positioning', 'growth'],
+          postType: PostType.contrarian_take,
+          tone: 'Provocative',
+          pillar: 'Audience building',
+        },
+        {
+          hook: '4 signs your LinkedIn posts are too generic.',
+          body: '1. Every hook sounds like a template.\n2. Your CTA asks for comments, not action.\n3. The body could belong to anyone in your industry.\n4. You never reference a real moment from your week.',
+          cta: 'Which sign hits closest?',
+          tags: ['writing', 'personalbrand', 'b2b'],
+          postType: PostType.list_post,
+          tone: 'Bold',
+          pillar: 'Founder lessons',
+        },
+        {
+          hook: 'The post that changed my inbound pipeline was not the clever one.',
+          body: 'It was the plainest story I had.\n\nOne client problem. One decision. One outcome. That was it.',
+          cta: 'Save this if you are overthinking your next post.',
+          tags: ['inbound', 'storytelling', 'saas'],
           postType: PostType.personal_story,
           tone: 'Bold',
           pillar: 'Founder lessons',
-        }),
+        },
+      ];
+
+      return {
+        content: JSON.stringify(
+          regenVariants[avoidCount % regenVariants.length],
+        ),
         model: 'mock-text',
         usage: { inputTokens: 30, outputTokens: 50 },
       };
@@ -281,6 +317,29 @@ export class MockTextCompletionProvider implements TextCompletionProvider {
         }),
         model: 'mock-text',
         usage: { inputTokens: 40, outputTokens: 30 },
+      };
+    }
+
+    if (system.includes('You extract structured LinkedIn profile')) {
+      return {
+        content: JSON.stringify({
+          headline: 'Business Development Manager at StackNovaTech',
+          summary:
+            'I help businesses build and grow their digital presence from the ground up.',
+          positions: [
+            {
+              title: 'Business Development Manager',
+              companyName: 'StackNovaTech',
+              description:
+                'At Stack Nova, I bridge the gap between what businesses need and what technology can deliver.',
+              isCurrent: true,
+            },
+          ],
+          education: [],
+          skills: ['Business Development Support', 'Sales'],
+        }),
+        model: 'mock-text',
+        usage: { inputTokens: 200, outputTokens: 120 },
       };
     }
 

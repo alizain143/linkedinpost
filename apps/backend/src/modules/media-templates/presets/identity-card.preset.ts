@@ -95,7 +95,7 @@ export const IDENTITY_CARD_LAYOUT: MediaTemplateLayout = {
       y: 1000,
       w: 480,
       bind: 'static',
-      value: 'Frontend | Backend | App scaling',
+      value: 'Your Brand',
       style: {
         fontFamily: 'Inter',
         fontSize: 20,

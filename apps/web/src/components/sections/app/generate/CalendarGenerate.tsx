@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { appLabel } from "@/components/app/app-ui";
 import { QueryState } from "@/components/app/query-state";
+import { CreditConfirmModal } from "@/components/modals/credit-confirm-modal";
 import { CalendarJobProgressPanel } from "@/components/sections/app/generate/CalendarJobProgress";
 import { Button, toggleVariant } from "@/components/ui/button";
 import { InputField, TextareaField } from "@/components/ui/input";
@@ -19,10 +20,12 @@ import {
 } from "@/hooks/api/use-generation-api";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { getApiErrorMessage } from "@/lib/api-error-messages";
+import type { CalendarSlotGenerationMode } from "@/lib/credit-costs";
 import {
   canUse30DayCalendar,
   DEFAULT_POSTING_DAYS,
   DEFAULT_POSTING_TIME,
+  formatCalendarCreditBreakdown,
   getCalendarCreditCost,
   isCalendarJobResult,
   normalizePostingTime,
@@ -40,7 +43,28 @@ import {
 } from "@/lib/generation-session";
 import { GenerationHistoryPanel } from "@/components/sections/app/generate/GenerationHistoryPanel";
 
+const CALENDAR_GEN_MODES: Array<{
+  id: CalendarSlotGenerationMode;
+  label: string;
+  icon: string;
+  desc: string;
+}> = [
+  {
+    id: "quick_draft",
+    label: "Text Only",
+    icon: "bolt",
+    desc: "1 credit · text only",
+  },
+  {
+    id: "council",
+    label: "AI Council",
+    icon: "groups",
+    desc: "3 credits · reviewed post + image",
+  },
+];
+
 type CalendarFormState = {
+  slotGenerationMode: CalendarSlotGenerationMode;
   durationDays: 7 | 30;
   contentProfileId: string;
   startDate: string;
@@ -68,6 +92,7 @@ export default function CalendarGenerate() {
   const calendarMutation = useCalendarGenerateMutation(activeWorkspaceId);
 
   const [form, setForm] = useState<CalendarFormState>({
+    slotGenerationMode: "quick_draft",
     durationDays: 7,
     contentProfileId: "",
     startDate: "",
@@ -80,6 +105,13 @@ export default function CalendarGenerate() {
   );
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [history, setHistory] = useState<GenerationHistoryEntry[]>([]);
+  const [skipCreditConfirm, setSkipCreditConfirm] = useState(false);
+  const [creditConfirm, setCreditConfirm] = useState<{
+    cost: number;
+    label: string;
+    details: string;
+    onConfirm: () => void;
+  } | null>(null);
 
   const calendarCompletedRef = useRef<string | null>(null);
 
@@ -133,6 +165,7 @@ export default function CalendarGenerate() {
       }
       setActiveCalendarJobId(session.activeCalendarJobId);
       setGenerateError(null);
+      setSkipCreditConfirm(session.skipCreditConfirm ?? false);
 
       if (profiles.length === 0) {
         setForm((current) => ({ ...current, contentProfileId: "" }));
@@ -173,7 +206,28 @@ export default function CalendarGenerate() {
     }
   };
 
-  const creditCost = getCalendarCreditCost(form.durationDays);
+  const creditCost = getCalendarCreditCost(
+    form.durationDays,
+    form.slotGenerationMode,
+  );
+  const creditBreakdown = formatCalendarCreditBreakdown(
+    form.durationDays,
+    form.slotGenerationMode,
+  );
+  const selectedMode =
+    CALENDAR_GEN_MODES.find((item) => item.id === form.slotGenerationMode) ??
+    CALENDAR_GEN_MODES[0];
+
+  const requestCreditAction = useCallback(
+    (cost: number, label: string, details: string, action: () => void) => {
+      if (skipCreditConfirm) {
+        action();
+        return;
+      }
+      setCreditConfirm({ cost, label, details, onConfirm: action });
+    },
+    [skipCreditConfirm],
+  );
   const canAffordCalendar = canAfford(creditCost);
   const thirtyDayAllowed = balance ? canUse30DayCalendar(balance.plan) : false;
   const calendarJobActive =
@@ -210,6 +264,7 @@ export default function CalendarGenerate() {
   const buildRequestBody = useCallback(() => {
     return {
       durationDays: form.durationDays,
+      slotGenerationMode: form.slotGenerationMode,
       contentProfileId: form.contentProfileId || undefined,
       startDate: form.startDate.trim() || undefined,
       postingTime: normalizePostingTime(form.postingTime),
@@ -275,6 +330,15 @@ export default function CalendarGenerate() {
     ? calendarJob.data.result
     : null;
 
+  const handleGenerateClick = () => {
+    requestCreditAction(
+      creditCost,
+      `Generate ${form.durationDays}-post calendar (${selectedMode.label})`,
+      creditBreakdown,
+      () => void runGenerate(),
+    );
+  };
+
   const formPanel = (
     <>
       {!canAffordCalendar && balance ? (
@@ -285,6 +349,42 @@ export default function CalendarGenerate() {
           </Link>
         </div>
       ) : null}
+
+      <label className={appLabel}>Generation mode</label>
+      <div className="mb-4 flex gap-2">
+        {CALENDAR_GEN_MODES.map((mode) => (
+          <button
+            key={mode.id}
+            type="button"
+            disabled={formDisabled}
+            onClick={() =>
+              setForm((current) => ({
+                ...current,
+                slotGenerationMode: mode.id,
+              }))
+            }
+            className={`flex flex-1 flex-col items-start gap-0.5 rounded-[11px] border p-2.5 text-left ${
+              form.slotGenerationMode === mode.id
+                ? "border-[#4f46e5] bg-[#eef2ff]"
+                : "border-[#e3e6ef] bg-white hover:bg-[#f6f7fb]"
+            }`}
+          >
+            <MsIcon
+              name={mode.icon}
+              size={20}
+              className={
+                form.slotGenerationMode === mode.id
+                  ? "text-[#4f46e5]"
+                  : "text-[#64748b]"
+              }
+            />
+            <span className="text-[13px] font-bold text-[#1e293b]">
+              {mode.label}
+            </span>
+            <span className="text-[11px] text-[#94a3b8]">{mode.desc}</span>
+          </button>
+        ))}
+      </div>
 
       <label className={appLabel}>Duration</label>
       <div className="mb-4 flex gap-1 rounded-[10px] bg-[#eef0f5] p-0.5">
@@ -308,7 +408,7 @@ export default function CalendarGenerate() {
             >
               <span className="text-[13px] font-bold">{days}-day</span>
               <span className="text-[10.5px]">
-                {getCalendarCreditCost(days)} credits
+                {getCalendarCreditCost(days, form.slotGenerationMode)} credits
               </span>
             </button>
           );
@@ -405,7 +505,7 @@ export default function CalendarGenerate() {
         variant="gradient"
         size="lg"
         fullWidth
-        onClick={() => void runGenerate()}
+        onClick={() => handleGenerateClick()}
         disabled={!canSubmit}
       >
         <MsIcon name="calendar_month" size={19} />
@@ -505,7 +605,7 @@ export default function CalendarGenerate() {
               type="button"
               variant="primary"
               size="md"
-              onClick={() => void runGenerate()}
+              onClick={() => handleGenerateClick()}
               disabled={!canSubmit}
             >
               <MsIcon name="calendar_month" size={18} />
@@ -514,6 +614,25 @@ export default function CalendarGenerate() {
           </div>
         )}
       </div>
+
+      <CreditConfirmModal
+        open={!!creditConfirm}
+        cost={creditConfirm?.cost ?? 1}
+        actionLabel={creditConfirm?.label ?? "This action"}
+        details={creditConfirm?.details}
+        onClose={() => setCreditConfirm(null)}
+        onConfirm={(skipFuture) => {
+          if (skipFuture && activeWorkspaceId) {
+            setSkipCreditConfirm(true);
+            saveGenerationSession(activeWorkspaceId, {
+              skipCreditConfirm: true,
+            });
+          }
+          const action = creditConfirm?.onConfirm;
+          setCreditConfirm(null);
+          action?.();
+        }}
+      />
     </div>
   );
 }

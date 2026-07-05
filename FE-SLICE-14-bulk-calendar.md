@@ -5,7 +5,7 @@
 
 ## Goal
 
-Add bulk calendar generation at `/app/generate/calendar`: form, async job enqueue, progress polling, and navigation to calendar with Needs Approval filter on complete.
+Add bulk calendar generation at `/app/generate/calendar`: form with **Text Only / AI Council** mode toggle, credit confirm modal, async job enqueue, progress polling, and navigation to calendar with Ready for Approval filter on complete.
 
 ## Backend APIs
 
@@ -36,11 +36,13 @@ Maps to backend SLICE-14.
 
 ## Behaviors
 
-- 7-day (10 credits) and 30-day (30 credits) duration options
+- **Generation mode toggle** at top: Text Only (1 credit/post) or AI Council (3 credits/post, includes image)
+- **Credit confirm modal** with breakdown before starting (e.g. `30 posts × 3 credits = 90 credits`)
+- 7-day and 30-day duration options with mode-aware credit totals
 - 30-day gated to Pro/Agency client-side and via `PLAN_UPGRADE_REQUIRED`
 - Form: content profile, optional start date, posting time, weekday pills, notes
-- Polls job every 2.5s; on complete navigates to `/app/calendar?filter=Needs Approval`
-- Generated posts are `ready_for_approval` (visible via Needs Approval filter)
+- Polls job every 2.5s; on complete navigates to `/app/calendar?filter=Ready for Approval`
+- Generated posts are `ready_for_approval` (visible via All and Ready for Approval filters)
 
 ## Progress
 
@@ -52,8 +54,8 @@ Maps to backend SLICE-14.
 
 ## Test plan (manual)
 
-- [ ] 7-day calendar submits and shows progress
-- [ ] On complete: credits −10, posts in Needs Approval calendar filter
+- [ ] 7-day text calendar: 7 credits; council: 21 credits
+- [ ] On complete: posts in All and Ready for Approval calendar filters
 - [ ] 30-day disabled on free/starter; works on pro
 - [ ] `CREDITS_EXHAUSTED` and `REDIS_UNAVAILABLE` handled
 - [ ] Dashboard/topbar/calendar CTAs open generate calendar page
@@ -62,3 +64,4 @@ Maps to backend SLICE-14.
 
 - Per-slot editing before approval
 - Post + Media tab on Generate page
+- Separate council job per slot (calendar runs council inline; single credit charge on parent job)

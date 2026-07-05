@@ -382,6 +382,69 @@ export class PostsService {
     return versions.map(toPostVersionResponse);
   }
 
+  async applyVersion(
+    workspaceId: string,
+    id: string,
+    userId: string,
+    versionNumber: number,
+  ) {
+    await this.workspacesService.assertMember(userId, workspaceId);
+    const post = await this.findPostInWorkspace(workspaceId, id);
+    this.assertContentEditable(post);
+
+    const version = await this.prisma.postVersion.findFirst({
+      where: { postPackageId: id, versionNumber },
+    });
+
+    if (!version) {
+      throw new NotFoundException({
+        error: 'Version not found',
+        code: 'RESOURCE_NOT_FOUND',
+      });
+    }
+
+    await this.prisma.postPackage.update({
+      where: { id },
+      data: {
+        hook: version.hook ?? post.hook,
+        body: version.body,
+        cta: version.cta,
+        tags: version.tags,
+      },
+    });
+
+    const withCount = await this.prisma.postPackage.findUniqueOrThrow({
+      where: { id },
+      include: { _count: { select: { versions: true } } },
+    });
+
+    return toPostPackageResponse(withCount);
+  }
+
+  async listMediaVersions(workspaceId: string, id: string, userId: string) {
+    await this.workspacesService.assertMember(userId, workspaceId);
+    await this.findPostInWorkspace(workspaceId, id);
+    return this.mediaService.listVersionsForPost(id);
+  }
+
+  async applyMediaVersion(
+    workspaceId: string,
+    id: string,
+    userId: string,
+    mediaId: string,
+  ) {
+    await this.workspacesService.assertMember(userId, workspaceId);
+    const post = await this.findPostInWorkspace(workspaceId, id);
+    this.assertContentEditable(post);
+    await this.mediaService.applyMediaVersion(id, mediaId);
+    const media = await this.mediaService.listForPost(id);
+    const withCount = await this.prisma.postPackage.findUniqueOrThrow({
+      where: { id },
+      include: { _count: { select: { versions: true } } },
+    });
+    return toPostPackageResponse(withCount, undefined, media);
+  }
+
   async applyCouncilPipelineStatus(
     postPackageId: string,
     to: PostPackageStatus,

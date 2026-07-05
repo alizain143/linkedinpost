@@ -3,8 +3,6 @@ import type { ApiCreditsBalance } from "@/lib/api/types/credits";
 import type { UserPlan } from "@/lib/api/types/enums";
 import {
   AUTOPILOT_CREDIT_COST,
-  CALENDAR_30_DAY_CREDIT_COST,
-  CALENDAR_7_DAY_CREDIT_COST,
   CONTENT_PROFILE_AI_CREDIT_COST,
   COUNCIL_CREDIT_COST,
   MEDIA_GENERATION_CREDIT_COST,
@@ -23,10 +21,21 @@ export const BILLING_CREDIT_COSTS = [
     action: "Generate image",
     cost: `${MEDIA_GENERATION_CREDIT_COST} credits`,
   },
-  { action: "7-day calendar", cost: `${CALENDAR_7_DAY_CREDIT_COST} credits` },
   {
-    action: "30-day calendar",
-    cost: `${CALENDAR_30_DAY_CREDIT_COST} credits`,
+    action: "7-day calendar (text)",
+    cost: `7 credits (1/post)`,
+  },
+  {
+    action: "7-day calendar (AI Council)",
+    cost: `21 credits (3/post)`,
+  },
+  {
+    action: "30-day calendar (text)",
+    cost: `30 credits (1/post)`,
+  },
+  {
+    action: "30-day calendar (AI Council)",
+    cost: `90 credits (3/post)`,
   },
   { action: "Autopilot post", cost: `${AUTOPILOT_CREDIT_COST} credits` },
   {

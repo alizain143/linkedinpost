@@ -61,6 +61,9 @@ export class PostMediaResponseDto {
 
   @ApiProperty({ type: String, format: 'date-time' })
   createdAt!: Date;
+
+  @ApiProperty({ description: 'Whether this media is the active post image' })
+  isActive!: boolean;
 }
 
 export class PostPackageResponseDto {

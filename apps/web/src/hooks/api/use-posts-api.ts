@@ -5,10 +5,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import {
   applyPostChanges,
+  applyPostMediaVersion,
+  applyPostVersion,
   approvePost,
   createPost,
   deletePost,
   fetchPost,
+  fetchPostMediaVersions,
   fetchPosts,
   fetchPostVersions,
   generatePostMedia,
@@ -22,6 +25,7 @@ import { invalidateNotificationQueries } from "@/lib/notification-query-invalida
 import { invalidatePostQueries } from "@/lib/post-query-invalidation";
 import type { ApiGenerationJob } from "@/lib/api/types/generation";
 import type {
+  ApiPostMedia,
   ApiPostPackage,
   ApiPostVersion,
   CreatePostBody,
@@ -103,6 +107,65 @@ export function usePostVersions(
       const token = await getToken();
       if (!token || !workspaceId || !postId) throw new Error("Not authenticated");
       return fetchPostVersions(token, workspaceId, postId);
+    },
+  });
+}
+
+export function usePostMediaVersions(
+  workspaceId: string | null | undefined,
+  postId: string | null | undefined,
+) {
+  const { getToken, isLoaded, isSignedIn } = useAuth();
+
+  return useQuery({
+    queryKey: queryKeys.posts.mediaVersions(workspaceId ?? "", postId ?? ""),
+    enabled: isLoaded && isSignedIn && !!workspaceId && !!postId,
+    queryFn: async () => {
+      const token = await getToken();
+      if (!token || !workspaceId || !postId) throw new Error("Not authenticated");
+      return fetchPostMediaVersions(token, workspaceId, postId);
+    },
+  });
+}
+
+export function useApplyPostVersionMutation(
+  workspaceId: string | null | undefined,
+  postId: string | null | undefined,
+) {
+  const { getToken } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation<ApiPostPackage, Error, number>({
+    mutationFn: async (versionNumber) => {
+      const token = await getToken();
+      if (!token || !workspaceId || !postId) throw new Error("Not authenticated");
+      return applyPostVersion(token, workspaceId, postId, versionNumber);
+    },
+    onSuccess: () => {
+      if (workspaceId && postId) {
+        invalidatePostQueries(queryClient, workspaceId, postId);
+      }
+    },
+  });
+}
+
+export function useApplyPostMediaVersionMutation(
+  workspaceId: string | null | undefined,
+  postId: string | null | undefined,
+) {
+  const { getToken } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation<ApiPostPackage, Error, string>({
+    mutationFn: async (mediaId) => {
+      const token = await getToken();
+      if (!token || !workspaceId || !postId) throw new Error("Not authenticated");
+      return applyPostMediaVersion(token, workspaceId, postId, mediaId);
+    },
+    onSuccess: () => {
+      if (workspaceId && postId) {
+        invalidatePostQueries(queryClient, workspaceId, postId);
+      }
     },
   });
 }
@@ -387,4 +450,4 @@ export function useInvalidatePosts() {
   );
 }
 
-export type { ApiPostPackage, ApiPostVersion, ListPostsParams };
+export type { ApiPostMedia, ApiPostPackage, ApiPostVersion, ListPostsParams };

@@ -2,21 +2,33 @@
 
 import { useAuth, useUser } from "@clerk/nextjs";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { QueryState } from "@/components/app/query-state";
 import { Button } from "@/components/ui/button";
 import { InputField } from "@/components/ui/input";
 import { MsIcon } from "@/components/ui/ms-icon";
 import { SelectField } from "@/components/ui/select";
 import {
+  ImportProfileFlowModal,
+  type ImportProfileFlowStep,
+} from "@/components/modals/import-profile-flow-modal";
+import {
   useCurrentUser,
   useUpdateCurrentUser,
 } from "@/hooks/api/use-auth-api";
 import {
+  useCreateLinkedInImportToken,
+  useImportLinkedInProfile,
   useLinkedInProfile,
   useSyncLinkedInProfile,
 } from "@/hooks/api/use-linkedin-api";
 import { getApiErrorMessage } from "@/lib/api-error-messages";
+import { ApiError } from "@/lib/api/client";
+import {
+  extractLinkedInProfileSlug,
+  isUsableLinkedInProfileUrl,
+} from "@/lib/linkedin-profile-url";
 import { DocumentPurpose, getProfileImageAccept } from "@/lib/documents/constants";
 import { uploadDocument } from "@/lib/documents/upload-document";
 import { validateFileForPurpose } from "@/lib/documents/validate-file";
@@ -33,10 +45,32 @@ import {
   isKnownTimezone,
 } from "@/lib/timezones";
 import type { ApiUser } from "@/lib/api/client";
+import { LINKEDIN_IMPORT_REVIEW_PARAM, LINKEDIN_IMPORT_SESSION_KEY } from "@/lib/api/types/linkedin";
+import { apiBaseUrl } from "@/lib/api/client-core";
+import {
+  buildImportReturnUrl,
+  clearStagedImportSession,
+  LINKEDIN_STAGED_IMPORT_READY_EVENT,
+  pingLinkedInExtension,
+  readImportExpectedSlug,
+  readStagedImportFromSession,
+  setImportExpectedSlug,
+  stageImportPreview,
+  stagedImportToPayload,
+  startLinkedInImportSession,
+  subscribeLinkedInImportPreview,
+  subscribeLinkedInImportExtractError,
+  type LinkedInImportPreview,
+} from "@/lib/linkedin-extension-bridge";
+import {
+  isExternalExtensionInstallUrl,
+  linkedInExtensionInstallUrl,
+} from "@/lib/linkedin-extension-config";
 import {
   getLinkedInProfileSubtitle,
   getLinkedInStatusDescription,
   getLinkedInStatusLabel,
+  needsLinkedInProfileImport,
 } from "@/lib/linkedin-utils";
 import { useAppUi } from "@/providers/app-ui-provider";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
@@ -87,6 +121,8 @@ function SettingsSkeleton() {
 }
 
 export default function Settings() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { getToken } = useAuth();
   const { user: clerkUser } = useUser();
   const queryClient = useQueryClient();
@@ -97,6 +133,7 @@ export default function Settings() {
     refetch,
   } = useCurrentUser();
   const updateUser = useUpdateCurrentUser();
+  const { activeWorkspaceId, activeWorkspace } = useWorkspace();
 
   const {
     linkedinConnected,
@@ -108,14 +145,307 @@ export default function Settings() {
     confirmDeleteAccount,
     showToast,
   } = useAppUi();
-  const { data: linkedInProfile } = useLinkedInProfile();
-  const syncLinkedInProfile = useSyncLinkedInProfile();
+  const { data: linkedInProfile, refetch: refetchLinkedInProfile } =
+    useLinkedInProfile(activeWorkspaceId);
+  const syncLinkedInProfile = useSyncLinkedInProfile(activeWorkspaceId);
+  const createImportToken = useCreateLinkedInImportToken(activeWorkspaceId);
+  const importLinkedInProfile = useImportLinkedInProfile(activeWorkspaceId);
+  const importTokenRef = useRef<string | null>(null);
+  const importExpectedSlugRef = useRef<string | null>(null);
+  const importPreviewAppliedRef = useRef(false);
+  const importPreviewRef = useRef<LinkedInImportPreview | null>(null);
+  const applyStagedPreviewRef = useRef<(preview: LinkedInImportPreview) => void>(
+    () => {},
+  );
+  const [importFlowOpen, setImportFlowOpen] = useState(false);
+  const [importFlowStep, setImportFlowStep] =
+    useState<ImportProfileFlowStep>("checking");
+  const [importFlowError, setImportFlowError] = useState<string | null>(null);
+  const [importPreview, setImportPreview] = useState<LinkedInImportPreview | null>(
+    null,
+  );
+  const [importProfileUrlInput, setImportProfileUrlInput] = useState("");
+  const linkedInProfileSubtitle = getLinkedInProfileSubtitle(linkedInProfile);
+  const showImportPrompt =
+    linkedinConnected && needsLinkedInProfileImport(linkedInProfile);
+
+  const applyStagedPreview = useCallback(
+    (preview: LinkedInImportPreview) => {
+      const previewSlug = extractLinkedInProfileSlug(preview.profileUrl ?? "");
+      const expectedSlug =
+        importExpectedSlugRef.current ?? readImportExpectedSlug();
+      const currentSlug = importPreviewRef.current
+        ? extractLinkedInProfileSlug(importPreviewRef.current.profileUrl ?? "")
+        : null;
+      const slugMismatch =
+        Boolean(expectedSlug && previewSlug && previewSlug !== expectedSlug);
+
+      if (slugMismatch) {
+        sessionStorage.removeItem(LINKEDIN_IMPORT_SESSION_KEY);
+        return;
+      }
+
+      if (importPreviewAppliedRef.current) {
+        const canOverrideStale =
+          Boolean(expectedSlug && previewSlug === expectedSlug) &&
+          currentSlug !== expectedSlug;
+        if (!canOverrideStale) return;
+      }
+
+      importPreviewAppliedRef.current = true;
+      importPreviewRef.current = preview;
+      setImportPreview(preview);
+      setImportFlowStep("preview");
+      setImportFlowOpen(true);
+      stageImportPreview(preview);
+
+      if (searchParams.get(LINKEDIN_IMPORT_REVIEW_PARAM) === "1") {
+        const url = new URL(window.location.href);
+        url.searchParams.delete(LINKEDIN_IMPORT_REVIEW_PARAM);
+        window.history.replaceState(null, "", url.pathname + url.search);
+      }
+    },
+    [searchParams],
+  );
+
+  applyStagedPreviewRef.current = applyStagedPreview;
+
+  useEffect(() => {
+    const reviewParam = searchParams.get(LINKEDIN_IMPORT_REVIEW_PARAM);
+    if (reviewParam !== "1") return;
+    if (importPreviewAppliedRef.current) return;
+
+    setImportFlowOpen(true);
+    setImportFlowStep("extracting");
+    setImportFlowError(null);
+    let cancelled = false;
+
+    function tryApply() {
+      if (cancelled || importPreviewAppliedRef.current) return true;
+      const staged = readStagedImportFromSession();
+      if (staged) {
+        applyStagedPreviewRef.current(staged);
+        return importPreviewAppliedRef.current;
+      }
+      return false;
+    }
+
+    if (tryApply()) return;
+
+    function onStagedReady(event: Event) {
+      const detail = (event as CustomEvent<LinkedInImportPreview>).detail;
+      if (detail && !cancelled && !importPreviewAppliedRef.current) {
+        applyStagedPreviewRef.current(detail);
+        return;
+      }
+      tryApply();
+    }
+
+    window.addEventListener(LINKEDIN_STAGED_IMPORT_READY_EVENT, onStagedReady);
+
+    const interval = window.setInterval(() => {
+      if (tryApply()) window.clearInterval(interval);
+    }, 150);
+
+    const timeout = window.setTimeout(() => {
+      window.clearInterval(interval);
+      if (!cancelled && !importPreviewAppliedRef.current) {
+        setImportFlowStep("error");
+        setImportFlowError(
+          "Profile extraction timed out. Try again or check that the backend is running.",
+        );
+      }
+    }, 120_000);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener(
+        LINKEDIN_STAGED_IMPORT_READY_EVENT,
+        onStagedReady,
+      );
+      window.clearInterval(interval);
+      window.clearTimeout(timeout);
+    };
+  }, [searchParams]);
+
+  useEffect(() => {
+    return subscribeLinkedInImportExtractError(({ error }) => {
+      if (importPreviewAppliedRef.current) return;
+      setImportFlowOpen(true);
+      setImportFlowStep("error");
+      setImportFlowError(error);
+    });
+  }, []);
+
+  useEffect(() => {
+    return subscribeLinkedInImportPreview(({ preview }) => {
+      applyStagedPreviewRef.current(preview);
+    });
+  }, []);
+
+  const handleCancelImport = useCallback(() => {
+    importPreviewAppliedRef.current = false;
+    importPreviewRef.current = null;
+    setImportFlowOpen(false);
+    setImportPreview(null);
+    setImportFlowError(null);
+    setImportProfileUrlInput("");
+    clearStagedImportSession();
+    importTokenRef.current = null;
+    importExpectedSlugRef.current = null;
+    createImportToken.reset();
+  }, [createImportToken]);
+
+  const executeImportProfileFlow = useCallback(
+    async (profileUrl: string) => {
+      if (!activeWorkspaceId) return;
+
+      setImportFlowError(null);
+      setImportFlowStep("preparing");
+
+      try {
+        const tokenData = await createImportToken.mutateAsync({ profileUrl });
+        importTokenRef.current = tokenData.token;
+        importExpectedSlugRef.current =
+          tokenData.expectedProfileSlug?.toLowerCase() ?? null;
+        setImportExpectedSlug(importExpectedSlugRef.current);
+        setImportFlowStep("opening");
+
+        const started = await startLinkedInImportSession({
+          importToken: tokenData.token,
+          workspaceId: activeWorkspaceId,
+          apiBase: apiBaseUrl(),
+          linkedInUrl: tokenData.linkedInImportUrl,
+          returnUrl: buildImportReturnUrl(),
+          expectedProfileSlug: tokenData.expectedProfileSlug,
+          profileName: tokenData.profileName,
+        });
+
+        if (!started.ok) {
+          throw new Error(started.error ?? "Could not open LinkedIn import session");
+        }
+
+        setImportFlowStep("waiting");
+      } catch (error) {
+        if (
+          error instanceof ApiError &&
+          error.code === "LINKEDIN_IMPORT_PROFILE_URL_UNKNOWN"
+        ) {
+          setImportFlowStep("profile-url");
+          setImportFlowError(
+            profileUrl.trim()
+              ? "Could not use that profile URL. Check the link and try again."
+              : null,
+          );
+          return;
+        }
+        setImportFlowStep("error");
+        setImportFlowError(
+          getApiErrorMessage(error, "Could not start profile import."),
+        );
+      }
+    },
+    [activeWorkspaceId, createImportToken],
+  );
+
+  const handleProfileUrlContinue = useCallback(() => {
+    const profileUrl = importProfileUrlInput.trim();
+    if (!profileUrl.includes("linkedin.com/in/")) {
+      setImportFlowError("Enter a valid LinkedIn profile URL (linkedin.com/in/...).");
+      return;
+    }
+    void executeImportProfileFlow(profileUrl);
+  }, [executeImportProfileFlow, importProfileUrlInput]);
+
+  const runImportProfileFlow = useCallback(async () => {
+    if (!activeWorkspaceId) return;
+
+    setImportFlowOpen(true);
+    setImportFlowError(null);
+    setImportPreview(null);
+    importPreviewAppliedRef.current = false;
+    importPreviewRef.current = null;
+    importTokenRef.current = null;
+    importExpectedSlugRef.current = null;
+    clearStagedImportSession();
+    setImportFlowStep("checking");
+    createImportToken.reset();
+
+    const hasExtension = await pingLinkedInExtension();
+    if (!hasExtension) {
+      const staleBridge =
+        document.documentElement.getAttribute("data-linkedinpost-extension") ===
+        "1";
+      if (staleBridge) {
+        setImportFlowStep("error");
+        setImportFlowError(
+          "Extension was updated. Refresh this page and try Import profile again.",
+        );
+        return;
+      }
+
+      setImportFlowOpen(false);
+      const installUrl = linkedInExtensionInstallUrl();
+      if (isExternalExtensionInstallUrl(installUrl)) {
+        window.location.href = installUrl;
+      } else {
+        router.push(installUrl);
+      }
+      return;
+    }
+
+    const storedProfileUrl = linkedInProfile?.profileUrl?.trim() ?? "";
+    if (isUsableLinkedInProfileUrl(storedProfileUrl)) {
+      await executeImportProfileFlow(storedProfileUrl);
+      return;
+    }
+
+    setImportProfileUrlInput("");
+    setImportFlowStep("profile-url");
+  }, [
+    activeWorkspaceId,
+    createImportToken,
+    executeImportProfileFlow,
+    linkedInProfile?.profileUrl,
+    router,
+  ]);
+
+  const handleSaveImport = useCallback(async () => {
+    if (!importPreview?.profileUrl || !activeWorkspaceId) {
+      showToast("Profile URL is missing from import", "error");
+      return;
+    }
+
+    setImportFlowStep("saving");
+    setImportFlowError(null);
+
+    try {
+      await importLinkedInProfile.mutateAsync({
+        ...stagedImportToPayload(importPreview),
+        importToken: importTokenRef.current ?? undefined,
+      });
+      showToast("Profile saved", "save");
+      handleCancelImport();
+      void refetchLinkedInProfile();
+    } catch (error) {
+      setImportFlowStep("error");
+      setImportFlowError(
+        getApiErrorMessage(error, "Could not save imported profile."),
+      );
+    }
+  }, [
+    activeWorkspaceId,
+    handleCancelImport,
+    importLinkedInProfile,
+    importPreview,
+    refetchLinkedInProfile,
+    showToast,
+  ]);
+
   const { enablePush, disablePush, permission, isConfigured } =
     usePushNotifications();
-  const { activeWorkspaceId } = useWorkspace();
   const { data: workspaceDetail } = useWorkspaceDetail(activeWorkspaceId);
   const updateWorkspaceSettings = useUpdateWorkspaceSettings();
-  const linkedInProfileSubtitle = getLinkedInProfileSubtitle(linkedInProfile);
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -347,69 +677,145 @@ export default function Settings() {
 
         <div className="rounded-2xl border border-[#eceef4] bg-white p-6">
           <h2 className="font-display text-lg font-bold">Connections</h2>
-          <div className="mt-4 flex items-center justify-between rounded-xl border border-[#eceef4] bg-[#f8f9fc] p-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#0a66c2] font-display text-sm font-extrabold text-white">
-                in
-              </div>
-              <div>
-                <div className="text-sm font-semibold">LinkedIn</div>
-                <div className="text-xs text-[#94a3b8]">
-                  {getLinkedInStatusDescription(
-                    linkedinConnectionState,
-                    linkedInProfileName,
-                  )}
+          <div className="mt-4 overflow-hidden rounded-xl border border-[#eceef4] bg-[#f8f9fc]">
+            <div className="p-4">
+              <div className="flex gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#0a66c2] font-display text-sm font-extrabold text-white">
+                  in
                 </div>
-                {linkedInProfileSubtitle ? (
-                  <div className="text-xs text-[#64748b]">{linkedInProfileSubtitle}</div>
-                ) : null}
-                {linkedinConnected ? (
-                  <div
-                    className={`mt-1 text-xs font-semibold ${
-                      linkedinConnectionState === "publishReady"
-                        ? "text-[#16a34a]"
-                        : "text-[#d97706]"
-                    }`}
-                  >
-                    {getLinkedInStatusLabel(linkedinConnectionState)}
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-sm font-semibold text-[#0f172a]">
+                      LinkedIn
+                    </span>
+                    {linkedinConnected ? (
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                          linkedinConnectionState === "publishReady"
+                            ? "bg-[#dcfce7] text-[#166534]"
+                            : "bg-[#fef3c7] text-[#92400e]"
+                        }`}
+                      >
+                        {getLinkedInStatusLabel(linkedinConnectionState)}
+                      </span>
+                    ) : null}
+                    {linkedinConnected && !showImportPrompt ? (
+                      <span className="rounded-full bg-[#dcfce7] px-2 py-0.5 text-[10px] font-semibold text-[#166534]">
+                        Profile imported
+                      </span>
+                    ) : null}
+                    {linkedinConnected && showImportPrompt ? (
+                      <span className="rounded-full bg-[#fef3c7] px-2 py-0.5 text-[10px] font-semibold text-[#92400e]">
+                        Basic profile
+                      </span>
+                    ) : null}
                   </div>
-                ) : null}
+
+                  {linkedinConnectionState === "disconnected" ? (
+                    <p className="mt-1.5 text-xs leading-relaxed text-[#64748b]">
+                      {activeWorkspace?.type === "client"
+                        ? "Connect this client's LinkedIn to schedule and publish posts for their workspace."
+                        : getLinkedInStatusDescription(
+                            linkedinConnectionState,
+                            linkedInProfileName,
+                          )}
+                    </p>
+                  ) : (
+                    <p className="mt-1.5 text-xs text-[#64748b]">
+                      {linkedInProfileName
+                        ? `Connected as ${linkedInProfileName}`
+                        : "LinkedIn account connected"}
+                    </p>
+                  )}
+
+                  {linkedInProfileSubtitle ? (
+                    <p className="mt-0.5 text-xs font-medium text-[#475569]">
+                      {linkedInProfileSubtitle}
+                    </p>
+                  ) : null}
+                </div>
               </div>
+
+              {showImportPrompt ? (
+                <div className="mt-4 rounded-lg border border-[#fde68a] bg-[#fffbeb] p-3">
+                  <p className="text-xs leading-relaxed text-[#92400e]">
+                    Import headline, About, and experience for better AI content
+                    and templates. Click <strong>Import profile</strong> below.
+                    {activeWorkspace?.type === "client" ? (
+                      <>
+                        {" "}
+                        Your client should install the extension and import from
+                        their own LinkedIn session.
+                      </>
+                    ) : null}
+                  </p>
+                </div>
+              ) : null}
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              {linkedinConnected ? (
-                <>
+
+            {linkedinConnected ? (
+              <div className="flex flex-col gap-2 border-t border-[#eceef4] bg-white/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-wrap gap-2">
                   <Button
                     type="button"
-                    variant="ghost"
+                    variant="primary"
+                    size="xs"
+                    onClick={() => void runImportProfileFlow()}
+                  >
+                    Import profile
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
                     size="xs"
                     disabled={syncLinkedInProfile.isPending}
                     onClick={() => {
                       void syncLinkedInProfile
                         .mutateAsync()
-                        .then(() => showToast("LinkedIn profile refreshed", "sync"))
+                        .then(() =>
+                          showToast("LinkedIn profile refreshed", "sync"),
+                        )
                         .catch((err) =>
                           showToast(getApiErrorMessage(err), "error"),
                         );
                     }}
                   >
-                    {syncLinkedInProfile.isPending ? "Refreshing…" : "Refresh profile"}
+                    {syncLinkedInProfile.isPending
+                      ? "Refreshing…"
+                      : "Refresh API data"}
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="linkedin"
+                    size="xs"
+                    onClick={openConnect}
+                  >
+                    Switch account
                   </Button>
                   <Button
                     type="button"
-                    variant="muted"
+                    variant="destructive-outline"
                     size="xs"
                     onClick={disconnectLinkedIn}
                   >
                     Disconnect
                   </Button>
-                </>
-              ) : (
-                <Button type="button" variant="linkedin" size="xs" onClick={openConnect}>
-                  Connect
+                </div>
+              </div>
+            ) : (
+              <div className="border-t border-[#eceef4] bg-white/60 px-4 py-3">
+                <Button
+                  type="button"
+                  variant="linkedin"
+                  size="xs"
+                  onClick={openConnect}
+                >
+                  Connect LinkedIn
                 </Button>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -603,6 +1009,21 @@ export default function Settings() {
           </Button>
         </div>
       </div>
+
+      <ImportProfileFlowModal
+        open={importFlowOpen}
+        step={importFlowStep}
+        errorMessage={importFlowError}
+        preview={importPreview}
+        profileUrlInput={importProfileUrlInput}
+        connectedProfileName={linkedInProfileName}
+        onProfileUrlChange={setImportProfileUrlInput}
+        onProfileUrlContinue={handleProfileUrlContinue}
+        onCancel={handleCancelImport}
+        onSave={() => void handleSaveImport()}
+        onReimport={() => void runImportProfileFlow()}
+        onRetry={() => void runImportProfileFlow()}
+      />
     </QueryState>
   );
 }

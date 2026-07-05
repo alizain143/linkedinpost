@@ -67,15 +67,29 @@ describe('CalendarJobService', () => {
     service = module.get(CalendarJobService);
   });
 
-  it('enqueues a 7-day calendar job with 10 credits', async () => {
+  it('enqueues a 7-day calendar job with 7 credits (text only)', async () => {
     await service.enqueueCalendar(workspaceId, userId, { durationDays: 7 });
 
-    expect(creditsService.assertHasCredits).toHaveBeenCalledWith(userId, 10);
+    expect(creditsService.assertHasCredits).toHaveBeenCalledWith(userId, 7);
     expect(enqueueService.enqueue).toHaveBeenCalledWith(
       expect.objectContaining({
         type: GenerationJobType.calendar,
-        creditCost: 10,
+        creditCost: 7,
         flowId: 'calendar-planner',
+      }),
+    );
+  });
+
+  it('enqueues a 7-day council calendar job with 21 credits', async () => {
+    await service.enqueueCalendar(workspaceId, userId, {
+      durationDays: 7,
+      slotGenerationMode: 'council',
+    });
+
+    expect(creditsService.assertHasCredits).toHaveBeenCalledWith(userId, 21);
+    expect(enqueueService.enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        creditCost: 21,
       }),
     );
   });

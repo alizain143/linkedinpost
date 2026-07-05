@@ -1,4 +1,5 @@
 import type { QuickDraftVariant, TopicSuggestion } from "@/lib/api/types/generation";
+import { instantToDateKey } from "@/lib/calendar-utils";
 
 const STORAGE_KEY = "pp-generation-sessions";
 const MAX_HISTORY = 8;
@@ -42,6 +43,8 @@ export type WorkspaceGenerationSession = {
   topicSuggestions: StoredTopicSuggestions | null;
   activeCouncilJobId: string | null;
   activeCalendarJobId: string | null;
+  activeMediaJobId: string | null;
+  mediaVariantIndex: number | null;
   mode: "quick" | "council";
   history: GenerationHistoryEntry[];
   skipCreditConfirm?: boolean;
@@ -55,6 +58,8 @@ function emptySession(): WorkspaceGenerationSession {
     topicSuggestions: null,
     activeCouncilJobId: null,
     activeCalendarJobId: null,
+    activeMediaJobId: null,
+    mediaVariantIndex: null,
     mode: "quick",
     history: [],
     skipCreditConfirm: false,
@@ -183,12 +188,13 @@ export function isQuickDraftSessionStale(
 
 export function buildCalendarHighlightUrl(
   slots: Array<{ scheduledAt: string }>,
+  timezone: string,
 ): string {
   const dates = [
-    ...new Set(slots.map((slot) => slot.scheduledAt.slice(0, 10))),
+    ...new Set(slots.map((slot) => instantToDateKey(slot.scheduledAt, timezone))),
   ].sort();
   const params = new URLSearchParams();
-  params.set("filter", "Needs Approval");
+  params.set("filter", "Ready for Approval");
   if (dates.length > 0) {
     params.set("highlight", dates.join(","));
     params.set("date", dates[0]);

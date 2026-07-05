@@ -21,11 +21,16 @@ export function usePushNotifications() {
   const { data: user } = useCurrentUser();
   const updateUser = useUpdateCurrentUser();
   const { showToast } = usePpToast();
+  const [mounted, setMounted] = useState(false);
   const [promptDismissed, setPromptDismissed] = useState(false);
+  const [permission, setPermission] =
+    useState<NotificationPermission>("default");
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      setPromptDismissed(Boolean(sessionStorage.getItem(PUSH_PROMPT_KEY)));
+    setMounted(true);
+    setPromptDismissed(Boolean(sessionStorage.getItem(PUSH_PROMPT_KEY)));
+    if ("Notification" in window) {
+      setPermission(Notification.permission);
     }
   }, []);
 
@@ -35,17 +40,32 @@ export function usePushNotifications() {
       return false;
     }
 
-    const permission = await Notification.requestPermission();
-    if (permission !== "granted") {
+    const nextPermission = await Notification.requestPermission();
+    setPermission(nextPermission);
+    if (nextPermission !== "granted") {
       return false;
     }
 
-    await updateUser.mutateAsync({
-      notifications: { pushEnabled: true },
-    });
+    try {
+      await updateUser.mutateAsync({
+        notifications: { pushEnabled: true },
+      });
+    } catch {
+      showToast("Could not save notification preference.", "error");
+      return false;
+    }
 
-    // PushNotificationsRuntime picks up the new pref and registers the token.
-    await requestFcmToken();
+    // PushNotificationsRuntime registers the FCM token after pushEnabled flips.
+    try {
+      await requestFcmToken();
+    } catch {
+      showToast(
+        "Browser permission granted, but push setup failed. Try again from Settings.",
+        "error",
+      );
+      return false;
+    }
+
     return true;
   }, [showToast, updateUser]);
 
@@ -59,13 +79,12 @@ export function usePushNotifications() {
   }, [getToken, updateUser]);
 
   const shouldShowPrompt =
+    mounted &&
     isLoaded &&
     isSignedIn &&
     isFirebaseConfigured() &&
     user?.notifications.pushEnabled !== false &&
-    typeof window !== "undefined" &&
-    "Notification" in window &&
-    Notification.permission === "default" &&
+    permission === "default" &&
     !promptDismissed;
 
   const dismissPrompt = useCallback(() => {
@@ -79,9 +98,6 @@ export function usePushNotifications() {
     shouldShowPrompt,
     dismissPrompt,
     isConfigured: isFirebaseConfigured(),
-    permission:
-      typeof window !== "undefined" && "Notification" in window
-        ? Notification.permission
-        : "default",
+    permission,
   };
 }

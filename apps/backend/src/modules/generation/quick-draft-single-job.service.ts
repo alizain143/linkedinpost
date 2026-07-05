@@ -41,6 +41,7 @@ export class QuickDraftSingleJobService {
       additionalContext: dto.additionalContext,
       revisionPrompt: dto.revisionPrompt,
       previousVariant: dto.previousVariant,
+      avoidVariants: dto.avoidVariants,
     };
 
     const job = await this.prisma.generationJob.create({

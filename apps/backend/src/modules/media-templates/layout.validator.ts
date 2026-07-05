@@ -3,6 +3,7 @@ import {
   TemplateElement,
   TextStyle,
 } from './layout.types';
+import { clampLayout } from './layout-bounds.util';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value);
@@ -49,6 +50,7 @@ function parseElement(raw: unknown): TemplateElement | null {
         raw.bind === 'static' ||
         raw.bind === 'profile.name' ||
         raw.bind === 'profile.roleTitle' ||
+        raw.bind === 'profile.currentCompany' ||
         raw.bind === 'profile.industry'
           ? raw.bind
           : 'static';
@@ -118,7 +120,10 @@ function parseElement(raw: unknown): TemplateElement | null {
   }
 }
 
-export function parseMediaTemplateLayout(raw: unknown): MediaTemplateLayout {
+export function parseMediaTemplateLayout(
+  raw: unknown,
+  canvas?: { width: number; height: number },
+): MediaTemplateLayout {
   if (!isRecord(raw)) {
     throw new Error('Layout must be an object');
   }
@@ -136,9 +141,22 @@ export function parseMediaTemplateLayout(raw: unknown): MediaTemplateLayout {
     throw new Error('Layout must include at least one element');
   }
 
-  return {
+  const visualZoneCount = elements.filter(
+    (element) => element.type === 'visual_zone',
+  ).length;
+  if (visualZoneCount > 1) {
+    throw new Error('Layout may include at most one visual_zone');
+  }
+
+  const layout: MediaTemplateLayout = {
     version: 1,
     background,
     elements,
   };
+
+  if (canvas) {
+    return clampLayout(layout, canvas.width, canvas.height);
+  }
+
+  return layout;
 }

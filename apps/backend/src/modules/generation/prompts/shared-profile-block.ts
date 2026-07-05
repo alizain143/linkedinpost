@@ -86,6 +86,7 @@ export function buildRevisionBlock(fields: {
   previousTags?: string[];
   revisionPrompt?: string;
   approvalFeedback?: string;
+  avoidVariantsBlock?: string;
 }): string {
   const hasPrevious =
     !!fields.previousHook ||
@@ -94,8 +95,9 @@ export function buildRevisionBlock(fields: {
     (fields.previousTags?.length ?? 0) > 0;
   const hasFeedback =
     !!fields.revisionPrompt?.trim() || !!fields.approvalFeedback?.trim();
+  const hasAvoid = !!fields.avoidVariantsBlock?.trim();
 
-  if (!hasPrevious && !hasFeedback) {
+  if (!hasPrevious && !hasFeedback && !hasAvoid) {
     return '';
   }
 
@@ -108,6 +110,9 @@ export function buildRevisionBlock(fields: {
     if (fields.previousTags?.length) {
       parts.push(`tags: ${fields.previousTags.join(', ')}`);
     }
+  }
+  if (hasAvoid) {
+    parts.push(fields.avoidVariantsBlock!.trim());
   }
   if (fields.approvalFeedback?.trim()) {
     parts.push(`approval_feedback: ${fields.approvalFeedback.trim()}`);
@@ -129,4 +134,58 @@ hook: ${fields.hook}
 body: ${fields.body}
 cta: ${fields.cta}
 </post>`;
+}
+
+export interface AvoidVariantFields {
+  hook: string;
+  body: string;
+  cta: string;
+  tags: string[];
+}
+
+export function buildAvoidVariantsBlock(
+  variants: AvoidVariantFields[],
+  limits: {
+    maxVariants: number;
+    hookMax: number;
+    bodyMax: number;
+  },
+): string {
+  if (variants.length === 0) {
+    return '';
+  }
+
+  const parts = [
+    'avoid_variants (do NOT reproduce, paraphrase, or cycle back to any of these):',
+  ];
+
+  variants.slice(0, limits.maxVariants).forEach((variant, index) => {
+    parts.push(`variant_${index + 1}:`);
+    if (variant.hook) {
+      parts.push(
+        `hook: ${truncateAvoidText(variant.hook, limits.hookMax)}`,
+      );
+    }
+    if (variant.body) {
+      parts.push(
+        `body: ${truncateAvoidText(variant.body, limits.bodyMax)}`,
+      );
+    }
+    if (variant.cta) {
+      parts.push(`cta: ${variant.cta}`);
+    }
+    if (variant.tags.length) {
+      parts.push(`tags: ${variant.tags.join(', ')}`);
+    }
+  });
+
+  return parts.join('\n');
+}
+
+function truncateAvoidText(value: string, maxLength: number): string {
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.length <= maxLength) {
+    return trimmed;
+  }
+  return `${trimmed.slice(0, maxLength - 1)}…`;
 }

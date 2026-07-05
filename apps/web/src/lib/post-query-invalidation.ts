@@ -28,5 +28,8 @@ export function invalidatePostQueries(
     void queryClient.invalidateQueries({
       queryKey: queryKeys.posts.versions(workspaceId, postId),
     });
+    void queryClient.invalidateQueries({
+      queryKey: queryKeys.posts.mediaVersions(workspaceId, postId),
+    });
   }
 }

@@ -111,7 +111,7 @@ export class AutopilotService {
       );
 
       if (approvalMode === AutopilotApprovalMode.auto_schedule) {
-        await this.assertLinkedInPublishReady(ownerId);
+        await this.assertLinkedInPublishReady(workspaceId, userId);
       }
     }
 
@@ -309,9 +309,15 @@ export class AutopilotService {
     }
   }
 
-  private async assertLinkedInPublishReady(ownerId: string): Promise<void> {
+  private async assertLinkedInPublishReady(
+    workspaceId: string,
+    userId: string,
+  ): Promise<void> {
     const connection =
-      await this.linkedInConnectionService.getConnection(ownerId);
+      await this.linkedInConnectionService.getWorkspaceConnection(
+        workspaceId,
+        userId,
+      );
 
     if (!connection.connected || !connection.publishReady) {
       throw new BadRequestException({

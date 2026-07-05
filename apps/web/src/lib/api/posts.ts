@@ -1,5 +1,6 @@
 import { apiFetch } from "@/lib/api/fetch";
 import type {
+  ApiPostMedia,
   ApiPostPackage,
   ApiPostVersion,
   CreatePostBody,
@@ -93,6 +94,43 @@ export async function fetchPostVersions(
   return apiFetch<ApiPostVersion[]>(
     token,
     postsPath(workspaceId, postId, "versions"),
+  );
+}
+
+export async function applyPostVersion(
+  token: string,
+  workspaceId: string,
+  postId: string,
+  versionNumber: number,
+): Promise<ApiPostPackage> {
+  return apiFetch<ApiPostPackage>(
+    token,
+    postsPath(workspaceId, postId, `versions/${versionNumber}/apply`),
+    { method: "POST" },
+  );
+}
+
+export async function fetchPostMediaVersions(
+  token: string,
+  workspaceId: string,
+  postId: string,
+): Promise<ApiPostMedia[]> {
+  return apiFetch<ApiPostMedia[]>(
+    token,
+    postsPath(workspaceId, postId, "media-versions"),
+  );
+}
+
+export async function applyPostMediaVersion(
+  token: string,
+  workspaceId: string,
+  postId: string,
+  mediaId: string,
+): Promise<ApiPostPackage> {
+  return apiFetch<ApiPostPackage>(
+    token,
+    postsPath(workspaceId, postId, `media/${mediaId}/apply`),
+    { method: "POST" },
   );
 }
 

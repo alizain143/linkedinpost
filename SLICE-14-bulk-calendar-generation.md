@@ -25,13 +25,14 @@ Migration `20250701100000_add_calendar_generation_job_type`:
 
 | Method | Route | Credits | Response |
 |--------|-------|---------|----------|
-| `POST` | `/v1/workspaces/:workspaceId/generate/calendar` | 10 (7-day) / 30 (30-day) | `202` + job |
+| `POST` | `/v1/workspaces/:workspaceId/generate/calendar` | 7–90 credits (see pricing) | `202` + job |
 
 ### Request body
 
 ```json
 {
   "durationDays": 7,
+  "slotGenerationMode": "quick_draft",
   "contentProfileId": "uuid",
   "startDate": "2026-07-01",
   "postingTime": "09:00",
@@ -39,6 +40,15 @@ Migration `20250701100000_add_calendar_generation_job_type`:
   "additionalContext": "Focus on founder lessons"
 }
 ```
+
+`slotGenerationMode`: `quick_draft` (default, text only) or `council` (reviewed post + image per slot).
+
+### Credit pricing (per slot)
+
+| Duration | Text only (`quick_draft`) | AI Council (`council`) |
+|----------|---------------------------|-------------------------|
+| 7-day | 7 credits (1/post) | 21 credits (3/post) |
+| 30-day | 30 credits (1/post) | 90 credits (3/post) |
 
 ### Job result
 
@@ -63,20 +73,23 @@ Poll via `GET /v1/jobs/:id`.
 ## Pipeline
 
 1. Planner LLM → slot topics per date
-2. Quick-draft per slot → first variant
-3. Create `PostPackage` + v1 version
-4. Flat credit charge on success
+2. Per slot:
+   - `quick_draft`: quick-draft-single → text-only post
+   - `council`: inline council pipeline (writer → reviewer → editor → media) → post with image
+3. Create `PostPackage` + v1 version (quick) or council-finalized post
+4. Single credit charge on calendar job success
 
 ## Calendar visibility
 
-Default `GET .../calendar` shows `scheduled,publishing,published,failed` only. Bulk posts are `ready_for_approval` — use `status=ready_for_approval,approved,scheduled,...` in the calendar query to preview planned slots.
+Default `GET .../calendar` includes `ready_for_approval,scheduled,publishing,published,failed`. Bulk-generated posts appear on **All** and **Ready for Approval** filters.
 
 ## Progress
 
 - [x] Prisma enums + migration
 - [x] `calendar-generation` module + orchestrator
 - [x] `POST /generate/calendar`
-- [x] Credits 10 / 30
+- [x] Credits per-slot (1 text / 3 council × duration)
+- [x] `slotGenerationMode` quick_draft | council
 - [x] Job progress + result mapping
 - [x] Tests + docs
 

@@ -6,5 +6,7 @@ export const POST_MEDIA_DEFAULT_HEIGHT = 630;
 export const MEDIA_GENERATION_CREDIT_COST = 2;
 /** Template-lane media (slot-fill + SVG render). */
 export const MEDIA_TEMPLATE_CREDIT_COST = 1;
+/** Max length for user image direction prompts (generate-media, council, post patch). */
+export const MEDIA_CUSTOM_PROMPT_MAX_LENGTH = 5000;
 /** @deprecated Use MEDIA_GENERATION_CREDIT_COST */
 export const MEDIA_REGEN_CREDIT_COST = MEDIA_GENERATION_CREDIT_COST;

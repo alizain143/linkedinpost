@@ -6,7 +6,7 @@ import { MsIcon } from "@/components/ui/ms-icon";
 
 type ConnectLinkedInModalProps = {
   connecting: boolean;
-  mode?: "connect" | "reauthorize";
+  mode?: "connect" | "reauthorize" | "switch";
   onClose: () => void;
   onConnect: () => void;
 };
@@ -18,6 +18,7 @@ export function ConnectLinkedInModal({
   onConnect,
 }: ConnectLinkedInModalProps) {
   const isReauthorize = mode === "reauthorize";
+  const isSwitch = mode === "switch";
 
   return (
     <div
@@ -58,13 +59,32 @@ export function ConnectLinkedInModal({
           <h2 className="text-center font-display text-[21px] font-extrabold tracking-[-0.02em] text-[#0d1326]">
             {isReauthorize
               ? "Finish LinkedIn publishing setup"
-              : "Connect your LinkedIn account"}
+              : isSwitch
+                ? "Switch LinkedIn account"
+                : "Connect your LinkedIn account"}
           </h2>
           <p className="mx-auto mt-2 mb-[22px] max-w-[340px] text-center text-sm leading-[1.6] text-[#64748b]">
             {isReauthorize
               ? "Grant publish permission so linkedinpost.ai can schedule and publish approved posts to your profile."
-              : "To schedule and publish posts, link your LinkedIn profile. It takes a few seconds and you stay in control of every post."}
+              : isSwitch
+                ? "Sign in with the LinkedIn profile for this workspace. Your other workspaces keep their own connections."
+                : "Each workspace has its own LinkedIn profile. Sign in with the account that should publish for this workspace."}
           </p>
+
+          {!isReauthorize ? (
+            <p className="mx-auto mb-[18px] max-w-[340px] text-center text-xs leading-[1.55] text-[#94a3b8]">
+              Wrong account?{" "}
+              <a
+                href="https://www.linkedin.com/m/logout"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-[#0a66c2] underline-offset-2 hover:underline"
+              >
+                Sign out of LinkedIn
+              </a>{" "}
+              in a new tab, then continue below.
+            </p>
+          ) : null}
 
           <div className="mb-[22px] flex flex-col gap-3 rounded-[14px] border border-[#eef0f5] bg-[#f8f9fc] px-[18px] py-4">
             {[
@@ -96,7 +116,11 @@ export function ConnectLinkedInModal({
                 size={19}
                 className="animate-ppspin text-white"
               />
-              {isReauthorize ? "Updating permissions…" : "Connecting to LinkedIn…"}
+              {isReauthorize
+                ? "Updating permissions…"
+                : isSwitch
+                  ? "Switching LinkedIn account…"
+                  : "Connecting to LinkedIn…"}
             </Button>
           ) : (
             <Button
@@ -110,7 +134,11 @@ export function ConnectLinkedInModal({
               <span className="flex h-5 w-5 items-center justify-center rounded-[5px] bg-white font-display text-xs font-extrabold text-[#0a66c2]">
                 in
               </span>
-              {isReauthorize ? "Grant publish access" : "Continue with LinkedIn"}
+              {isReauthorize
+                ? "Grant publish access"
+                : isSwitch
+                  ? "Sign in with LinkedIn"
+                  : "Sign in with LinkedIn"}
             </Button>
           )}
 

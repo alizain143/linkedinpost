@@ -6,6 +6,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { CalendarOrchestrator } from './calendar-orchestrator';
 import { CalendarPlannerService } from './calendar-planner.service';
 import { CalendarSlotService } from './calendar-slot.service';
+import { CalendarCouncilSlotService } from './calendar-council-slot.service';
 
 describe('CalendarOrchestrator', () => {
   let orchestrator: CalendarOrchestrator;
@@ -22,6 +23,10 @@ describe('CalendarOrchestrator', () => {
     }),
   };
 
+  const calendarCouncilSlotService = {
+    generateSlot: jest.fn(),
+  };
+
   beforeEach(async () => {
     jest.clearAllMocks();
 
@@ -31,6 +36,10 @@ describe('CalendarOrchestrator', () => {
         { provide: PrismaService, useValue: prisma },
         { provide: CalendarPlannerService, useValue: calendarPlannerService },
         { provide: CalendarSlotService, useValue: calendarSlotService },
+        {
+          provide: CalendarCouncilSlotService,
+          useValue: calendarCouncilSlotService,
+        },
       ],
     }).compile();
 

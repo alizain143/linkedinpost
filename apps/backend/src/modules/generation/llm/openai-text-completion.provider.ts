@@ -8,6 +8,18 @@ import {
 } from '../generation.types';
 import { TextCompletionProvider } from './text-completion-provider.interface';
 
+/** Newer OpenAI chat models reject `max_tokens` — use `max_completion_tokens`. */
+export function openAiUsesMaxCompletionTokens(model: string): boolean {
+  const normalized = model.toLowerCase();
+  return (
+    normalized.startsWith('gpt-5') ||
+    normalized.startsWith('o1') ||
+    normalized.startsWith('o3') ||
+    normalized.startsWith('o4') ||
+    normalized.includes('chatgpt-4o')
+  );
+}
+
 @Injectable()
 export class OpenAiTextCompletionProvider implements TextCompletionProvider {
   constructor(private readonly configService: ConfigService) {}
@@ -25,6 +37,12 @@ export class OpenAiTextCompletionProvider implements TextCompletionProvider {
     const client = new OpenAI({ apiKey });
 
     try {
+      const tokenLimit = request.maxTokens
+        ? openAiUsesMaxCompletionTokens(model)
+          ? { max_completion_tokens: request.maxTokens }
+          : { max_tokens: request.maxTokens }
+        : {};
+
       const response = await client.chat.completions.create({
         model,
         messages: request.messages.map((message) => ({
@@ -32,7 +50,7 @@ export class OpenAiTextCompletionProvider implements TextCompletionProvider {
           content: message.content,
         })),
         temperature: request.temperature ?? 0.7,
-        max_tokens: request.maxTokens,
+        ...tokenLimit,
         ...(request.responseFormat === 'json'
           ? { response_format: { type: 'json_object' as const } }
           : {}),

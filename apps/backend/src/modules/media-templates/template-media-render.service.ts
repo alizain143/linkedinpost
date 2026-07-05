@@ -16,6 +16,7 @@ import {
 import { TEMPLATE_SLOT_FILL_V1_SYSTEM } from './prompts/template-slot-fill.v1.system';
 import { TemplatePngRenderer } from './template-png.renderer';
 import { TemplateSlotFillParser } from './template-slot-fill.parser';
+import { ResolvedTemplateProfile } from './template-profile-resolver';
 
 export interface TemplateMediaRenderResult {
   imageBuffer: Buffer;
@@ -44,17 +45,30 @@ export class TemplateMediaRenderService {
     priorSteps: CouncilPriorStep[];
     profile?: GenerationContentProfileContext;
     user?: GenerationUserContext;
+    resolvedProfile?: ResolvedTemplateProfile;
     avatarUrl?: string | null;
   }): Promise<TemplateMediaRenderResult> {
     const visualZones = this.findVisualZones(params.template.layout);
     const slots = await this.fillSlots(params, visualZones.length > 0);
 
     const profileName =
-      [params.user?.firstName, params.user?.lastName]
+      params.resolvedProfile?.profileName ??
+      ([params.user?.firstName, params.user?.lastName]
         .filter(Boolean)
         .join(' ') ||
-      params.profile?.name ||
-      'Creator';
+        params.profile?.name ||
+        'Creator');
+
+    const roleTitle =
+      params.resolvedProfile?.roleTitle ?? params.profile?.roleTitle ?? '';
+
+    const currentCompany = params.resolvedProfile?.currentCompany ?? '';
+
+    const industry =
+      params.resolvedProfile?.industry ?? params.profile?.industry ?? '';
+
+    const avatarUrl =
+      params.resolvedProfile?.avatarUrl ?? params.avatarUrl ?? null;
 
     let visualZoneImages: Record<string, string> | undefined;
     let imageModel = 'template-svg-resvg';
@@ -78,11 +92,14 @@ export class TemplateMediaRenderService {
       params.template.height,
       {
         profileName,
-        roleTitle: params.profile?.roleTitle ?? '',
-        industry: params.profile?.industry ?? '',
-        avatarUrl: params.avatarUrl,
-        brandPrimary: params.profile?.brandPrimary,
-        brandAccent: params.profile?.brandAccent,
+        roleTitle,
+        currentCompany,
+        industry,
+        avatarUrl,
+        brandPrimary:
+          params.resolvedProfile?.brandPrimary ?? params.profile?.brandPrimary,
+        brandAccent:
+          params.resolvedProfile?.brandAccent ?? params.profile?.brandAccent,
         slots,
         visualZoneImages,
       },

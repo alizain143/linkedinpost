@@ -38,7 +38,12 @@ export function PushNotificationsRuntime() {
       return null;
     }
 
-    const token = await requestFcmToken();
+    let token: string | null;
+    try {
+      token = await requestFcmToken();
+    } catch {
+      return null;
+    }
     if (!token) return null;
 
     registeredTokenRef.current = token;
@@ -48,8 +53,12 @@ export function PushNotificationsRuntime() {
       return token;
     }
 
-    await registerDevice.mutateAsync(token);
-    writePersistedFcmToken(token);
+    try {
+      await registerDevice.mutateAsync(token);
+      writePersistedFcmToken(token);
+    } catch {
+      return null;
+    }
     return token;
   }, [registerDevice, user?.notifications.pushEnabled]);
 

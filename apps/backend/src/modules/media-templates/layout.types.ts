@@ -2,6 +2,7 @@ export type TextBind =
   | 'static'
   | 'profile.name'
   | 'profile.roleTitle'
+  | 'profile.currentCompany'
   | 'profile.industry';
 
 export type AvatarBind = 'profile.avatar';
@@ -101,6 +102,7 @@ export interface TemplateSlotContent {
 export interface TemplateBindContext {
   profileName: string;
   roleTitle: string;
+  currentCompany: string;
   industry: string;
   avatarUrl?: string | null;
   brandPrimary?: string | null;

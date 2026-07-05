@@ -27,7 +27,7 @@ export class QuickDraftSingleGenerator implements GenerationFlow<
     const messages = this.promptRenderer.renderQuickDraftSingleV1(context);
     const completion = await this.modelRouter
       .text()
-      .complete({ messages, responseFormat: 'json' });
+      .complete({ messages, responseFormat: 'json', temperature: 0.95 });
     const variant = this.outputParser.parse(completion.content);
 
     return {

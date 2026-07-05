@@ -26,6 +26,8 @@ export interface QuickDraftInput {
   mediaTemplateId?: string;
   revisionPrompt?: string;
   previousVariant?: PreviousVariantInput;
+  /** Drafts the model must not reproduce or lightly rephrase (e.g. sibling variants, prior versions). */
+  avoidVariants?: PreviousVariantInput[];
   approvalFeedback?: string;
 }
 
@@ -53,6 +55,7 @@ export interface CalendarInput {
   postingDays: number[];
   additionalContext?: string;
   slotDates: string[];
+  slotGenerationMode?: 'quick_draft' | 'council';
 }
 
 export interface CouncilPriorStep {
@@ -101,6 +104,7 @@ export interface GenerationInputContext {
   previousBody?: string;
   previousCta?: string;
   previousTags?: string[];
+  avoidVariants?: PreviousVariantInput[];
   calendarSlotDates?: string[];
   calendarSlotCount?: number;
   calendarDurationDays?: number;

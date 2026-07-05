@@ -96,7 +96,7 @@ export function CalendarJobProgressPanel({
             ))}
           </div>
           <Button
-            href={buildCalendarHighlightUrl(calendarResult.slots)}
+            href={buildCalendarHighlightUrl(calendarResult.slots, timezone)}
             variant="success"
             size="sm"
           >
@@ -121,7 +121,7 @@ export function CalendarJobProgressPanel({
         <div className="rounded-[11px] border border-[#bbf7d0] bg-[#f0fdf4] px-3.5 py-3 text-[13px] text-[#166534]">
           Calendar generation finished.{" "}
           <Link
-            href="/app/calendar?filter=Needs%20Approval"
+            href="/app/calendar?filter=Ready%20for%20Approval"
             className="font-semibold text-[#0891b2]"
           >
             Show in calendar

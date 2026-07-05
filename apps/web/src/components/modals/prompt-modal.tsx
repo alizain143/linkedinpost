@@ -72,7 +72,7 @@ export function PromptModal({
           <textarea
             className="h-24 w-full resize-none rounded-[11px] border border-[#e3e6ef] bg-white px-3 py-2.5 text-[13.5px] text-[#1e293b] outline-none placeholder:text-[#94a3b8] focus:border-[#4f46e5] disabled:opacity-60"
             value={value}
-            maxLength={2000}
+            maxLength={5000}
             placeholder={placeholder ?? "What should change?"}
             onChange={(event) => onChange(event.target.value)}
             disabled={isSubmitting}

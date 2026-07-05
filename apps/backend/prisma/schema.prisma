@@ -280,6 +280,14 @@ model Workspace {
   changesApplyMode       ChangesApplyMode @default(review_first)
   defaultMediaMode       MediaMode        @default(freestyle)
   defaultMediaTemplateId String?          @db.Uuid
+  linkedInClerkExternalAccountId String?
+  linkedInMemberId               String?
+  linkedInProfileName            String?
+  linkedInProfile                Json?
+  linkedInProfileSyncedAt        DateTime?        @db.Timestamptz(6)
+  linkedInAccessToken            String?
+  linkedInRefreshToken           String?
+  linkedInTokenExpiresAt         DateTime?        @db.Timestamptz(6)
   createdAt              DateTime         @default(now()) @db.Timestamptz(6)
   updatedAt              DateTime         @updatedAt @db.Timestamptz(6)
   deletedAt              DateTime?        @db.Timestamptz(6)
@@ -476,6 +484,7 @@ model PostMedia {
   altText         String
   sortOrder       Int           @default(0)
   metadata        Json?
+  archivedAt      DateTime?     @db.Timestamptz(6)
   createdAt       DateTime      @default(now()) @db.Timestamptz(6)
   updatedAt       DateTime      @updatedAt @db.Timestamptz(6)
 
@@ -483,6 +492,7 @@ model PostMedia {
   generationJob GenerationJob? @relation(fields: [generationJobId], references: [id], onDelete: SetNull)
 
   @@index([postPackageId])
+  @@index([postPackageId, archivedAt])
   @@index([generationJobId])
   @@map("post_media")
 }

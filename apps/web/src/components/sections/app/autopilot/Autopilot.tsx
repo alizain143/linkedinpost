@@ -98,7 +98,7 @@ export default function Autopilot() {
   const { balance, isLoading: creditsLoading, isError: creditsError, refetch: refetchCredits } =
     useCredits();
   const { data: currentUser } = useCurrentUser();
-  const { data: linkedInConnection } = useLinkedInConnection();
+  const { data: linkedInConnection } = useLinkedInConnection(activeWorkspaceId);
 
   const planGate = getPlanGateState({
     isLoading: creditsLoading,

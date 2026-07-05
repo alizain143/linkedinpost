@@ -7,8 +7,9 @@ export async function GET() {
     appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID ?? "",
   };
 
-  const script = `importScripts("https://www.gstatic.com/firebasejs/11.9.1/firebase-app-compat.js");
-importScripts("https://www.gstatic.com/firebasejs/11.9.1/firebase-messaging-compat.js");
+  const firebaseVersion = "12.15.0";
+  const script = `importScripts("https://www.gstatic.com/firebasejs/${firebaseVersion}/firebase-app-compat.js");
+importScripts("https://www.gstatic.com/firebasejs/${firebaseVersion}/firebase-messaging-compat.js");
 firebase.initializeApp(${JSON.stringify(config)});
 const messaging = firebase.messaging();
 const notificationIcon = new URL("/icons/app-icon-192.png", self.location.origin).href;

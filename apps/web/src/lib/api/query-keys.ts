@@ -5,8 +5,11 @@ export const queryKeys = {
     detail: (id: string) => ["workspaces", id] as const,
   },
   linkedin: {
-    connection: ["linkedin", "connection"] as const,
-    profile: ["linkedin", "profile"] as const,
+    connection: (workspaceId: string) =>
+      ["linkedin", workspaceId, "connection"] as const,
+    profile: (workspaceId: string) =>
+      ["linkedin", workspaceId, "profile"] as const,
+    all: (workspaceId: string) => ["linkedin", workspaceId] as const,
   },
   credits: ["credits"] as const,
   posts: {
@@ -16,6 +19,8 @@ export const queryKeys = {
       ["posts", workspaceId, postId] as const,
     versions: (workspaceId: string, postId: string) =>
       ["posts", workspaceId, postId, "versions"] as const,
+    mediaVersions: (workspaceId: string, postId: string) =>
+      ["posts", workspaceId, postId, "media-versions"] as const,
   },
   jobs: {
     detail: (jobId: string) => ["jobs", jobId] as const,

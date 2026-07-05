@@ -8,14 +8,16 @@ import {
   IsUUID,
   MaxLength,
 } from 'class-validator';
+import { MEDIA_CUSTOM_PROMPT_MAX_LENGTH } from '../../../common/constants/media.constants';
 
 export class GenerateMediaRequestDto {
   @ApiPropertyOptional({
     example: 'Minimal dark layout with gold accent',
+    maxLength: MEDIA_CUSTOM_PROMPT_MAX_LENGTH,
   })
   @IsOptional()
   @IsString()
-  @MaxLength(500)
+  @MaxLength(MEDIA_CUSTOM_PROMPT_MAX_LENGTH)
   mediaCustomPrompt?: string;
 
   @ApiPropertyOptional({

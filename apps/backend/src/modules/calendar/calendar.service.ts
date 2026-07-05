@@ -53,6 +53,7 @@ export class CalendarService {
     const timezone = user.timezone || DEFAULT_TIMEZONE;
     const anchor = this.parseAnchorDate(query.date);
     const statuses = query.status ?? [
+      PostPackageStatus.ready_for_approval,
       PostPackageStatus.scheduled,
       PostPackageStatus.publishing,
       PostPackageStatus.published,

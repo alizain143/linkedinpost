@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Controller, Delete, Get, Param, Post, UseGuards, Body } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -16,6 +16,7 @@ import {
   LinkedInPublishService,
 } from './linkedin.services';
 import { PublishJobEnqueueService } from './publish-job-enqueue.service';
+import { BindWorkspaceLinkedInDto } from './dto/bind-workspace-linkedin.dto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { WorkspacesService } from '../workspaces/workspaces.service';
 import { NotFoundException } from '@nestjs/common';
@@ -50,6 +51,89 @@ export class LinkedInController {
   })
   syncProfile(@CurrentUser() user: User) {
     return this.linkedInProfileService.syncProfile(user.id);
+  }
+}
+
+@ApiTags('linkedin')
+@ApiBearerAuth('bearer')
+@Controller('workspaces/:workspaceId/linkedin')
+@UseGuards(ClerkAuthGuard)
+export class WorkspaceLinkedInController {
+  constructor(
+    private readonly linkedInConnectionService: LinkedInConnectionService,
+    private readonly linkedInProfileService: LinkedInProfileService,
+  ) {}
+
+  @Get('connection')
+  @ApiOperation({
+    summary: 'Get LinkedIn connection status for the active workspace',
+  })
+  @ApiParam({ name: 'workspaceId', format: 'uuid' })
+  getWorkspaceConnection(
+    @CurrentUser() user: User,
+    @Param('workspaceId') workspaceId: string,
+  ) {
+    return this.linkedInConnectionService.getWorkspaceConnection(
+      workspaceId,
+      user.id,
+    );
+  }
+
+  @Post('connection')
+  @ApiOperation({
+    summary: 'Bind the current Clerk LinkedIn account to this workspace',
+  })
+  @ApiParam({ name: 'workspaceId', format: 'uuid' })
+  bindWorkspaceConnection(
+    @CurrentUser() user: User,
+    @Param('workspaceId') workspaceId: string,
+    @Body() dto: BindWorkspaceLinkedInDto,
+  ) {
+    return this.linkedInConnectionService.bindWorkspaceConnection(
+      workspaceId,
+      user.id,
+      dto.clerkExternalAccountId,
+    );
+  }
+
+  @Delete('connection')
+  @ApiOperation({
+    summary: 'Remove LinkedIn connection from this workspace',
+  })
+  @ApiParam({ name: 'workspaceId', format: 'uuid' })
+  disconnectWorkspaceConnection(
+    @CurrentUser() user: User,
+    @Param('workspaceId') workspaceId: string,
+  ) {
+    return this.linkedInConnectionService.disconnectWorkspaceConnection(
+      workspaceId,
+      user.id,
+    );
+  }
+
+  @Get('profile')
+  @ApiOperation({ summary: 'Get cached LinkedIn profile for this workspace' })
+  @ApiParam({ name: 'workspaceId', format: 'uuid' })
+  getWorkspaceProfile(
+    @CurrentUser() user: User,
+    @Param('workspaceId') workspaceId: string,
+  ) {
+    return this.linkedInProfileService.getWorkspaceProfile(workspaceId, user.id);
+  }
+
+  @Post('profile/sync')
+  @ApiOperation({
+    summary: 'Sync LinkedIn profile for this workspace from Clerk token',
+  })
+  @ApiParam({ name: 'workspaceId', format: 'uuid' })
+  syncWorkspaceProfile(
+    @CurrentUser() user: User,
+    @Param('workspaceId') workspaceId: string,
+  ) {
+    return this.linkedInProfileService.syncWorkspaceProfile(
+      workspaceId,
+      user.id,
+    );
   }
 }
 
@@ -98,8 +182,9 @@ export class LinkedInPostController {
       await this.publishJobEnqueueService.cancelPublish(post.id);
     }
 
-    return this.linkedInPublishService.publishPostForOwner(
+    return this.linkedInPublishService.publishPostForWorkspace(
       id,
+      workspaceId,
       workspace.ownerId,
     );
   }

@@ -17,6 +17,7 @@ export type ApiPostMedia = {
   mimeType: string;
   sizeBytes: number;
   createdAt: string;
+  isActive: boolean;
 };
 
 export type ApiPostPackage = {

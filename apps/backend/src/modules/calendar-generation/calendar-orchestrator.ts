@@ -13,6 +13,7 @@ import {
 } from '../generation/generation.types';
 import { CalendarPlannerService } from './calendar-planner.service';
 import { CalendarSlotService } from './calendar-slot.service';
+import { CalendarCouncilSlotService } from './calendar-council-slot.service';
 import { localDateTimeToUtc } from './calendar-schedule.util';
 import { CalendarPlannerOutput } from './parsers/calendar-planner-output.parser';
 
@@ -28,6 +29,7 @@ export class CalendarOrchestrator {
     private readonly prisma: PrismaService,
     private readonly calendarPlannerService: CalendarPlannerService,
     private readonly calendarSlotService: CalendarSlotService,
+    private readonly calendarCouncilSlotService: CalendarCouncilSlotService,
   ) {}
 
   async run(generationJobId: string): Promise<void> {
@@ -85,6 +87,7 @@ export class CalendarOrchestrator {
       }
 
       const startIndex = createdPostIds.length;
+      const useCouncil = input.slotGenerationMode === 'council';
 
       for (let index = startIndex; index < plan.slots.length; index++) {
         const slot = plan.slots[index];
@@ -92,21 +95,13 @@ export class CalendarOrchestrator {
 
         await this.updateProgress(generationJobId, {
           currentStep: `slot_${index + 1}`,
-          currentLabel: `Generating post ${index + 1} of ${slotCount}`,
+          currentLabel: useCouncil
+            ? `AI Council: post ${index + 1} of ${slotCount}`
+            : `Generating post ${index + 1} of ${slotCount}`,
           completedSteps: step - 1,
           totalSteps,
           percentComplete: Math.round(((step - 1) / totalSteps) * 100),
         });
-
-        const variant = await this.calendarSlotService.generateVariant(
-          {
-            workspaceId: input.workspaceId,
-            userId: input.userId,
-            contentProfileId: input.contentProfileId,
-            additionalContext: input.additionalContext,
-          },
-          slot,
-        );
 
         const scheduledAt = localDateTimeToUtc(
           slot.date,
@@ -114,40 +109,71 @@ export class CalendarOrchestrator {
           timezone,
         );
 
-        const post = await this.prisma.postPackage.create({
-          data: {
-            workspaceId: input.workspaceId,
-            contentProfileId: input.contentProfileId ?? null,
-            hook: variant.hook,
-            body: variant.body,
-            cta: variant.cta,
-            tags: variant.tags,
-            topic: slot.topic,
-            postType: slot.postType,
-            tone: slot.tone || variant.tone,
-            pillar: slot.pillar || variant.pillar,
-            source: PostSource.calendar,
-            status: PostPackageStatus.ready_for_approval,
-            scheduledAt,
-            submittedForApprovalAt: new Date(),
-            versions: {
-              create: {
-                versionNumber: 1,
-                hook: variant.hook,
-                body: variant.body,
-                cta: variant.cta,
-                tags: variant.tags,
+        let postPackageId: string;
+        let pillar: string | null;
+
+        if (useCouncil) {
+          const councilResult = await this.calendarCouncilSlotService.generateSlot(
+            {
+              workspaceId: input.workspaceId,
+              userId: input.userId,
+              contentProfileId: input.contentProfileId,
+              additionalContext: input.additionalContext,
+              slot,
+              scheduledAt,
+            },
+          );
+          postPackageId = councilResult.postPackageId;
+          pillar = councilResult.pillar;
+        } else {
+          const variant = await this.calendarSlotService.generateVariant(
+            {
+              workspaceId: input.workspaceId,
+              userId: input.userId,
+              contentProfileId: input.contentProfileId,
+              additionalContext: input.additionalContext,
+            },
+            slot,
+          );
+
+          const post = await this.prisma.postPackage.create({
+            data: {
+              workspaceId: input.workspaceId,
+              contentProfileId: input.contentProfileId ?? null,
+              hook: variant.hook,
+              body: variant.body,
+              cta: variant.cta,
+              tags: variant.tags,
+              topic: slot.topic,
+              postType: slot.postType,
+              tone: slot.tone || variant.tone,
+              pillar: slot.pillar || variant.pillar,
+              source: PostSource.calendar,
+              status: PostPackageStatus.ready_for_approval,
+              scheduledAt,
+              submittedForApprovalAt: new Date(),
+              versions: {
+                create: {
+                  versionNumber: 1,
+                  hook: variant.hook,
+                  body: variant.body,
+                  cta: variant.cta,
+                  tags: variant.tags,
+                },
               },
             },
-          },
-        });
+          });
 
-        createdPostIds.push(post.id);
+          postPackageId = post.id;
+          pillar = slot.pillar || variant.pillar || null;
+        }
+
+        createdPostIds.push(postPackageId);
         resultSlots.push({
-          postPackageId: post.id,
+          postPackageId,
           scheduledAt: scheduledAt.toISOString(),
           topic: slot.topic,
-          pillar: slot.pillar || variant.pillar || null,
+          pillar,
         });
 
         await this.prisma.generationJob.update({

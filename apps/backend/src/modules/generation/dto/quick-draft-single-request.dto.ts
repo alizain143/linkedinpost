@@ -45,4 +45,15 @@ export class QuickDraftSingleRequestDto extends QuickDraftRequestDto {
   @ValidateNested()
   @Type(() => PreviousVariantDto)
   previousVariant?: PreviousVariantDto;
+
+  @ApiPropertyOptional({
+    type: [PreviousVariantDto],
+    description:
+      'Existing drafts to avoid repeating (sibling variants, prior versions)',
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => PreviousVariantDto)
+  avoidVariants?: PreviousVariantDto[];
 }

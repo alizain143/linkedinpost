@@ -47,7 +47,8 @@ export class CalendarJobService {
     const postingTime = dto.postingTime ?? DEFAULT_POSTING_TIME;
     const postingDays = dto.postingDays ?? [...DEFAULT_POSTING_DAYS];
     const slotCount = calendarSlotCount(dto.durationDays);
-    const creditCost = calendarCreditCost(dto.durationDays);
+    const slotGenerationMode = dto.slotGenerationMode ?? 'quick_draft';
+    const creditCost = calendarCreditCost(dto.durationDays, slotGenerationMode);
 
     await this.creditsService.assertHasCredits(userId, creditCost);
 
@@ -69,6 +70,7 @@ export class CalendarJobService {
       postingDays,
       additionalContext: dto.additionalContext,
       slotDates,
+      slotGenerationMode,
     };
 
     const job = await this.enqueueService.enqueue({

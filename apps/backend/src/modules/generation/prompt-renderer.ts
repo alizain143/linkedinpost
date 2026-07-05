@@ -18,6 +18,7 @@ import {
   buildProfileBlock,
   buildRequestBlock,
   buildRevisionBlock,
+  buildAvoidVariantsBlock,
 } from './prompts/shared-profile-block';
 
 export interface RenderFlowOptions {
@@ -231,6 +232,14 @@ export class PromptRenderer {
         previousTags: input?.previousTags,
         revisionPrompt: input?.revisionPrompt,
         approvalFeedback: input?.approvalFeedback,
+        avoidVariantsBlock: buildAvoidVariantsBlock(
+          input?.avoidVariants ?? [],
+          {
+            maxVariants: PROMPT_FIELD_LIMITS.maxAvoidVariants,
+            hookMax: PROMPT_FIELD_LIMITS.avoidVariantHook,
+            bodyMax: PROMPT_FIELD_LIMITS.avoidVariantBody,
+          },
+        ),
       }),
       'post.block': buildPostBlock({
         hook: String(editorStep?.output.hook ?? ''),

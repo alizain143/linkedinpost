@@ -1,9 +1,11 @@
 import { Suspense } from "react";
-import { Calendar } from "@/components/sections/app/calendar";
+import Calendar, {
+  CalendarMonthSkeleton,
+} from "@/components/sections/app/calendar/Calendar";
 
 export default function CalendarPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<CalendarMonthSkeleton />}>
       <Calendar />
     </Suspense>
   );

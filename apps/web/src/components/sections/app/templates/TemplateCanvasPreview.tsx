@@ -4,6 +4,7 @@ import type {
   MediaTemplateLayout,
   TemplateElement,
 } from "@/lib/api/types/media-template";
+import { clampElement } from "@/lib/template-layout-bounds";
 
 type Props = {
   layout: MediaTemplateLayout;
@@ -15,6 +16,9 @@ type Props = {
   scale?: number;
   profileName?: string;
   roleTitle?: string;
+  currentCompany?: string;
+  industry?: string;
+  avatarUrl?: string | null;
   headline?: string;
   headlineHighlight?: string;
   subhead?: string;
@@ -24,14 +28,18 @@ function resolveText(
   el: Extract<TemplateElement, { type: "text" }>,
   profileName: string,
   roleTitle: string,
+  currentCompany: string,
+  industry: string,
 ): string {
   switch (el.bind) {
     case "profile.name":
       return profileName;
     case "profile.roleTitle":
       return roleTitle;
+    case "profile.currentCompany":
+      return currentCompany;
     case "profile.industry":
-      return "Industry";
+      return industry;
     default:
       return el.value ?? "";
   }
@@ -60,11 +68,14 @@ export function TemplateCanvasPreview({
   scale = 0.45,
   profileName = "Your Name",
   roleTitle = "Your Title",
+  currentCompany = "Your Company",
+  industry = "Industry",
+  avatarUrl,
   headline = "Your headline goes here with emphasis.",
   headlineHighlight = "emphasis.",
   subhead = "Supporting line that explains the idea in one sentence.",
 }: Props) {
-  const dragRef = useRefDrag(onMove);
+  const dragRef = useRefDrag(onMove, layout.elements, width, height);
 
   return (
     <div
@@ -95,7 +106,7 @@ export function TemplateCanvasPreview({
               if (!onMove) return;
               e.stopPropagation();
               onSelect?.(el.id);
-              dragRef.start(el.id, el.x, el.y, e.clientX, e.clientY, scale);
+              dragRef.start(el, e.clientX, e.clientY, scale);
             },
             className: `absolute cursor-move ${selected ? "outline outline-2 outline-[#5B3DF5]" : ""}`,
           };
@@ -116,14 +127,24 @@ export function TemplateCanvasPreview({
                   fontWeight: 600,
                   color: "#52525B",
                   fontSize: el.size * 0.32,
+                  overflow: "hidden",
                 }}
               >
-                {profileName
-                  .split(" ")
-                  .map((p) => p[0])
-                  .join("")
-                  .slice(0, 2)
-                  .toUpperCase()}
+                {avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={avatarUrl}
+                    alt=""
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  profileName
+                    .split(" ")
+                    .map((p) => p[0])
+                    .join("")
+                    .slice(0, 2)
+                    .toUpperCase()
+                )}
               </div>
             );
           }
@@ -163,7 +184,7 @@ export function TemplateCanvasPreview({
 
           const text =
             el.type === "text"
-              ? resolveText(el, profileName, roleTitle)
+              ? resolveText(el, profileName, roleTitle, currentCompany, industry)
               : el.type === "post_headline"
                 ? headline
                 : subhead;
@@ -211,21 +232,31 @@ export function TemplateCanvasPreview({
 
 function useRefDrag(
   onMove?: (id: string, x: number, y: number) => void,
+  elements: TemplateElement[] = [],
+  canvasW = 1080,
+  canvasH = 1080,
 ) {
-  const state = { id: "", startX: 0, startY: 0, originX: 0, originY: 0, scale: 1 };
+  const state = {
+    id: "",
+    startX: 0,
+    startY: 0,
+    originX: 0,
+    originY: 0,
+    scale: 1,
+    element: null as TemplateElement | null,
+  };
 
   function start(
-    id: string,
-    x: number,
-    y: number,
+    element: TemplateElement,
     clientX: number,
     clientY: number,
     scale: number,
   ) {
     if (!onMove) return;
-    state.id = id;
-    state.originX = x;
-    state.originY = y;
+    state.id = element.id;
+    state.element = element;
+    state.originX = element.x;
+    state.originY = element.y;
     state.startX = clientX;
     state.startY = clientY;
     state.scale = scale;
@@ -233,7 +264,16 @@ function useRefDrag(
     const onMoveWindow = (e: MouseEvent) => {
       const dx = (e.clientX - state.startX) / state.scale;
       const dy = (e.clientY - state.startY) / state.scale;
-      onMove(state.id, Math.round(state.originX + dx), Math.round(state.originY + dy));
+      const current =
+        state.element ?? elements.find((el) => el.id === state.id) ?? null;
+      if (!current) return;
+
+      const clamped = clampElement(
+        { ...current, x: Math.round(state.originX + dx), y: Math.round(state.originY + dy) },
+        canvasW,
+        canvasH,
+      );
+      onMove(state.id, clamped.x, clamped.y);
     };
     const onUp = () => {
       window.removeEventListener("mousemove", onMoveWindow);

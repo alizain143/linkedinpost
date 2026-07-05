@@ -24,6 +24,8 @@ function resolveTextBind(
       return ctx.profileName;
     case 'profile.roleTitle':
       return ctx.roleTitle;
+    case 'profile.currentCompany':
+      return ctx.currentCompany;
     case 'profile.industry':
       return ctx.industry;
     case 'static':

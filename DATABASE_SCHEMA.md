@@ -291,7 +291,7 @@ Account identity. Synced from Clerk on sign-in/webhook.
 | `plan` | UserPlan | No | `free` | **Denormalized** from XPay subscription webhooks. Credit limit source |
 | `linkedInMemberId` | String | Yes | — | LinkedIn member URN/id for publish API |
 | `linkedInProfileSyncedAt` | Timestamptz | Yes | — | Last profile sync timestamp |
-| `linkedInProfile` | JSON | Yes | — | Cached OIDC profile (name, photo, etc.) |
+| `linkedInProfile` | JSON | Yes | — | Cached profile: OIDC fields + optional user import (`enrichmentStatus`, `headline`, `summary`, `positions`, etc.) |
 | `createdAt` | Timestamptz | No | now() | |
 | `updatedAt` | Timestamptz | No | auto | |
 | `deletedAt` | Timestamptz | Yes | — | Soft delete on account removal |
@@ -381,6 +381,14 @@ Content container. All posts and profiles belong to a workspace.
 | `changesApplyMode` | ChangesApplyMode | No | `review_first` | Auto vs manual AI apply when changes are requested |
 | `defaultMediaMode` | MediaMode | No | `freestyle` | Default media lane for council / generate-media |
 | `defaultMediaTemplateId` | UUID | Yes | — | FK → `media_templates.id` SET NULL. Workspace default template |
+| `linkedInClerkExternalAccountId` | String | Yes | — | Clerk external account id bound to this workspace for publish |
+| `linkedInMemberId` | String | Yes | — | LinkedIn member id for this workspace's publish account |
+| `linkedInProfileName` | String | Yes | — | Display name from last profile sync |
+| `linkedInProfile` | JSON | Yes | — | Cached profile snapshot for this workspace (OIDC + user import enrichment) |
+| `linkedInProfileSyncedAt` | Timestamptz | Yes | — | Last LinkedIn profile sync for this workspace |
+| `linkedInAccessToken` | String | Yes | — | Per-workspace OAuth access token (direct LinkedIn OAuth; enables multiple profiles) |
+| `linkedInRefreshToken` | String | Yes | — | Refresh token for workspace LinkedIn connection |
+| `linkedInTokenExpiresAt` | Timestamptz | Yes | — | Access token expiry |
 | `createdAt` | Timestamptz | No | now() | |
 | `updatedAt` | Timestamptz | No | auto | |
 | `deletedAt` | Timestamptz | Yes | — | Soft delete; cascades to child rows |
@@ -534,6 +542,7 @@ Generated media assets (AI feed images) on a post.
 | `sizeBytes` | Int | No | — | File size |
 | `altText` | String | No | — | Accessibility / LinkedIn alt |
 | `sortOrder` | Int | No | `0` | Order when multiple assets |
+| `archivedAt` | Timestamptz | Yes | — | When set, media is kept for version history but not shown as active |
 | `createdAt` | Timestamptz | No | now() | |
 | `updatedAt` | Timestamptz | No | auto | |
 
@@ -839,7 +848,7 @@ prisma.generationJob.findMany({
 | `PostPackage.contentPillarId` FK | Not modeled; pillar is denormalized string on post |
 | R2 orphan cleanup on post delete | Media objects may remain in R2 after post soft-delete |
 | JSON retention / TTL on `CouncilEvent.output` | Large agent outputs accumulate indefinitely |
-| Per-workspace LinkedIn connections | LinkedIn data remains on `User` JSON |
+| Per-workspace LinkedIn connections | `Workspace.linkedIn*` incl. encrypted OAuth tokens (`linkedInAccessToken`, `linkedInRefreshToken`); direct LinkedIn OAuth per workspace via `GET .../linkedin/oauth/start` (Clerk limited to one LinkedIn account per user) |
 | Full-text search | Not built |
 | Document enums | Duplicated in Prisma schema and `document.constants.ts` |
 

@@ -179,8 +179,12 @@ export function localDateTimeToUtc(
   });
 }
 
-export function calendarCreditCost(durationDays: 7 | 30): number {
-  return durationDays === 7 ? 10 : 30;
+export function calendarCreditCost(
+  durationDays: 7 | 30,
+  mode: 'quick_draft' | 'council' = 'quick_draft',
+): number {
+  const perSlot = mode === 'council' ? 3 : 1;
+  return calendarSlotCount(durationDays) * perSlot;
 }
 
 export function calendarSlotCount(durationDays: 7 | 30): number {

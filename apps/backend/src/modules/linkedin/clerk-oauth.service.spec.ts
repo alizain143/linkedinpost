@@ -38,4 +38,44 @@ describe('ClerkOAuthService', () => {
   it('detects missing publish scope', () => {
     expect(service.hasPublishScope(['openid', 'profile'])).toBe(false);
   });
+
+  it('selects oauth token matching external account id', async () => {
+    const getUserOauthAccessToken = jest.fn().mockResolvedValue({
+      data: [
+        {
+          externalAccountId: 'eac_other',
+          token: 'wrong-token',
+        },
+        {
+          externalAccountId: 'eac_target',
+          token: 'right-token',
+        },
+      ],
+    });
+    const getUser = jest.fn().mockResolvedValue({
+      externalAccounts: [
+        {
+          id: 'eac_target',
+          provider: 'oauth_linkedin_oidc',
+          verification: { status: 'verified' },
+          approvedScopes: `openid profile ${LINKEDIN_PUBLISH_SCOPE}`,
+        },
+      ],
+    });
+
+    jest.spyOn(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      service as any,
+      'getClerkClient',
+    ).mockReturnValue({
+      users: { getUser, getUserOauthAccessToken },
+    });
+
+    const token = await service.getLinkedInAccessToken(
+      'user_1',
+      'eac_target',
+    );
+
+    expect(token).toBe('right-token');
+  });
 });

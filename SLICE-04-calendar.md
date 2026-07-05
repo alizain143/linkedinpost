@@ -29,7 +29,7 @@ Read-only calendar endpoints over `PostPackage.scheduledAt` for month, week, and
 |-------|------|---------|-------|
 | `view` | `month` \| `week` \| `list` | required | |
 | `date` | ISO date string | today | Anchor for month/week; list window center |
-| `status` | comma-separated `PostPackageStatus` | scheduled,publishing,published,failed | |
+| `status` | comma-separated `PostPackageStatus` | ready_for_approval,scheduled,publishing,published,failed | |
 | `limit` | int | 50 (list only) | Max 100 |
 
 Timezone: user's `User.timezone` (fallback `America/New_York`).

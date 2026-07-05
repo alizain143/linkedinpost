@@ -7,6 +7,7 @@ import { RequestChangesModal } from "@/components/modals/request-changes-modal";
 import { ScheduleModal } from "@/components/modals/schedule-modal";
 import { useCurrentUser, useLogout } from "@/hooks/api/use-auth-api";
 import {
+  useDisconnectLinkedInConnection,
   useInvalidateLinkedIn,
   useLinkedInConnection,
 } from "@/hooks/api/use-linkedin-api";
@@ -15,7 +16,6 @@ import {
   useReschedulePostMutation,
   useSchedulePostMutation,
 } from "@/hooks/api/use-scheduling-api";
-import { useLinkedInClerk } from "@/hooks/use-linkedin-clerk";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { ApiError } from "@/lib/api/client";
 import type {
@@ -25,25 +25,15 @@ import type {
 import { getApiErrorMessage } from "@/lib/api-error-messages";
 import { clerkErrorMessage } from "@/lib/auth/clerk";
 import {
-  findLinkedInAccountForConnect,
-  findLinkedInExternalAccount,
-  getExternalVerificationRedirectUrl,
-  getLinkedInApprovedScopes,
-  listLinkedInExternalAccounts,
-  LINKEDIN_CONNECT_CALLBACK,
-  LINKEDIN_OAUTH_STRATEGY,
-  LINKEDIN_PUBLISH_SCOPE,
-  redirectToExternalAccountVerification,
-  type LinkedInExternalAccount,
-} from "@/lib/auth/linkedin-clerk";
-import {
   getLinkedInConnectionState,
   type LinkedInConnectionState,
 } from "@/lib/linkedin-utils";
+import { writeLinkedInConnectWorkspaceId } from "@/lib/linkedin-connect-context";
+import { startLinkedInOAuth } from "@/lib/api/linkedin";
 import { DEFAULT_TIMEZONE } from "@/lib/timezones";
 import { revokeCurrentPushToken } from "@/lib/push-token-lifecycle";
 import { usePpToast } from "@/providers/pp-toast-provider";
-import { useClerk, useReverification, useAuth } from "@clerk/nextjs";
+import { useClerk, useAuth, useUser } from "@clerk/nextjs";
 import { isReverificationCancelledError } from "@clerk/nextjs/errors";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
@@ -101,7 +91,7 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const logoutMutation = useLogout();
-  const { activeWorkspaceId } = useWorkspace();
+  const { activeWorkspaceId, activeWorkspace } = useWorkspace();
   const { data: currentUser } = useCurrentUser();
   const userTimezone = currentUser?.timezone ?? DEFAULT_TIMEZONE;
 
@@ -109,42 +99,11 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
   const reschedulePostMutation = useReschedulePostMutation(activeWorkspaceId);
   const publishPostMutation = usePublishPostMutation(activeWorkspaceId);
 
-  const { connected, publishReady, profileName, externalAccount, user } =
-    useLinkedInClerk();
-  const { data: connection } = useLinkedInConnection();
-  const invalidateLinkedIn = useInvalidateLinkedIn();
-
-  const connectLinkedInExternalAccount = useReverification(
-    (params: {
-      strategy: typeof LINKEDIN_OAUTH_STRATEGY;
-      redirectUrl: string;
-      additionalScopes: string[];
-    }) => user!.createExternalAccount(params),
-  );
-
-  const reauthorizeLinkedInExternalAccount = useReverification(
-    (params: {
-      account: LinkedInExternalAccount & {
-        reauthorize: NonNullable<LinkedInExternalAccount["reauthorize"]>;
-      };
-      additionalScopes: string[];
-      redirectUrl: string;
-    }) =>
-      params.account.reauthorize({
-        additionalScopes: params.additionalScopes,
-        redirectUrl: params.redirectUrl,
-      }),
-  );
-
-  const destroyLinkedInExternalAccount = useReverification(
-    (account: LinkedInExternalAccount) => {
-      if (!account.destroy) {
-        throw new Error("LinkedIn account cannot be removed");
-      }
-      return account.destroy();
-    },
-  );
-
+  const { user } = useUser();
+  const { data: connection } = useLinkedInConnection(activeWorkspaceId);
+  const invalidateLinkedIn = useInvalidateLinkedIn(activeWorkspaceId);
+  const disconnectWorkspaceLinkedIn =
+    useDisconnectLinkedInConnection(activeWorkspaceId);
   const [showConnect, setShowConnect] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [confirm, setConfirm] = useState<ConfirmConfig | null>(null);
@@ -155,9 +114,9 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
   const [showRequestChanges, setShowRequestChanges] = useState(false);
   const [requestChangesFeedback, setRequestChangesFeedback] = useState("");
 
-  const linkedinConnected = connection?.connected ?? connected;
-  const linkedinPublishReady = connection?.publishReady ?? publishReady;
-  const linkedInProfileName = connection?.profileName ?? profileName;
+  const linkedinConnected = connection?.connected ?? false;
+  const linkedinPublishReady = connection?.publishReady ?? false;
+  const linkedInProfileName = connection?.profileName ?? null;
   const linkedinConnectionState = getLinkedInConnectionState(
     connection ?? {
       connected: linkedinConnected,
@@ -165,6 +124,7 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
       profileName: linkedInProfileName,
       approvedScopes: [],
       linkedInMemberId: null,
+      clerkExternalAccountId: null,
     },
   );
 
@@ -179,85 +139,54 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
       showToast("Sign in to connect LinkedIn", "link_off");
       return;
     }
+    if (!activeWorkspaceId) {
+      showToast("Select a workspace first", "link_off");
+      return;
+    }
 
+    writeLinkedInConnectWorkspaceId(activeWorkspaceId);
     setConnecting(true);
-    const linkedInAccount = findLinkedInAccountForConnect(user);
-    const isVerified = linkedInAccount?.verification?.status === "verified";
-    const hasPublish =
-      linkedInAccount &&
-      getLinkedInApprovedScopes(linkedInAccount).includes(
-        LINKEDIN_PUBLISH_SCOPE,
-      );
-    const flow =
-      linkedInAccount && (!isVerified || !hasPublish)
-        ? "reauthorize"
-        : "createExternalAccount";
+
     try {
-      if (linkedInAccount && isVerified && hasPublish) {
+      const token = await getToken();
+      if (!token) {
         setConnecting(false);
-        closeConnect();
-        showToast("LinkedIn is already connected", "link");
+        showToast("Sign in to connect LinkedIn", "link_off");
         return;
       }
 
-      if (flow === "reauthorize") {
-        if (!linkedInAccount?.reauthorize) {
-          setConnecting(false);
-          showToast("Could not start LinkedIn authorization", "link_off");
-          return;
-        }
-
-        let oauthAccount = (await reauthorizeLinkedInExternalAccount({
-          account: linkedInAccount as LinkedInExternalAccount & {
-            reauthorize: NonNullable<LinkedInExternalAccount["reauthorize"]>;
-          },
-          additionalScopes: [LINKEDIN_PUBLISH_SCOPE],
-          redirectUrl: LINKEDIN_CONNECT_CALLBACK,
-        })) as Awaited<ReturnType<typeof user.createExternalAccount>>;
-
-        if (!getExternalVerificationRedirectUrl(oauthAccount)) {
-          if (linkedInAccount?.destroy) {
-            await destroyLinkedInExternalAccount(linkedInAccount);
-          }
-          await user.reload();
-          oauthAccount = await connectLinkedInExternalAccount({
-            strategy: LINKEDIN_OAUTH_STRATEGY,
-            redirectUrl: LINKEDIN_CONNECT_CALLBACK,
-            additionalScopes: [LINKEDIN_PUBLISH_SCOPE],
-          });
-        }
-
-        if (!redirectToExternalAccountVerification(oauthAccount)) {
-          setConnecting(false);
-          showToast("Could not start LinkedIn authorization", "link_off");
-        }
-        return;
+      // Clear this workspace's existing binding so we never silently reuse it.
+      if (connection?.connected) {
+        await disconnectWorkspaceLinkedIn.mutateAsync();
+        invalidateLinkedIn();
       }
 
-      const oauthAccount = await connectLinkedInExternalAccount({
-        strategy: LINKEDIN_OAUTH_STRATEGY,
-        redirectUrl: LINKEDIN_CONNECT_CALLBACK,
-        additionalScopes: [LINKEDIN_PUBLISH_SCOPE],
-      });
-      if (!redirectToExternalAccountVerification(oauthAccount)) {
-        setConnecting(false);
-        showToast("Could not start LinkedIn authorization", "link_off");
-      }
+      const { url } = await startLinkedInOAuth(token, activeWorkspaceId);
+      window.location.assign(url);
     } catch (err) {
       setConnecting(false);
+      if (err instanceof ApiError && err.code === "LINKEDIN_OAUTH_NOT_CONFIGURED") {
+        showToast(
+          "LinkedIn OAuth is not configured. Add LINKEDIN_CLIENT_ID and LINKEDIN_CLIENT_SECRET to the backend.",
+          "link_off",
+        );
+        return;
+      }
       if (isReverificationCancelledError(err)) {
         showToast("Verification cancelled", "link_off");
         return;
       }
-      showToast(clerkErrorMessage(err), "link_off");
+      showToast(
+        err instanceof ApiError ? err.message : clerkErrorMessage(err),
+        "link_off",
+      );
     }
   }, [
-    closeConnect,
-    connectLinkedInExternalAccount,
-    linkedinConnected,
-    linkedinPublishReady,
-    destroyLinkedInExternalAccount,
-    reauthorizeLinkedInExternalAccount,
+    activeWorkspaceId,
+    connection?.connected,
+    disconnectWorkspaceLinkedIn,
+    getToken,
+    invalidateLinkedIn,
     showToast,
     user,
   ]);
@@ -270,21 +199,14 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
       body: "Scheduled posts won't publish until you reconnect. Your drafts and calendar stay saved.",
       confirmLabel: "Disconnect",
       onConfirm: () => {
-        const accounts = listLinkedInExternalAccounts(user).filter(
-          (account) =>
-            account.verification?.status === "verified" && account.destroy,
-        );
-        const account =
-          findLinkedInExternalAccount(user) ?? externalAccount ?? accounts[0];
-
-        if (!account?.destroy) {
-          showToast("LinkedIn is not connected", "link_off");
+        if (!activeWorkspaceId) {
+          showToast("Select a workspace first", "link_off");
           return;
         }
 
-        void destroyLinkedInExternalAccount(account)
-          .then(async () => {
-            await user?.reload();
+        void disconnectWorkspaceLinkedIn
+          .mutateAsync()
+          .then(() => {
             invalidateLinkedIn();
             showToast("LinkedIn disconnected", "link_off");
           })
@@ -298,11 +220,10 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
       },
     });
   }, [
-    destroyLinkedInExternalAccount,
-    externalAccount,
+    activeWorkspaceId,
+    disconnectWorkspaceLinkedIn,
     invalidateLinkedIn,
     showToast,
-    user,
   ]);
 
   const askConfirmInternal = useCallback((cfg: ConfirmConfig) => {
@@ -355,28 +276,6 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
           ? reschedulePostMutation
           : schedulePostMutation;
 
-      // #region agent log
-      fetch("http://127.0.0.1:7936/ingest/839fd5aa-975f-4d2f-afc3-4e50b695a8d5", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Debug-Session-Id": "c80d58",
-        },
-        body: JSON.stringify({
-          sessionId: "c80d58",
-          location: "app-ui-provider.tsx:handleScheduleConfirm",
-          message: "Schedule request starting",
-          data: {
-            postId: scheduleTarget.postId,
-            mode: scheduleTarget.mode,
-            scheduledAt,
-            workspaceId: activeWorkspaceId ?? null,
-          },
-          timestamp: Date.now(),
-          hypothesisId: "C",
-        }),
-      }).catch(() => {});
-      // #endregion
       void mutation
         .mutateAsync({
           postId: scheduleTarget.postId,
@@ -678,7 +577,9 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
           mode={
             linkedinConnectionState === "needsPublishScope"
               ? "reauthorize"
-              : "connect"
+              : linkedinConnected
+                ? "switch"
+                : "connect"
           }
           onClose={closeConnect}
           onConnect={() => void doConnectLinkedIn()}

@@ -2,7 +2,7 @@
 
 import { BackLink } from "@/components/app/back-link";
 import { useAppBack } from "@/hooks/use-app-back";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   StatusBadge,
   appCard,
@@ -21,21 +21,28 @@ import { useGenerationJob } from "@/hooks/api/use-generation-api";
 import {
   useDeletePost,
   useApplyPostChangesMutation,
+  useApplyPostMediaVersionMutation,
+  useApplyPostVersionMutation,
   useGeneratePostMediaMutation,
   usePost,
+  usePostMediaVersions,
   usePostVersions,
   useApprovePostMutation,
   useTransitionPostStatus,
   useUpdatePost,
 } from "@/hooks/api/use-posts-api";
 import { PromptModal } from "@/components/modals/prompt-modal";
+import {
+  PostMediaVersionPreviewModal,
+  PostTextVersionPreviewModal,
+} from "@/components/modals/post-version-preview-modal";
 import { trackProductEvent } from "@/lib/product-events";
 import { useCancelScheduleMutation } from "@/hooks/api/use-scheduling-api";
 import { useCredits } from "@/hooks/api/use-credits-api";
 import { useWorkspace } from "@/hooks/use-workspace";
-import { MEDIA_GENERATION_CREDIT_COST } from "@/lib/credit-costs";
+import { MEDIA_GENERATION_CREDIT_COST, QUICK_DRAFT_CREDIT_COST } from "@/lib/credit-costs";
 import { getApiErrorMessage } from "@/lib/api-error-messages";
-import type { ApiPostPackage } from "@/lib/api/types/post";
+import type { ApiPostMedia, ApiPostPackage, ApiPostVersion } from "@/lib/api/types/post";
 import type { PostType } from "@/lib/api/types/enums";
 import {
   formatRelativeTime,
@@ -44,10 +51,12 @@ import {
 } from "@/lib/format-relative-time";
 import { getPostSourceLabel } from "@/lib/post-source";
 import { POST_TYPE_SELECT_OPTIONS } from "@/lib/post-types";
+import { versionMatchesPost } from "@/lib/post-version-utils";
 import { TONE_OPTIONS } from "@/lib/form-options";
 import { CouncilTimeline } from "@/components/sections/app/generate/CouncilTimeline";
 import { ApprovalSharePanel } from "@/components/sections/app/posts/ApprovalSharePanel";
 import { PostMediaList } from "@/components/ui/post-media-image";
+import { MediaGeneratingSkeleton } from "@/components/ui/media-generating-skeleton";
 import { useAppUi } from "@/providers/app-ui-provider";
 import { usePpToast } from "@/providers/pp-toast-provider";
 
@@ -99,6 +108,13 @@ function DetailSkeleton() {
   );
 }
 
+function buildMediaVersionNumbers(items: ApiPostMedia[]): Map<string, number> {
+  const chronological = [...items].sort(
+    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+  );
+  return new Map(chronological.map((item, index) => [item.id, index + 1]));
+}
+
 type PostDetailProps = {
   postId: string;
 };
@@ -122,6 +138,12 @@ export default function PostDetail({ postId }: PostDetailProps) {
     error: versionsError,
     refetch: refetchVersions,
   } = usePostVersions(activeWorkspaceId, postId);
+  const {
+    data: mediaVersions,
+    isLoading: mediaVersionsLoading,
+    error: mediaVersionsError,
+    refetch: refetchMediaVersions,
+  } = usePostMediaVersions(activeWorkspaceId, postId);
   const { data: profiles } = useContentProfiles(activeWorkspaceId);
   const {
     data: councilHistory,
@@ -138,12 +160,28 @@ export default function PostDetail({ postId }: PostDetailProps) {
   const approvePostMutation = useApprovePostMutation(activeWorkspaceId);
   const generatePostMedia = useGeneratePostMediaMutation(activeWorkspaceId);
   const applyPostChanges = useApplyPostChangesMutation(activeWorkspaceId);
+  const applyPostVersion = useApplyPostVersionMutation(activeWorkspaceId, postId);
+  const applyPostMediaVersion = useApplyPostMediaVersionMutation(
+    activeWorkspaceId,
+    postId,
+  );
   const cancelSchedule = useCancelScheduleMutation(activeWorkspaceId);
   const { canAfford } = useCredits();
 
   const [activeMediaJobId, setActiveMediaJobId] = useState<string | null>(null);
   const [mediaPromptOpen, setMediaPromptOpen] = useState(false);
   const [mediaPrompt, setMediaPrompt] = useState("");
+  const [textRegenPromptOpen, setTextRegenPromptOpen] = useState(false);
+  const [textRegenPrompt, setTextRegenPrompt] = useState("");
+  const [previewTextVersion, setPreviewTextVersion] =
+    useState<ApiPostVersion | null>(null);
+  const [previewMediaVersion, setPreviewMediaVersion] =
+    useState<ApiPostMedia | null>(null);
+
+  const mediaVersionNumbers = useMemo(
+    () => buildMediaVersionNumbers(mediaVersions ?? []),
+    [mediaVersions],
+  );
 
   useGenerationJob(activeMediaJobId, {
     poll: true,
@@ -152,6 +190,7 @@ export default function PostDetail({ postId }: PostDetailProps) {
       showToast("Media ready", "image");
       setActiveMediaJobId(null);
       void refetch();
+      void refetchMediaVersions();
     },
   });
 
@@ -185,6 +224,58 @@ export default function PostDetail({ postId }: PostDetailProps) {
         contentProfileId: form.contentProfileId || undefined,
       });
       toastSaved();
+    } catch (err) {
+      showToast(getApiErrorMessage(err), "error");
+    }
+  };
+
+  const handleApplyTextVersion = async (versionNumber: number) => {
+    try {
+      await applyPostVersion.mutateAsync(versionNumber);
+      setPreviewTextVersion(null);
+      showToast("Text version restored", "history");
+      void refetch();
+      void refetchVersions();
+    } catch (err) {
+      showToast(getApiErrorMessage(err), "error");
+    }
+  };
+
+  const handleRegenerateText = () => {
+    setTextRegenPrompt("");
+    setTextRegenPromptOpen(true);
+  };
+
+  const confirmRegenerateText = async () => {
+    if (!canAfford(QUICK_DRAFT_CREDIT_COST)) {
+      showToast(
+        `You need ${QUICK_DRAFT_CREDIT_COST} credit to regenerate text.`,
+        "error",
+      );
+      return;
+    }
+
+    try {
+      await applyPostChanges.mutateAsync({
+        postId,
+        additionalFeedback: textRegenPrompt.trim() || undefined,
+      });
+      setTextRegenPromptOpen(false);
+      trackProductEvent("variant_regenerated");
+      showToast("Post text regenerated", "auto_awesome");
+      void refetch();
+      void refetchVersions();
+    } catch (err) {
+      showToast(getApiErrorMessage(err), "error");
+    }
+  };
+
+  const handleApplyMediaVersion = async (mediaId: string) => {
+    try {
+      await applyPostMediaVersion.mutateAsync(mediaId);
+      setPreviewMediaVersion(null);
+      showToast("Media version restored", "image");
+      void refetchMediaVersions();
     } catch (err) {
       showToast(getApiErrorMessage(err), "error");
     }
@@ -332,31 +423,6 @@ export default function PostDetail({ postId }: PostDetailProps) {
                     >
                       Submit for approval
                     </Button>
-                    {post.media.length === 0 ? (
-                      <span
-                        className="inline-flex"
-                        title={
-                          isMediaGenerating
-                            ? "Image generation in progress"
-                            : !isDraft
-                              ? "Media can only be generated while the post is a draft"
-                              : undefined
-                        }
-                      >
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          size="sm"
-                          disabled={isMediaGenerating || !isDraft}
-                          onClick={() => void handleGenerateMedia()}
-                        >
-                        <MsIcon name="image" size={16} />
-                        {isMediaGenerating
-                          ? "Generating media…"
-                          : `Generate media (${MEDIA_GENERATION_CREDIT_COST} cr)`}
-                        </Button>
-                      </span>
-                    ) : null}
                     <Button
                       type="button"
                       variant="destructive"
@@ -572,7 +638,33 @@ export default function PostDetail({ postId }: PostDetailProps) {
             )}
 
             <div className={`${appCard} space-y-4 p-5`}>
-              <h3 className={appSectionTitle}>Content</h3>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h3 className={appSectionTitle}>Content</h3>
+                {isEditable ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    disabled={applyPostChanges.isPending}
+                    onClick={handleRegenerateText}
+                  >
+                    <MsIcon
+                      name={
+                        applyPostChanges.isPending
+                          ? "progress_activity"
+                          : "refresh"
+                      }
+                      size={16}
+                      className={
+                        applyPostChanges.isPending ? "animate-ppspin" : undefined
+                      }
+                    />
+                    {applyPostChanges.isPending
+                      ? "Regenerating…"
+                      : `Regenerate (${QUICK_DRAFT_CREDIT_COST} cr)`}
+                  </Button>
+                ) : null}
+              </div>
               <InputField
                 label="Hook"
                 value={form.hook}
@@ -646,10 +738,115 @@ export default function PostDetail({ postId }: PostDetailProps) {
               </div>
             </div>
 
-            {post.media.length > 0 ? (
+            {(post.media.length > 0 || isMediaGenerating || isEditable) ? (
               <div className={`${appCard} p-5`}>
-                <h3 className={`${appSectionTitle} mb-3`}>Media</h3>
-                <PostMediaList items={post.media} />
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                  <h3 className={appSectionTitle}>Media</h3>
+                  {isEditable ? (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      disabled={isMediaGenerating}
+                      onClick={() => void handleGenerateMedia()}
+                    >
+                      <MsIcon
+                        name={
+                          isMediaGenerating ? "progress_activity" : "refresh"
+                        }
+                        size={16}
+                        className={isMediaGenerating ? "animate-ppspin" : undefined}
+                      />
+                      {isMediaGenerating
+                        ? "Generating…"
+                        : post.media.length > 0
+                          ? `Regenerate (${MEDIA_GENERATION_CREDIT_COST} cr)`
+                          : `Generate (${MEDIA_GENERATION_CREDIT_COST} cr)`}
+                    </Button>
+                  ) : null}
+                </div>
+                    {post.media.length === 0 && !isMediaGenerating ? (
+                      <p className={`${appMuted} mb-4 text-[13px]`}>
+                        No media yet. Generate an image for this post.
+                      </p>
+                    ) : null}
+                    {isMediaGenerating && post.media.length === 0 ? (
+                      <MediaGeneratingSkeleton label="Generating media…" />
+                    ) : post.media.length > 0 ? (
+                      <PostMediaList items={post.media} />
+                    ) : null}
+                {(mediaVersions?.length ?? 0) > 1 ? (
+                  <div className="mt-5 border-t border-[#f1f3f8] pt-4">
+                    <h4 className="mb-3 text-[13px] font-semibold text-[#1e293b]">
+                      Media version history
+                    </h4>
+                    <QueryState
+                      isLoading={mediaVersionsLoading}
+                      error={mediaVersionsError}
+                      onRetry={() => void refetchMediaVersions()}
+                    >
+                      <div className="divide-y divide-[#f1f3f8]">
+                        {mediaVersions?.map((media) => {
+                          const versionNumber =
+                            mediaVersionNumbers.get(media.id) ?? 0;
+                          const isCurrent = media.isActive;
+                          return (
+                            <div
+                              key={media.id}
+                              className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
+                            >
+                              <button
+                                type="button"
+                                className="min-w-0 flex-1 text-left"
+                                onClick={() => setPreviewMediaVersion(media)}
+                              >
+                                <div className="mb-1 flex flex-wrap items-center gap-2">
+                                  <span className="text-[13px] font-semibold text-[#1e293b]">
+                                    Version {versionNumber}
+                                  </span>
+                                  {isCurrent ? (
+                                    <span className="rounded-full bg-[#ecfdf5] px-2 py-0.5 text-[10.5px] font-bold text-[#059669]">
+                                      Current
+                                    </span>
+                                  ) : null}
+                                  <span className={appMutedSm}>
+                                    {formatRelativeTime(media.createdAt)}
+                                  </span>
+                                </div>
+                                <p className="truncate text-[13px] text-[#64748b]">
+                                  {media.altText || "Generated image"}
+                                </p>
+                              </button>
+                              <div className="flex gap-2">
+                                <Button
+                                  type="button"
+                                  variant="muted"
+                                  size="xs"
+                                  onClick={() => setPreviewMediaVersion(media)}
+                                >
+                                  View
+                                </Button>
+                                {!isCurrent && isEditable ? (
+                                  <Button
+                                    type="button"
+                                    variant="secondary"
+                                    size="xs"
+                                    disabled={applyPostMediaVersion.isPending}
+                                    onClick={() =>
+                                      void handleApplyMediaVersion(media.id)
+                                    }
+                                  >
+                                    Use this version
+                                  </Button>
+                                ) : null}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </QueryState>
+                  </div>
+                ) : null}
               </div>
             ) : null}
 
@@ -686,21 +883,61 @@ export default function PostDetail({ postId }: PostDetailProps) {
                 onRetry={() => void refetchVersions()}
               >
                 <div className="divide-y divide-[#f1f3f8]">
-                  {versions?.map((version) => (
-                    <div key={version.id} className="py-3 first:pt-0 last:pb-0">
-                      <div className="mb-1 flex flex-wrap items-center gap-2">
-                        <span className="text-[13px] font-semibold text-[#1e293b]">
-                          Version {version.versionNumber}
-                        </span>
-                        <span className={appMutedSm}>
-                          {formatRelativeTime(version.createdAt)}
-                        </span>
+                  {versions?.map((version) => {
+                    const isCurrent = versionMatchesPost(version, post);
+                    return (
+                      <div
+                        key={version.id}
+                        className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
+                      >
+                        <button
+                          type="button"
+                          className="min-w-0 flex-1 text-left"
+                          onClick={() => setPreviewTextVersion(version)}
+                        >
+                          <div className="mb-1 flex flex-wrap items-center gap-2">
+                            <span className="text-[13px] font-semibold text-[#1e293b]">
+                              Version {version.versionNumber}
+                            </span>
+                            {isCurrent ? (
+                              <span className="rounded-full bg-[#ecfdf5] px-2 py-0.5 text-[10.5px] font-bold text-[#059669]">
+                                Current
+                              </span>
+                            ) : null}
+                            <span className={appMutedSm}>
+                              {formatRelativeTime(version.createdAt)}
+                            </span>
+                          </div>
+                          <p className="truncate text-[13px] text-[#64748b]">
+                            {version.hook ?? "Untitled"}
+                          </p>
+                        </button>
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant="muted"
+                            size="xs"
+                            onClick={() => setPreviewTextVersion(version)}
+                          >
+                            View
+                          </Button>
+                          {!isCurrent && isEditable ? (
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="xs"
+                              disabled={applyPostVersion.isPending}
+                              onClick={() =>
+                                void handleApplyTextVersion(version.versionNumber)
+                              }
+                            >
+                              Use this version
+                            </Button>
+                          ) : null}
+                        </div>
                       </div>
-                      <p className="truncate text-[13px] text-[#64748b]">
-                        {version.hook ?? "Untitled"}
-                      </p>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </QueryState>
             </div>
@@ -712,13 +949,62 @@ export default function PostDetail({ postId }: PostDetailProps) {
         open={mediaPromptOpen}
         title="Image direction"
         description="Optional. Leave blank to let AI decide."
-        confirmLabel="Generate"
+        confirmLabel={post?.media.length ? "Regenerate" : "Generate"}
         value={mediaPrompt}
         onChange={setMediaPrompt}
         onClose={() => setMediaPromptOpen(false)}
         onConfirm={() => void confirmGenerateMedia()}
         isSubmitting={generatePostMedia.isPending}
         creditCost={MEDIA_GENERATION_CREDIT_COST}
+      />
+
+      <PromptModal
+        open={textRegenPromptOpen}
+        title="Regenerate post text"
+        description="Optional direction for the rewrite. Leave blank to regenerate in the same voice."
+        placeholder="e.g. Make it shorter and more punchy"
+        confirmLabel="Regenerate"
+        value={textRegenPrompt}
+        onChange={setTextRegenPrompt}
+        onClose={() => setTextRegenPromptOpen(false)}
+        onConfirm={() => void confirmRegenerateText()}
+        isSubmitting={applyPostChanges.isPending}
+        creditCost={QUICK_DRAFT_CREDIT_COST}
+      />
+
+      <PostTextVersionPreviewModal
+        open={previewTextVersion != null}
+        version={previewTextVersion}
+        isCurrent={
+          previewTextVersion != null && post != null
+            ? versionMatchesPost(previewTextVersion, post)
+            : false
+        }
+        isApplying={applyPostVersion.isPending}
+        onClose={() => setPreviewTextVersion(null)}
+        onApply={
+          previewTextVersion && isEditable
+            ? () => void handleApplyTextVersion(previewTextVersion.versionNumber)
+            : undefined
+        }
+      />
+
+      <PostMediaVersionPreviewModal
+        open={previewMediaVersion != null}
+        media={previewMediaVersion}
+        versionNumber={
+          previewMediaVersion
+            ? (mediaVersionNumbers.get(previewMediaVersion.id) ?? 0)
+            : 0
+        }
+        isCurrent={previewMediaVersion?.isActive ?? false}
+        isApplying={applyPostMediaVersion.isPending}
+        onClose={() => setPreviewMediaVersion(null)}
+        onApply={
+          previewMediaVersion && isEditable && !previewMediaVersion.isActive
+            ? () => void handleApplyMediaVersion(previewMediaVersion.id)
+            : undefined
+        }
       />
     </div>
   );

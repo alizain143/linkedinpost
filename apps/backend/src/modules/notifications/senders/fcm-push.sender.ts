@@ -69,7 +69,7 @@ export class FcmPushSender implements OnModuleInit {
     }
 
     const response = await this.messaging.sendEachForMulticast({
-      tokens: tokens.map((entry) => entry.token),
+      fids: tokens.map((entry) => entry.token),
       notification: {
         title: params.title,
         body: params.body,
@@ -108,6 +108,7 @@ export class FcmPushSender implements OnModuleInit {
       if (!result.success && result.error) {
         const code = result.error.code;
         if (
+          code === 'messaging/installation-id-not-registered' ||
           code === 'messaging/registration-token-not-registered' ||
           code === 'messaging/invalid-registration-token'
         ) {

@@ -5,8 +5,15 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 import {
   findLinkedInExternalAccount,
+  getLinkedInApprovedScopes,
   LINKEDIN_CONNECT_COMPLETE,
+  LINKEDIN_PUBLISH_SCOPE,
+  listLinkedInExternalAccounts,
 } from "@/lib/auth/linkedin-clerk";
+import {
+  readLinkedInPreConnectAccountIds,
+  writeLinkedInPendingExternalAccountId,
+} from "@/lib/linkedin-connect-context";
 
 const LINKEDIN_CONNECT_SUCCESS = `${LINKEDIN_CONNECT_COMPLETE}?linkedin=connected`;
 
@@ -32,6 +39,24 @@ export function LinkedInConnectCallback() {
     const finishExternalAccountLink = async () => {
       await user?.reload();
       const connected = Boolean(findLinkedInExternalAccount(user));
+
+      if (connected) {
+        const beforeIds = new Set(readLinkedInPreConnectAccountIds());
+        const verified = listLinkedInExternalAccounts(user).filter(
+          (account) => account.verification?.status === "verified",
+        );
+        const newAccount = verified.find((account) => !beforeIds.has(account.id));
+        const pendingAccountId =
+          newAccount?.id ??
+          verified.find((account) =>
+            getLinkedInApprovedScopes(account).includes(LINKEDIN_PUBLISH_SCOPE),
+          )?.id ??
+          verified[0]?.id;
+
+        if (pendingAccountId) {
+          writeLinkedInPendingExternalAccountId(pendingAccountId);
+        }
+      }
 
       router.replace(
         connected

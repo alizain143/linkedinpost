@@ -169,7 +169,7 @@ export function AiContentProfileWizard({
 }: AiContentProfileWizardProps) {
   const { showToast } = useAppUi();
   const { canAfford } = useCredits();
-  const { data: linkedInProfile } = useLinkedInProfile();
+  const { data: linkedInProfile } = useLinkedInProfile(workspaceId);
   const suggestProfiles = useSuggestContentProfiles(workspaceId);
   const approveProfiles = useApproveContentProfileSuggestions(workspaceId);
 
@@ -324,14 +324,24 @@ export function AiContentProfileWizard({
           {step === "questionnaire" ? (
             <div className="space-y-4">
               {linkedInProfile ? (
-                <div className="rounded-xl border border-[#dce3f0] bg-[#fafbff] px-4 py-3 text-[13px] text-[#64748b]">
-                  Using LinkedIn data for{" "}
-                  <span className="font-semibold text-[#475569]">
-                    {linkedInProfile.fullName ?? "your profile"}
-                  </span>
-                  {linkedInProfile.currentTitle
-                    ? ` · ${linkedInProfile.currentTitle}`
-                    : null}
+                <div className="flex items-center gap-3 rounded-xl border border-[#dce3f0] bg-[#fafbff] px-4 py-3 text-[13px] text-[#64748b]">
+                  {linkedInProfile.pictureUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={linkedInProfile.pictureUrl}
+                      alt=""
+                      className="h-10 w-10 rounded-full object-cover"
+                    />
+                  ) : null}
+                  <div>
+                    Using LinkedIn data for{" "}
+                    <span className="font-semibold text-[#475569]">
+                      {linkedInProfile.fullName ?? "your profile"}
+                    </span>
+                    {linkedInProfile.currentTitle
+                      ? ` · ${linkedInProfile.currentTitle}`
+                      : null}
+                  </div>
                 </div>
               ) : (
                 <div className="rounded-xl border border-dashed border-[#dce3f0] bg-[#fafbff] px-4 py-3 text-[13px] text-[#64748b]">

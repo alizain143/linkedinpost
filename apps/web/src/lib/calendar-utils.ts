@@ -1,6 +1,7 @@
 import type {
   ApiCalendarEvent,
   ApiCalendarResponse,
+  CalendarView,
 } from "@/lib/api/types/calendar";
 import type { PostPackageStatus } from "@/lib/api/types/enums";
 import {
@@ -48,8 +49,12 @@ export function formatCalendarEventTime(
 export function formatCalendarHeaderLabel(
   data: ApiCalendarResponse | undefined,
   anchorDate: string,
+  view: CalendarView = "month",
 ): string {
   if (!data) {
+    if (view === "list") {
+      return "Posts";
+    }
     const [year, month] = anchorDate.split("-").map(Number);
     return new Date(Date.UTC(year, month - 1, 1)).toLocaleDateString("en-US", {
       month: "long",
@@ -79,7 +84,7 @@ export function formatCalendarHeaderLabel(
     return `${startLabel} – ${endLabel}`;
   }
 
-  return "Upcoming posts";
+  return formatCalendarRange(data.rangeStart, data.rangeEnd, data.timezone);
 }
 
 export function getEventStatusStyle(status: PostPackageStatus): {
@@ -108,6 +113,26 @@ export function formatListItemDate(
 
 export function getLegendLabel(status: PostPackageStatus): string {
   return getPostStatusLabel(status);
+}
+
+export function instantToDateKey(iso: string, timezone: string): string {
+  return getTodayDateKey(timezone, new Date(iso));
+}
+
+export function formatCalendarRange(
+  start: string | Date,
+  end: string | Date,
+  timezone: string,
+): string {
+  const formatter = new Intl.DateTimeFormat(undefined, {
+    timeZone: timezone,
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+  const startDate = typeof start === "string" ? new Date(start) : start;
+  const endDate = typeof end === "string" ? new Date(end) : end;
+  return `${formatter.format(startDate)} – ${formatter.format(endDate)}`;
 }
 
 export type { ApiCalendarEvent };

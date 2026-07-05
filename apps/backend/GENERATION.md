@@ -14,7 +14,7 @@ Council pipeline: [`COUNCIL.md`](COUNCIL.md)
 | `POST` | `/v1/workspaces/:workspaceId/generate/suggest-topics` | Free | Sync (200) — 5–8 topic ideas |
 | `POST` | `/v1/workspaces/:workspaceId/generate/compare-pick` | Free | Sync (200) — pick best draft option |
 | `POST` | `/v1/workspaces/:workspaceId/generate/council` | 3 credits | Async (202) — post + unbound image |
-| `POST` | `/v1/workspaces/:workspaceId/generate/calendar` | 10 / 30 credits | Async (202) |
+| `POST` | `/v1/workspaces/:workspaceId/generate/calendar` | 7–90 credits (1 or 3 per slot × duration) | Async (202) — `slotGenerationMode`: `quick_draft` \| `council` |
 | `POST` | `/v1/workspaces/:workspaceId/posts/:id/apply-changes` | 1 credit | Sync (200) — revise post from feedback / optional prompt |
 | `POST` | `/v1/workspaces/:workspaceId/posts/:id/generate-media` | 2 credits | Async (202) — body `{ mediaCustomPrompt?, replace? }` |
 | `GET` | `/v1/workspaces/:workspaceId/autopilot` | — | Config + next run |
@@ -22,7 +22,7 @@ Council pipeline: [`COUNCIL.md`](COUNCIL.md)
 | `GET` | `/v1/workspaces/:workspaceId/autopilot/planned` | — | Upcoming autopilot posts |
 | `GET` | `/v1/jobs/:id` | — | Poll progress |
 
-Guards: `ClerkAuthGuard` + `CreditsGuard` on quick draft and council only. Calendar asserts full bundle cost (10/30) in `CalendarJobService` before enqueue.
+Guards: `ClerkAuthGuard` + `CreditsGuard` on quick draft and council only. Calendar asserts per-slot bundle cost in `CalendarJobService` before enqueue (7/30 text, 21/90 council).
 
 ### Example
 
@@ -65,6 +65,10 @@ QuickDraftRequestDto
     → CreditsService.consume({ generationJobId }) on success
     → GenerationJob completed + result JSON
 ```
+
+**Quick-single / regenerate:** `POST /generate/quick-single` accepts optional `previousVariant` (draft being replaced) and `avoidVariants` (sibling drafts or prior versions the model must not repeat). Prompts require fresh hook/body/CTA/tags while keeping the same topic and voice; temperature 0.95.
+
+**Apply-changes / post regen:** `ReviseDraftJobService` loads up to 8 stored `PostVersion` rows as `avoidVariants` so repeated regenerates do not cycle through old versions.
 
 ## Async job queue (Slice 09)
 

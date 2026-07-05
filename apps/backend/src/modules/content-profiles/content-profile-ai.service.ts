@@ -49,7 +49,10 @@ export class ContentProfileAiService {
     await this.workspacesService.assertMember(userId, workspaceId);
 
     const linkedInProfile =
-      await this.linkedInProfileService.getProfile(userId);
+      await this.linkedInProfileService.getWorkspaceProfile(
+        workspaceId,
+        userId,
+      );
     const messages = this.buildMessages(dto, linkedInProfile);
     const completion = await this.modelRouter
       .text()
@@ -170,6 +173,8 @@ fullName: ${profile.fullName ?? ''}
 currentTitle: ${profile.currentTitle ?? ''}
 currentCompany: ${profile.currentCompany ?? ''}
 headline: ${profile.headline ?? ''}
+profileUrl: ${profile.profileUrl ?? ''}
+profilePhoto: ${profile.pictureUrl ? 'available' : 'not available'}
 positions: ${positions || 'None'}
 education: ${education || 'None'}
 </linkedin>`;

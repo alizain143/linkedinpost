@@ -1,0 +1,49 @@
+{
+  "manifest_version": 3,
+  "name": "linkedinpost — Profile Import",
+  "version": "1.0.3",
+  "description": "Import your LinkedIn profile into linkedinpost.ai (user-initiated, click only).",
+  "permissions": ["activeTab", "storage", "scripting", "tabs"],
+  "host_permissions": [
+    "https://www.linkedin.com/in/*",
+    "http://localhost:3000/*",
+    "http://127.0.0.1:3000/*",
+    "http://localhost:3001/*",
+    "https://*.linkedinpost.ai/*"
+  ],
+  "action": {
+    "default_title": "Import to linkedinpost",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/logo-mark-violet.png",
+      "32": "icons/logo-mark-violet.png",
+      "48": "icons/logo-mark-violet.png",
+      "128": "icons/logo-mark-violet.png"
+    }
+  },
+  "icons": {
+    "16": "icons/logo-mark-violet.png",
+    "32": "icons/logo-mark-violet.png",
+    "48": "icons/logo-mark-violet.png",
+    "128": "icons/logo-mark-violet.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.linkedin.com/in/*"],
+      "js": ["parser.js", "capture.js", "import-progress.js", "content.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "http://localhost:3000/*",
+        "http://127.0.0.1:3000/*",
+        "https://*.linkedinpost.ai/*"
+      ],
+      "js": ["app-bridge.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  }
+}

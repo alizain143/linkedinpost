@@ -10,7 +10,7 @@ Monorepo: `apps/backend` (NestJS API), `apps/web` (Next.js — in progress).
 | [CURRENT_ARCHITECTURE.md](CURRENT_ARCHITECTURE.md) | Modules, flows, APIs, integrations as implemented |
 | [PRODUCT_OVERVIEW.md](PRODUCT_OVERVIEW.md) | Product scope, slice tracker, route inventory |
 | `SLICE-NN-*.md` | Per-feature implementation specs |
-| `apps/backend/GENERATION.md`, `COUNCIL.md`, etc. | Module deep-dives |
+| `apps/backend/GENERATION.md`, `COUNCIL.md`, `LINKEDIN-OAUTH.md`, etc. | Module deep-dives |
 
 **Schema source of truth:** `apps/backend/prisma/schema.prisma`
 

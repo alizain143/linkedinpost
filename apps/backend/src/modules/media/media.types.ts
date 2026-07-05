@@ -10,6 +10,7 @@ export interface PostMediaResponse {
   mimeType: string;
   sizeBytes: number;
   createdAt: Date;
+  isActive: boolean;
 }
 
 export interface AttachCouncilMediaInput {
@@ -36,5 +37,6 @@ export function toPostMediaResponse(
     mimeType: media.mimeType,
     sizeBytes: media.sizeBytes,
     createdAt: media.createdAt,
+    isActive: media.archivedAt == null,
   };
 }

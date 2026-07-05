@@ -18,6 +18,7 @@ export enum CalendarView {
 }
 
 const DEFAULT_CALENDAR_STATUSES = [
+  PostPackageStatus.ready_for_approval,
   PostPackageStatus.scheduled,
   PostPackageStatus.publishing,
   PostPackageStatus.published,

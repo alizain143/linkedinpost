@@ -6,6 +6,7 @@ import {
   LinkedInProfileData,
   LinkedInPublishResult,
 } from './linkedin.types';
+import { withApiOnlyEnrichment } from './profile-import.merge';
 
 function pickLocalized(value: unknown): string | null {
   if (!value || typeof value !== 'object') return null;
@@ -150,7 +151,7 @@ export class LinkedInApiClient {
     const profileUrl =
       typeof basicInfo.profileUrl === 'string' ? basicInfo.profileUrl : null;
 
-    return {
+    return withApiOnlyEnrichment({
       memberId,
       fullName: typeof userinfo.name === 'string' ? userinfo.name : null,
       firstName:
@@ -173,7 +174,7 @@ export class LinkedInApiClient {
       positions,
       education,
       syncedAt: new Date().toISOString(),
-    };
+    });
   }
 
   async publishTextPost(input: {

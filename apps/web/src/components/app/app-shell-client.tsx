@@ -9,7 +9,6 @@ import { PushNotificationsRuntime } from "@/components/app/push-notifications-ru
 import { useCurrentUser } from "@/hooks/api/use-auth-api";
 import { useBillingStatus } from "@/hooks/api/use-billing-api";
 import { useCredits } from "@/hooks/api/use-credits-api";
-import { useLinkedInConnection } from "@/hooks/api/use-linkedin-api";
 import { AppUiProvider } from "@/providers/app-ui-provider";
 import { WorkspaceProvider } from "@/providers/workspace-provider";
 
@@ -18,7 +17,6 @@ export function AppShellClient({ children }: { children: React.ReactNode }) {
   useCurrentUser();
   useCredits();
   useBillingStatus();
-  useLinkedInConnection();
 
   return (
     <Suspense fallback={null}>

@@ -21,9 +21,11 @@ describe('calendar-schedule.util', () => {
     }
   });
 
-  it('maps credit cost by duration', () => {
-    expect(calendarCreditCost(7)).toBe(10);
+  it('maps credit cost by duration and mode', () => {
+    expect(calendarCreditCost(7)).toBe(7);
     expect(calendarCreditCost(30)).toBe(30);
+    expect(calendarCreditCost(7, 'council')).toBe(21);
+    expect(calendarCreditCost(30, 'council')).toBe(90);
     expect(calendarSlotCount(7)).toBe(7);
     expect(calendarSlotCount(30)).toBe(30);
   });

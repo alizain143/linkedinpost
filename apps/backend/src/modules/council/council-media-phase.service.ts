@@ -6,6 +6,7 @@ import { CouncilInput, CouncilPriorStep } from '../generation/generation.types';
 import { MediaRenderService } from '../media-generation/media-render.service';
 import { MediaTemplateResolveService } from '../media-templates/media-template-resolve.service';
 import { TemplateMediaRenderService } from '../media-templates/template-media-render.service';
+import { TemplateProfileResolverService } from '../media-templates/template-profile-resolver.service';
 import { CouncilAgentService } from './council-agent.service';
 import { CouncilEventService } from './council-event.service';
 import { MediaCreatorOutput } from './parsers/media-creator-output.parser';
@@ -31,6 +32,7 @@ export class CouncilMediaPhaseService {
     private readonly mediaVisionReviewer: MediaVisionReviewerService,
     private readonly mediaTemplateResolve: MediaTemplateResolveService,
     private readonly templateMediaRender: TemplateMediaRenderService,
+    private readonly templateProfileResolver: TemplateProfileResolverService,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -97,6 +99,12 @@ export class CouncilMediaPhaseService {
       },
     });
 
+    const resolvedProfile =
+      await this.templateProfileResolver.resolveForWorkspace(
+        params.input.workspaceId,
+        params.input.userId,
+      );
+
     const rendered = await this.templateMediaRender.render({
       template,
       input: params.input,
@@ -112,7 +120,7 @@ export class CouncilMediaPhaseService {
             plan: user.plan,
           }
         : undefined,
-      avatarUrl: user?.profileImageUrl,
+      resolvedProfile,
     });
 
     const spec: MediaCreatorOutput = {

@@ -48,6 +48,11 @@ export function getApiErrorMessage(
         return "That post could not be found.";
       case "LINKEDIN_NOT_CONNECTED":
         return "Connect LinkedIn with publish permissions to continue.";
+      case "LINKEDIN_IMPORT_PROFILE_URL_UNKNOWN":
+        return (
+          error.message ||
+          "Enter the LinkedIn profile URL for this workspace to continue."
+        );
       case "LINKEDIN_SCOPE_MISSING":
         return "Finish LinkedIn setup to grant publish permission.";
       case "REDIS_UNAVAILABLE":

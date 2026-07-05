@@ -48,6 +48,9 @@ export class GenerationInputContextProvider implements ContextProvider {
       slice.input!.previousCta = input.previousVariant.cta;
       slice.input!.previousTags = input.previousVariant.tags;
     }
+    if (input.avoidVariants?.length) {
+      slice.input!.avoidVariants = input.avoidVariants;
+    }
     if ('brief' in input && input.brief !== undefined) {
       slice.input!.brief = input.brief as string;
     }

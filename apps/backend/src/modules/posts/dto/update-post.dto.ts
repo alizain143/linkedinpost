@@ -8,6 +8,7 @@ import {
   IsUUID,
   MaxLength,
 } from 'class-validator';
+import { MEDIA_CUSTOM_PROMPT_MAX_LENGTH } from '../../../common/constants/media.constants';
 
 export class UpdatePostDto {
   @ApiPropertyOptional({ maxLength: 500 })
@@ -62,9 +63,9 @@ export class UpdatePostDto {
   @IsUUID()
   contentProfileId?: string;
 
-  @ApiPropertyOptional({ maxLength: 500 })
+  @ApiPropertyOptional({ maxLength: MEDIA_CUSTOM_PROMPT_MAX_LENGTH })
   @IsOptional()
   @IsString()
-  @MaxLength(500)
+  @MaxLength(MEDIA_CUSTOM_PROMPT_MAX_LENGTH)
   mediaCustomPrompt?: string;
 }

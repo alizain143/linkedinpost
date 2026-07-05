@@ -42,16 +42,69 @@ export function getLinkedInStatusDescription(
   }
 }
 
+export function isLinkedInProfileEnriched(
+  profile: ApiLinkedInProfile | null | undefined,
+): boolean {
+  return profile?.enrichmentStatus === "complete";
+}
+
+export function needsLinkedInProfileImport(
+  profile: ApiLinkedInProfile | null | undefined,
+): boolean {
+  if (!profile) return true;
+  return profile.enrichmentStatus !== "complete";
+}
+
+export function getLinkedInEnrichmentLabel(
+  profile: ApiLinkedInProfile | null | undefined,
+): string | null {
+  if (!profile) return null;
+  if (profile.enrichmentStatus === "complete") {
+    return "Full profile imported";
+  }
+  return "Basic profile only — import for headline, About, and experience";
+}
+
 export function getLinkedInProfileSubtitle(
   profile: ApiLinkedInProfile | null | undefined,
 ): string | null {
   if (!profile) return null;
 
-  const title = profile.currentTitle?.trim();
-  const company = profile.currentCompany?.trim();
+  const title = getLinkedInPreviewTitle(profile);
+  const company = getLinkedInPreviewCompany(profile);
 
   if (title && company) return `${title} at ${company}`;
   if (title) return title;
   if (company) return company;
   return null;
+}
+
+export function getLinkedInPreviewTitle(
+  profile: ApiLinkedInProfile | null | undefined,
+): string | null {
+  if (!profile) return null;
+
+  const direct = profile.currentTitle?.trim();
+  if (direct) return direct;
+
+  const current = profile.positions.find((position) => position.isCurrent);
+  const fromCurrent = current?.title?.trim();
+  if (fromCurrent) return fromCurrent;
+
+  return profile.positions[0]?.title?.trim() || null;
+}
+
+export function getLinkedInPreviewCompany(
+  profile: ApiLinkedInProfile | null | undefined,
+): string | null {
+  if (!profile) return null;
+
+  const direct = profile.currentCompany?.trim();
+  if (direct) return direct;
+
+  const current = profile.positions.find((position) => position.isCurrent);
+  const fromCurrent = current?.companyName?.trim();
+  if (fromCurrent) return fromCurrent;
+
+  return profile.positions[0]?.companyName?.trim() || null;
 }

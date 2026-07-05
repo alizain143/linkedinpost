@@ -3,9 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { appLabel } from "@/components/app/app-ui";
 import { QueryState } from "@/components/app/query-state";
-import { Button, toggleVariant } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { InputField, TextareaField } from "@/components/ui/input";
 import { MsIcon } from "@/components/ui/ms-icon";
 import { SelectField } from "@/components/ui/select";
@@ -26,8 +25,13 @@ import {
   useGeneratePostMediaMutation,
   usePost,
 } from "@/hooks/api/use-posts-api";
+import { useMediaTemplates } from "@/hooks/api/use-media-templates-api";
 import { updatePost } from "@/lib/api/posts";
 import { CreditConfirmModal } from "@/components/modals/credit-confirm-modal";
+import {
+  GenerateMediaModal,
+  type GenerateMediaModalValues,
+} from "@/components/modals/generate-media-modal";
 import { PromptModal } from "@/components/modals/prompt-modal";
 import { VoiceMicButton } from "@/components/ui/voice-mic-button";
 import { copyPostToClipboard } from "@/lib/copy-post";
@@ -48,9 +52,14 @@ import type { PostType } from "@/lib/api/types/enums";
 import {
   COUNCIL_CREDIT_COST,
   MEDIA_GENERATION_CREDIT_COST,
+  MEDIA_TEMPLATE_CREDIT_COST,
   QUICK_DRAFT_CREDIT_COST,
   getGenerationModeCost,
 } from "@/lib/credit-costs";
+import {
+  buildMediaTemplateSelectOptions,
+  resolveDefaultMediaTemplateId,
+} from "@/lib/media-template-options";
 import { isCreditsExhaustedError } from "@/lib/credits-errors";
 import { shouldPollJob } from "@/lib/council-utils";
 import { POST_TYPE_SELECT_OPTIONS, getPostTypeLabel } from "@/lib/post-types";
@@ -62,6 +71,7 @@ import {
 import { CouncilTimeline } from "@/components/sections/app/generate/CouncilTimeline";
 import { LinkedInFeedPreview } from "@/components/sections/app/generate/LinkedInFeedPreview";
 import { PostMediaImage } from "@/components/ui/post-media-image";
+import { MediaGeneratingSkeleton } from "@/components/ui/media-generating-skeleton";
 import { GenerationHistoryPanel } from "@/components/sections/app/generate/GenerationHistoryPanel";
 import {
   TopicMagicButton,
@@ -108,6 +118,7 @@ type GenerateFormState = {
   additionalContext: string;
   brief: string;
   mediaCustomPrompt: string;
+  mediaTemplateId: string;
 };
 
 export default function Generate() {
@@ -133,6 +144,7 @@ export default function Generate() {
   const topicSuggestionsMutation = useTopicSuggestionsMutation(activeWorkspaceId);
   const comparePickMutation = useComparePickMutation(activeWorkspaceId);
   const councilMutation = useCouncilMutation(activeWorkspaceId);
+  const { data: mediaTemplatesData } = useMediaTemplates(activeWorkspaceId);
   const generatePostMedia = useGeneratePostMediaMutation(activeWorkspaceId);
   const applyPostChanges = useApplyPostChangesMutation(activeWorkspaceId);
   const createPost = useCreatePost(activeWorkspaceId);
@@ -153,6 +165,7 @@ export default function Generate() {
     additionalContext: "",
     brief: "",
     mediaCustomPrompt: "",
+    mediaTemplateId: "",
   });
   const [variants, setVariants] = useState<QuickDraftVariant[]>([]);
   const [originalVariants, setOriginalVariants] = useState<QuickDraftVariant[]>(
@@ -186,9 +199,14 @@ export default function Generate() {
     onConfirm: () => void;
   } | null>(null);
   const [promptModal, setPromptModal] = useState<{
-    kind: "regen" | "media" | "council-text" | "council-media";
+    kind: "regen" | "council-text";
     variantIndex?: number;
     value: string;
+  } | null>(null);
+  const [generateMediaModal, setGenerateMediaModal] = useState<{
+    kind: "variant" | "council";
+    variantIndex?: number;
+    values: GenerateMediaModalValues;
   } | null>(null);
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [variantPostStatuses, setVariantPostStatuses] = useState<
@@ -206,6 +224,9 @@ export default function Generate() {
   const [mediaVariantIndex, setMediaVariantIndex] = useState<number | null>(
     null,
   );
+  const [regeneratingVariantIndex, setRegeneratingVariantIndex] = useState<
+    number | null
+  >(null);
   const [activeMediaJobId, setActiveMediaJobId] = useState<string | null>(null);
   const [variantMediaUrls, setVariantMediaUrls] = useState<Record<number, string>>(
     {},
@@ -217,6 +238,34 @@ export default function Generate() {
 
   const councilCompletedRef = useRef<string | null>(null);
   const mediaCompletedRef = useRef<string | null>(null);
+  const mediaVariantIndexRef = useRef<number | null>(null);
+  mediaVariantIndexRef.current = mediaVariantIndex;
+  const savedPostIdsRef = useRef(savedPostIds);
+  savedPostIdsRef.current = savedPostIds;
+  const variantMediaBaselineRef = useRef<Record<number, string>>({});
+  const activeMediaJobIdRef = useRef<string | null>(null);
+  activeMediaJobIdRef.current = activeMediaJobId;
+
+  const beginVariantMediaGeneration = useCallback((variantIndex: number) => {
+    setVariantMediaUrls((current) => {
+      const previous = current[variantIndex];
+      if (previous) {
+        variantMediaBaselineRef.current = {
+          ...variantMediaBaselineRef.current,
+          [variantIndex]: previous,
+        };
+      } else {
+        const nextBaseline = { ...variantMediaBaselineRef.current };
+        delete nextBaseline[variantIndex];
+        variantMediaBaselineRef.current = nextBaseline;
+      }
+      if (!(variantIndex in current)) return current;
+      const next = { ...current };
+      delete next[variantIndex];
+      return next;
+    });
+    setMediaVariantIndex(variantIndex);
+  }, []);
 
   const councilJob = useGenerationJob(activeCouncilJobId, {
     poll: true,
@@ -242,30 +291,82 @@ export default function Generate() {
     pollWhileAwaitingApproval: true,
   });
 
+  const finishVariantMedia = useCallback(
+    async (
+      postPackageId: string,
+      variantIndexHint: number | null,
+    ): Promise<boolean> => {
+      if (!activeWorkspaceId) return false;
+      const token = await getToken();
+      if (!token) return false;
+
+      const post = await fetchPost(token, activeWorkspaceId, postPackageId);
+      const url = post.media[0]?.url;
+      const variantEntry = Object.entries(savedPostIdsRef.current).find(
+        ([, postId]) => postId === postPackageId,
+      );
+      const resolvedVariantIndex =
+        variantEntry != null ? Number(variantEntry[0]) : variantIndexHint;
+
+      if (resolvedVariantIndex == null) return false;
+
+      setVariantPostStatuses((current) => ({
+        ...current,
+        [resolvedVariantIndex]: post.status,
+      }));
+
+      if (!url) return false;
+
+      const baseline = variantMediaBaselineRef.current[resolvedVariantIndex];
+      if (baseline && url === baseline) {
+        return false;
+      }
+
+      if (post.status === "media_generating") return false;
+
+      const nextBaseline = { ...variantMediaBaselineRef.current };
+      delete nextBaseline[resolvedVariantIndex];
+      variantMediaBaselineRef.current = nextBaseline;
+
+      setVariantMediaUrls((current) => ({
+        ...current,
+        [resolvedVariantIndex]: url,
+      }));
+      setMediaVariantIndex((current) =>
+        current === resolvedVariantIndex ? null : current,
+      );
+      setActiveMediaJobId(null);
+
+      return true;
+    },
+    [activeWorkspaceId, getToken],
+  );
+
   const mediaJob = useGenerationJob(activeMediaJobId, {
     poll: true,
     workspaceId: activeWorkspaceId,
     onCompleted: async (job) => {
       if (!activeWorkspaceId || mediaCompletedRef.current === job.id) return;
       mediaCompletedRef.current = job.id;
-      showToast("Media ready", "image");
 
-      if (job.postPackageId && mediaVariantIndex !== null) {
-        const token = await getToken();
-        if (token) {
-          const post = await fetchPost(token, activeWorkspaceId, job.postPackageId);
-          const url = post.media[0]?.url;
-          if (url) {
-            setVariantMediaUrls((current) => ({
-              ...current,
-              [mediaVariantIndex]: url,
-            }));
-          }
+      if (job.postPackageId) {
+        const ready = await finishVariantMedia(
+          job.postPackageId,
+          mediaVariantIndexRef.current,
+        );
+        if (ready) {
+          showToast("Media ready", "image");
+        } else {
+          setActiveMediaJobId(null);
         }
+      } else {
+        setActiveMediaJobId(null);
+        setMediaVariantIndex(null);
       }
 
-      setActiveMediaJobId(null);
-      setMediaVariantIndex(null);
+      if (job.postPackageId && job.postPackageId === councilPostId) {
+        void councilPostQuery.refetch();
+      }
     },
   });
 
@@ -295,6 +396,30 @@ export default function Generate() {
       ...pillars.map((pillar) => ({ value: pillar.name, label: pillar.name })),
     ];
   }, [selectedProfile]);
+
+  const mediaTemplateOptions = useMemo(
+    () => buildMediaTemplateSelectOptions(mediaTemplatesData),
+    [mediaTemplatesData],
+  );
+
+  useEffect(() => {
+    if (!mediaTemplatesData) return;
+    const defaultId = resolveDefaultMediaTemplateId(mediaTemplatesData);
+    if (!defaultId) return;
+    setForm((current) =>
+      current.mediaTemplateId ? current : { ...current, mediaTemplateId: defaultId },
+    );
+  }, [mediaTemplatesData]);
+
+  const effectiveTone = form.useCustomTone ? form.customTone : form.tone;
+
+  const buildGenerateMediaModalValues = useCallback(
+    (): GenerateMediaModalValues => ({
+      mediaTemplateId: form.mediaTemplateId,
+      direction: "",
+    }),
+    [form.mediaTemplateId],
+  );
 
   const restoreQuickDraft = useCallback((snapshot: StoredQuickDraftSession) => {
     setVariants(snapshot.variants);
@@ -360,6 +485,10 @@ export default function Generate() {
         councilCompletedRef.current = session.activeCouncilJobId;
       }
       setActiveCouncilJobId(session.activeCouncilJobId);
+      setActiveMediaJobId(session.activeMediaJobId ?? null);
+      setMediaVariantIndex(
+        session.mediaVariantIndex != null ? session.mediaVariantIndex : null,
+      );
       setMode(session.mode === "council" ? "council" : "quick");
       setSkipCreditConfirm(session.skipCreditConfirm ?? false);
 
@@ -418,11 +547,20 @@ export default function Generate() {
       if (!token || cancelled) return;
 
       const statuses: Record<number, string> = {};
+      const mediaUrls: Record<number, string> = {};
+      let generatingVariantIndex: number | null = null;
       await Promise.all(
         entries.map(async ([index, postId]) => {
           try {
             const post = await fetchPost(token, activeWorkspaceId, postId);
-            statuses[Number(index)] = post.status;
+            const variantIndex = Number(index);
+            statuses[variantIndex] = post.status;
+            if (post.media[0]?.url && post.status !== "media_generating") {
+              mediaUrls[variantIndex] = post.media[0].url;
+            }
+            if (post.status === "media_generating") {
+              generatingVariantIndex = variantIndex;
+            }
           } catch {
             // ignore fetch errors for status hints
           }
@@ -431,6 +569,17 @@ export default function Generate() {
 
       if (!cancelled) {
         setVariantPostStatuses((current) => ({ ...current, ...statuses }));
+        if (Object.keys(mediaUrls).length > 0) {
+          setVariantMediaUrls((current) => {
+            const next = { ...current, ...mediaUrls };
+            const pending = mediaVariantIndexRef.current;
+            if (pending != null) delete next[pending];
+            return next;
+          });
+        }
+        if (generatingVariantIndex != null) {
+          setMediaVariantIndex((current) => current ?? generatingVariantIndex);
+        }
       }
     })();
 
@@ -438,6 +587,125 @@ export default function Generate() {
       cancelled = true;
     };
   }, [activeWorkspaceId, dismissedVariantIndices, getToken, savedPostIds]);
+
+  const generatingVariantIndicesKey = useMemo(() => {
+    return Object.entries(variantPostStatuses)
+      .filter(
+        ([index, status]) =>
+          status === "media_generating" &&
+          !dismissedVariantIndices.includes(Number(index)),
+      )
+      .map(([index]) => index)
+      .sort()
+      .join(",");
+  }, [dismissedVariantIndices, variantPostStatuses]);
+
+  useEffect(() => {
+    if (!activeWorkspaceId || !generatingVariantIndicesKey) return;
+    // Job hook polls when we have a job id; post polling is fallback only.
+    if (activeMediaJobId) return;
+
+    const indices = generatingVariantIndicesKey.split(",").map(Number);
+    let cancelled = false;
+
+    const pollGeneratingPosts = async () => {
+      const token = await getToken();
+      if (!token || cancelled) return;
+
+      for (const index of indices) {
+        const postId = savedPostIds[index];
+        if (!postId) continue;
+
+        try {
+          const post = await fetchPost(token, activeWorkspaceId, postId);
+          // Server may still be draft while job enqueues — don't restore stale media.
+          if (
+            mediaVariantIndexRef.current === index &&
+            post.status !== "media_generating"
+          ) {
+            continue;
+          }
+
+          setVariantPostStatuses((current) => {
+            if (current[index] === post.status) return current;
+            return { ...current, [index]: post.status };
+          });
+
+          if (post.status !== "media_generating" && post.media[0]?.url) {
+            const url = post.media[0].url;
+            setVariantMediaUrls((current) => {
+              if (current[index] === url) return current;
+              return { ...current, [index]: url };
+            });
+            setMediaVariantIndex((current) => (current === index ? null : current));
+          } else if (post.status !== "media_generating") {
+            setMediaVariantIndex((current) => (current === index ? null : current));
+          }
+        } catch {
+          // ignore poll errors
+        }
+      }
+    };
+
+    void pollGeneratingPosts();
+    const interval = setInterval(() => void pollGeneratingPosts(), 3_000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [
+    activeMediaJobId,
+    activeWorkspaceId,
+    generatingVariantIndicesKey,
+    getToken,
+    savedPostIds,
+  ]);
+
+  const pendingMediaVariantKey = useMemo(() => {
+    if (mediaVariantIndex == null) return "";
+    if (variantMediaUrls[mediaVariantIndex]) return "";
+    return String(mediaVariantIndex);
+  }, [mediaVariantIndex, variantMediaUrls]);
+
+  useEffect(() => {
+    if (!activeWorkspaceId || !pendingMediaVariantKey) return;
+
+    const index = Number(pendingMediaVariantKey);
+    let cancelled = false;
+
+    const pollPendingVariant = async () => {
+      const postId = savedPostIdsRef.current[index];
+      if (!postId) return;
+      const token = await getToken();
+      if (!token || cancelled) return;
+
+      // Wait for job enqueue before polling — server may still return pre-regen media.
+      if (
+        variantMediaBaselineRef.current[index] &&
+        !activeMediaJobIdRef.current
+      ) {
+        return;
+      }
+
+      try {
+        const ready = await finishVariantMedia(postId, index);
+        if (ready) {
+          showToast("Media ready", "image");
+        }
+      } catch {
+        // ignore poll errors
+      }
+    };
+
+    void pollPendingVariant();
+    const interval = setInterval(() => void pollPendingVariant(), 3_000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [activeMediaJobId, activeWorkspaceId, finishVariantMedia, getToken, pendingMediaVariantKey]);
 
   useEffect(() => {
     if (!activeWorkspaceId) return;
@@ -464,6 +732,8 @@ export default function Generate() {
     saveGenerationSession(activeWorkspaceId, {
       quickDraft: quickDraftSnapshot,
       activeCouncilJobId,
+      activeMediaJobId,
+      mediaVariantIndex,
       mode: mode === "council" ? "council" : "quick",
       topicSuggestions:
         topicSuggestions.length > 0 && topicFingerprint
@@ -480,6 +750,8 @@ export default function Generate() {
   }, [
     activeWorkspaceId,
     activeCouncilJobId,
+    activeMediaJobId,
+    mediaVariantIndex,
     form.contentProfileId,
     form.pillar,
     form.postType,
@@ -566,12 +838,46 @@ export default function Generate() {
     !!activeMediaJobId &&
     !!mediaJob.data &&
     shouldPollJob(mediaJob.data.status);
+  const anyVariantMediaGenerating = useMemo(
+    () =>
+      mediaVariantIndex != null ||
+      Object.entries(variantPostStatuses).some(
+        ([index, status]) =>
+          status === "media_generating" &&
+          !dismissedVariantIndices.includes(Number(index)),
+      ),
+    [dismissedVariantIndices, mediaVariantIndex, variantPostStatuses],
+  );
   const isCouncilRunning = councilEnqueueing || councilJobActive;
   const isMediaJobRunning =
-    generatePostMedia.isPending || mediaJobActive;
+    generatePostMedia.isPending || mediaJobActive || anyVariantMediaGenerating;
   const generating =
     mode === "quick" ? quickGenerating : councilEnqueueing;
-  const formDisabled = isCouncilRunning || isMediaJobRunning;
+  const formDisabled =
+    isCouncilRunning || isMediaJobRunning || quickGenerating;
+
+  const cardActionsDisabled =
+    formDisabled ||
+    quickDraftSingle.isPending ||
+    regeneratingVariantIndex !== null ||
+    applyPostChanges.isPending ||
+    createPost.isPending ||
+    savingVariantIndex !== null ||
+    actionVariantIndex !== null ||
+    reviewVariantIndex !== null;
+
+  const councilJobComplete = councilJob.data?.status === "completed";
+  const councilPostReady =
+    councilJobComplete &&
+    Boolean(councilPostQuery.data?.hook?.trim()) &&
+    Boolean(councilPostQuery.data?.media[0]?.url);
+  const councilMediaGenerating =
+    councilPostId != null &&
+    (isCouncilRunning ||
+      isMediaJobRunning ||
+      (councilJobComplete &&
+        Boolean(councilPostQuery.data?.hook?.trim()) &&
+        !councilPostQuery.data?.media[0]?.url));
 
   const canSubmitGenerate =
     form.topic.trim().length > 0 &&
@@ -586,13 +892,19 @@ export default function Generate() {
     return {
       topic: form.topic.trim(),
       postType: form.postType,
-      tone: (form.useCustomTone ? form.customTone : form.tone) || undefined,
+      tone: effectiveTone || undefined,
       pillar: form.pillar || undefined,
       contentProfileId: form.contentProfileId || undefined,
       additionalContext: form.additionalContext.trim() || undefined,
       mediaCustomPrompt: form.mediaCustomPrompt.trim() || undefined,
+      ...(form.mediaTemplateId
+        ? {
+            mediaMode: "template" as const,
+            mediaTemplateId: form.mediaTemplateId,
+          }
+        : {}),
     };
-  }, [form]);
+  }, [effectiveTone, form]);
 
   const buildQuickDraftBody = buildRequestBody;
 
@@ -939,9 +1251,33 @@ export default function Generate() {
     setEditingVariantIndex(null);
   };
 
+  const syncVariantToSavedPost = async (
+    variantIndex: number,
+    variant: QuickDraftVariant,
+  ) => {
+    const postId = savedPostIdsRef.current[variantIndex];
+    if (!postId || !activeWorkspaceId) return;
+    const token = await getToken();
+    if (!token) return;
+    const body = variantToCreatePostBody(variant, getFormContext());
+    await updatePost(token, activeWorkspaceId, postId, {
+      hook: body.hook,
+      body: body.body,
+      cta: body.cta,
+      tags: body.tags,
+      topic: body.topic,
+      postType: body.postType,
+      tone: body.tone,
+      pillar: body.pillar,
+      contentProfileId: body.contentProfileId,
+    });
+  };
+
   const runVariantRegen = async (variantIndex: number, revisionPrompt: string) => {
     const variant = variants[variantIndex];
     if (!variant) return;
+    const savedPostIdBefore = savedPostIds[variantIndex] ?? null;
+    setRegeneratingVariantIndex(variantIndex);
     try {
       const job = await quickDraftSingle.mutateAsync({
         ...buildQuickDraftBody(),
@@ -952,6 +1288,14 @@ export default function Generate() {
           cta: variant.cta,
           tags: variant.tags,
         },
+        avoidVariants: variants
+          .filter((_, index) => index !== variantIndex)
+          .map((item) => ({
+            hook: item.hook,
+            body: item.body,
+            cta: item.cta,
+            tags: item.tags,
+          })),
       });
       const nextVariant =
         job.result && "variant" in job.result ? job.result.variant : null;
@@ -969,22 +1313,17 @@ export default function Generate() {
         next[variantIndex] = nextVariant;
         return next;
       });
-      setSavedPostIds((current) => {
-        const next = { ...current };
-        delete next[variantIndex];
-        return next;
-      });
-      setVariantMediaUrls((current) => {
-        const next = { ...current };
-        delete next[variantIndex];
-        return next;
-      });
+      if (savedPostIdBefore) {
+        await syncVariantToSavedPost(variantIndex, nextVariant);
+      }
       if (aiPick?.variantIndex === variantIndex) setAiPick(null);
       trackProductEvent("variant_regenerated");
       showToast("Option regenerated", "auto_awesome");
     } catch (err) {
       showToast(getApiErrorMessage(err), "error");
       if (isCreditsExhaustedError(err)) router.push("/app/billing");
+    } finally {
+      setRegeneratingVariantIndex(null);
     }
   };
 
@@ -1004,13 +1343,11 @@ export default function Generate() {
 
     setSavingVariantIndex(variantIndex);
     try {
-      const post = await createPost.mutateAsync(
-        variantToCreatePostBody(variant, getFormContext()),
-      );
-      setSavedPostIds((current) => ({ ...current, [variantIndex]: post.id }));
+      const postId = await ensureSavedPost(variantIndex);
+      await syncVariantToSavedPost(variantIndex, variant);
       dismissVariant(variantIndex);
       showToast("Saved to drafts", "bookmark_added");
-      router.push(`/app/posts/${post.id}`);
+      router.push(`/app/posts/${postId}`);
     } catch (err) {
       showToast(getApiErrorMessage(err), "error");
     } finally {
@@ -1068,14 +1405,21 @@ export default function Generate() {
 
   const runGenerateMedia = async (
     variantIndex: number,
-    mediaCustomPrompt?: string,
-    replace = false,
+    options: {
+      mediaCustomPrompt?: string;
+      replace?: boolean;
+      postType?: PostType;
+      tone?: string;
+      mediaTemplateId?: string;
+    } = {},
   ) => {
-    if (!canAfford(MEDIA_GENERATION_CREDIT_COST)) {
-      showToast(
-        `You need ${MEDIA_GENERATION_CREDIT_COST} credits to generate media.`,
-        "error",
-      );
+    const usesTemplate = Boolean(options.mediaTemplateId?.trim());
+    const creditCost = usesTemplate
+      ? MEDIA_TEMPLATE_CREDIT_COST
+      : MEDIA_GENERATION_CREDIT_COST;
+
+    if (!canAfford(creditCost)) {
+      showToast(`You need ${creditCost} credits to generate media.`, "error");
       router.push("/app/billing");
       return;
     }
@@ -1083,13 +1427,29 @@ export default function Generate() {
     setMediaVariantIndex(variantIndex);
     try {
       const postId = await ensureSavedPost(variantIndex);
+      const token = await getToken();
+      if (!token || !activeWorkspaceId) throw new Error("Not authenticated");
+
+      if (options.postType || options.tone) {
+        await updatePost(token, activeWorkspaceId, postId, {
+          ...(options.postType ? { postType: options.postType } : {}),
+          ...(options.tone ? { tone: options.tone } : {}),
+        });
+      }
+
       mediaCompletedRef.current = null;
       const job = await generatePostMedia.mutateAsync({
         postId,
-        mediaCustomPrompt: mediaCustomPrompt?.trim() || undefined,
-        replace,
+        mediaCustomPrompt: options.mediaCustomPrompt?.trim() || undefined,
+        replace: options.replace,
+        ...(usesTemplate
+          ? {
+              mediaMode: "template" as const,
+              mediaTemplateId: options.mediaTemplateId,
+            }
+          : { mediaMode: "freestyle" as const }),
       });
-      if (mediaCustomPrompt?.trim()) {
+      if (options.mediaCustomPrompt?.trim()) {
         trackProductEvent("media_generated_with_prompt");
       }
       setActiveMediaJobId(job.id);
@@ -1102,8 +1462,106 @@ export default function Generate() {
     }
   };
 
+  const runCouncilGenerateMedia = async (options: {
+    mediaCustomPrompt?: string;
+    postType?: PostType;
+    tone?: string;
+    mediaTemplateId?: string;
+  }) => {
+    if (!councilPostId) return;
+
+    const usesTemplate = Boolean(options.mediaTemplateId?.trim());
+    const creditCost = usesTemplate
+      ? MEDIA_TEMPLATE_CREDIT_COST
+      : MEDIA_GENERATION_CREDIT_COST;
+
+    if (!canAfford(creditCost)) {
+      showToast(`You need ${creditCost} credits to generate media.`, "error");
+      router.push("/app/billing");
+      return;
+    }
+
+    try {
+      const token = await getToken();
+      if (!token || !activeWorkspaceId) throw new Error("Not authenticated");
+
+      if (options.postType || options.tone) {
+        await updatePost(token, activeWorkspaceId, councilPostId, {
+          ...(options.postType ? { postType: options.postType } : {}),
+          ...(options.tone ? { tone: options.tone } : {}),
+        });
+      }
+
+      mediaCompletedRef.current = null;
+      const job = await generatePostMedia.mutateAsync({
+        postId: councilPostId,
+        mediaCustomPrompt: options.mediaCustomPrompt?.trim() || undefined,
+        replace: true,
+        ...(usesTemplate
+          ? {
+              mediaMode: "template" as const,
+              mediaTemplateId: options.mediaTemplateId,
+            }
+          : { mediaMode: "freestyle" as const }),
+      });
+      trackProductEvent("council_media_regenerated");
+      setActiveMediaJobId(job.id);
+      void councilPostQuery.refetch();
+    } catch (err) {
+      showToast(getApiErrorMessage(err), "error");
+      if (isCreditsExhaustedError(err)) router.push("/app/billing");
+    }
+  };
+
   const handleGenerateMedia = (variantIndex: number) => {
-    setPromptModal({ kind: "media", variantIndex, value: "" });
+    setGenerateMediaModal({
+      kind: "variant",
+      variantIndex,
+      values: buildGenerateMediaModalValues(),
+    });
+  };
+
+  const confirmGenerateMediaModal = () => {
+    if (!generateMediaModal) return;
+    const { kind, variantIndex, values } = generateMediaModal;
+    setGenerateMediaModal(null);
+
+    if (kind === "variant" && variantIndex != null) {
+      beginVariantMediaGeneration(variantIndex);
+    }
+
+    setForm((current) => ({
+      ...current,
+      mediaTemplateId: values.mediaTemplateId,
+    }));
+
+    const usesTemplate = Boolean(values.mediaTemplateId);
+    const creditCost = usesTemplate
+      ? MEDIA_TEMPLATE_CREDIT_COST
+      : MEDIA_GENERATION_CREDIT_COST;
+    const replace =
+      kind === "council"
+        ? true
+        : variantIndex != null
+          ? !!variantMediaUrls[variantIndex]
+          : false;
+
+    requestCreditAction(
+      creditCost,
+      replace ? "Regenerate image" : "Generate media",
+      () => {
+        const payload = {
+          mediaCustomPrompt: values.direction,
+          mediaTemplateId: values.mediaTemplateId || undefined,
+          replace,
+        };
+        if (kind === "council") {
+          void runCouncilGenerateMedia(payload);
+        } else if (variantIndex != null) {
+          void runGenerateMedia(variantIndex, payload);
+        }
+      },
+    );
   };
 
   const confirmPromptModal = async () => {
@@ -1120,18 +1578,6 @@ export default function Generate() {
       return;
     }
 
-    if (kind === "media" && variantIndex != null) {
-      const replace = !!variantMediaUrls[variantIndex];
-      requestCreditAction(
-        MEDIA_GENERATION_CREDIT_COST,
-        replace ? "Regenerate image" : "Generate media",
-        () => {
-          void runGenerateMedia(variantIndex, value, replace);
-        },
-      );
-      return;
-    }
-
     if (kind === "council-text" && councilPostId) {
       requestCreditAction(QUICK_DRAFT_CREDIT_COST, "Regenerate text", () => {
         void (async () => {
@@ -1142,28 +1588,6 @@ export default function Generate() {
             });
             trackProductEvent("council_text_regenerated");
             showToast("Text regenerated", "auto_awesome");
-            void councilPostQuery.refetch();
-          } catch (err) {
-            showToast(getApiErrorMessage(err), "error");
-            if (isCreditsExhaustedError(err)) router.push("/app/billing");
-          }
-        })();
-      });
-      return;
-    }
-
-    if (kind === "council-media" && councilPostId) {
-      requestCreditAction(MEDIA_GENERATION_CREDIT_COST, "Regenerate image", () => {
-        void (async () => {
-          try {
-            mediaCompletedRef.current = null;
-            const job = await generatePostMedia.mutateAsync({
-              postId: councilPostId,
-              mediaCustomPrompt: value.trim() || undefined,
-              replace: true,
-            });
-            trackProductEvent("council_media_regenerated");
-            setActiveMediaJobId(job.id);
             void councilPostQuery.refetch();
           } catch (err) {
             showToast(getApiErrorMessage(err), "error");
@@ -1197,8 +1621,6 @@ export default function Generate() {
       setActionVariantIndex(null);
     }
   };
-
-  const pillVariant = (active: boolean) => toggleVariant(active);
 
   const visibleVariants = useMemo(
     () =>
@@ -1263,6 +1685,7 @@ export default function Generate() {
           <button
             key={m.id}
             type="button"
+            disabled={formDisabled || m.disabled}
             onClick={() => handleModeClick(m.id)}
             className={`flex flex-1 flex-col items-start gap-0.5 rounded-[11px] border p-2.5 text-left ${
               mode === m.id
@@ -1309,56 +1732,43 @@ export default function Generate() {
         disabled={profileOptions.length === 0 || formDisabled}
       />
 
-      <label className={appLabel}>Post type</label>
-      <div className="mb-4 flex flex-wrap gap-1.5">
-        {POST_TYPE_SELECT_OPTIONS.map((option) => (
-          <Button
-            key={option.value}
-            type="button"
-            variant={pillVariant(form.postType === option.value)}
-            size="xs"
-            onClick={() =>
-              setForm((current) => ({ ...current, postType: option.value }))
-            }
-            disabled={formDisabled}
-          >
-            {option.label}
-          </Button>
-        ))}
-      </div>
+      <SelectField
+        label="Post type"
+        fieldClassName="mb-4"
+        options={POST_TYPE_SELECT_OPTIONS}
+        value={form.postType}
+        onChange={(event) =>
+          setForm((current) => ({
+            ...current,
+            postType: event.target.value as PostType,
+          }))
+        }
+        disabled={formDisabled}
+      />
 
-      <label className={appLabel}>Tone</label>
-      <div className="mb-2 flex flex-wrap gap-1.5">
-        {TONE_OPTIONS.map((tn) => (
-          <Button
-            key={tn}
-            type="button"
-            variant={pillVariant(!form.useCustomTone && form.tone === tn)}
-            size="xs"
-            onClick={() =>
-              setForm((current) => ({
-                ...current,
-                tone: tn,
-                useCustomTone: false,
-              }))
-            }
-            disabled={formDisabled}
-          >
-            {tn}
-          </Button>
-        ))}
-        <Button
-          type="button"
-          variant={pillVariant(form.useCustomTone)}
-          size="xs"
-          onClick={() =>
-            setForm((current) => ({ ...current, useCustomTone: true }))
+      <SelectField
+        label="Tone"
+        fieldClassName="mb-4"
+        options={[
+          ...TONE_OPTIONS.map((tone) => ({ value: tone, label: tone })),
+          { value: "__custom__", label: "Custom tone…" },
+        ]}
+        value={form.useCustomTone ? "__custom__" : form.tone}
+        onChange={(event) => {
+          const value = event.target.value;
+          if (value === "__custom__") {
+            setForm((current) => ({ ...current, useCustomTone: true }));
+            return;
           }
-          disabled={formDisabled}
-        >
-          Custom
-        </Button>
-      </div>
+          setForm((current) => ({
+            ...current,
+            tone: value,
+            useCustomTone: false,
+          }));
+        }}
+        disabled={formDisabled}
+      />
+
       {form.useCustomTone ? (
         <InputField
           label="Custom tone"
@@ -1371,9 +1781,27 @@ export default function Generate() {
           }
           disabled={formDisabled}
         />
-      ) : (
-        <div className="mb-4" />
-      )}
+      ) : null}
+
+      {mode === "council" ? (
+        <SelectField
+          label="Media template"
+          fieldClassName="mb-4"
+          options={
+            mediaTemplateOptions.length > 0
+              ? mediaTemplateOptions
+              : [{ value: "", label: "Freestyle image (no template)" }]
+          }
+          value={form.mediaTemplateId}
+          onChange={(event) =>
+            setForm((current) => ({
+              ...current,
+              mediaTemplateId: event.target.value,
+            }))
+          }
+          disabled={formDisabled || mediaTemplateOptions.length === 0}
+        />
+      ) : null}
 
       {mode === "council" ? (
         <TextareaField
@@ -1382,7 +1810,7 @@ export default function Generate() {
           fieldClassName="mb-4"
           className="h-16"
           value={form.mediaCustomPrompt}
-          maxLength={500}
+          maxLength={5000}
           placeholder="Minimal dark layout, gold accent, professional LinkedIn feed style..."
           onChange={(event) =>
             setForm((current) => ({
@@ -1434,8 +1862,12 @@ export default function Generate() {
         disabled={(pillarOptions.length <= 1 && !form.pillar) || formDisabled}
       />
 
-      <div className="relative mb-4">
-        <div className="absolute right-0 top-0 z-[1]">
+      <TextareaField
+        label="Notes"
+        hint="(optional)"
+        fieldClassName="mb-4"
+        className="h-16"
+        labelAside={
           <VoiceMicButton
             disabled={formDisabled}
             value={form.additionalContext}
@@ -1446,23 +1878,17 @@ export default function Generate() {
               }))
             }
           />
-        </div>
-        <TextareaField
-          label="Notes"
-          hint="(optional)"
-          fieldClassName="mb-0"
-          className="h-16"
-          value={form.additionalContext}
-          placeholder="Drop a rough idea, a bullet, or paste a note to repurpose…"
-          onChange={(event) =>
-            setForm((current) => ({
-              ...current,
-              additionalContext: event.target.value,
-            }))
-          }
-          disabled={formDisabled}
-        />
-      </div>
+        }
+        value={form.additionalContext}
+        placeholder="Drop a rough idea, a bullet, or paste a note to repurpose…"
+        onChange={(event) =>
+          setForm((current) => ({
+            ...current,
+            additionalContext: event.target.value,
+          }))
+        }
+        disabled={formDisabled}
+      />
 
       {mode === "council" ? (
         <TextareaField
@@ -1584,7 +2010,7 @@ export default function Generate() {
                 errorMessage={councilJob.data.errorMessage}
                 postPackageId={councilJob.data.postPackageId}
               />
-              {councilPostQuery.data ? (
+              {councilPostReady && councilPostQuery.data ? (
                 <div className="overflow-hidden rounded-2xl border border-[#eceef4] bg-white shadow-[0_1px_3px_rgba(24,28,64,0.05)]">
                   <div className="flex items-center justify-between border-b border-[#f1f3f8] bg-[#fbfbfd] px-[18px] py-3">
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-[#eef2ff] px-2 py-1 text-[10.5px] font-bold tracking-wide text-[#4f46e5]">
@@ -1597,6 +2023,7 @@ export default function Generate() {
                         variant="icon"
                         size="icon"
                         aria-label="Copy post"
+                        disabled={cardActionsDisabled}
                         onClick={() =>
                           void copyPostToClipboard({
                             hook: councilPostQuery.data.hook,
@@ -1618,6 +2045,7 @@ export default function Generate() {
                         size="icon"
                         href={`/app/posts/${councilPostQuery.data.id}`}
                         aria-label="Open full page"
+                        disabled={cardActionsDisabled}
                       >
                         <MsIcon
                           name="open_in_new"
@@ -1628,7 +2056,9 @@ export default function Generate() {
                     </div>
                   </div>
                   <div className="p-[18px]">
-                    {councilPostQuery.data.media[0]?.url ? (
+                    {isMediaJobRunning && councilPostId ? (
+                      <MediaGeneratingSkeleton label="Generating media…" />
+                    ) : councilPostQuery.data.media[0]?.url ? (
                       <PostMediaImage
                         className="mb-4"
                         src={councilPostQuery.data.media[0].url}
@@ -1654,6 +2084,7 @@ export default function Generate() {
                         variant="secondary"
                         size="sm"
                         href={`/app/posts/${councilPostQuery.data.id}`}
+                        disabled={cardActionsDisabled}
                       >
                         <MsIcon name="edit" size={16} />
                         Edit
@@ -1662,7 +2093,7 @@ export default function Generate() {
                         type="button"
                         variant="secondary"
                         size="sm"
-                        disabled={applyPostChanges.isPending}
+                        disabled={cardActionsDisabled}
                         onClick={() =>
                           setPromptModal({
                             kind: "council-text",
@@ -1677,11 +2108,11 @@ export default function Generate() {
                         type="button"
                         variant="secondary"
                         size="sm"
-                        disabled={generatePostMedia.isPending || mediaJobActive}
+                        disabled={cardActionsDisabled}
                         onClick={() =>
-                          setPromptModal({
-                            kind: "council-media",
-                            value: "",
+                          setGenerateMediaModal({
+                            kind: "council",
+                            values: buildGenerateMediaModalValues(),
                           })
                         }
                       >
@@ -1692,6 +2123,7 @@ export default function Generate() {
                         type="button"
                         variant="success"
                         size="sm"
+                        disabled={cardActionsDisabled}
                         onClick={() =>
                           openSchedule({
                             postId: councilPostQuery.data.id,
@@ -1707,6 +2139,7 @@ export default function Generate() {
                         type="button"
                         variant="linkedin"
                         size="sm"
+                        disabled={cardActionsDisabled}
                         onClick={() =>
                           confirmPublishNow({
                             postId: councilPostQuery.data.id,
@@ -1721,6 +2154,7 @@ export default function Generate() {
                         type="button"
                         variant="destructive-outline"
                         size="sm"
+                        disabled={cardActionsDisabled}
                         onClick={() => {
                           void deletePost
                             .mutateAsync(councilPostQuery.data.id)
@@ -1744,9 +2178,11 @@ export default function Generate() {
                     </div>
                   </div>
                 </div>
-              ) : councilPostId ? (
+              ) : councilMediaGenerating ? (
+                <MediaGeneratingSkeleton label="Generating media…" />
+              ) : councilPostId && !councilJobComplete ? (
                 <div className="rounded-2xl border border-dashed border-[#d8dce8] bg-white px-4 py-8 text-center text-[13px] text-[#64748b]">
-                  Loading post preview…
+                  Finishing council review and media…
                 </div>
               ) : null}
             </div>
@@ -1883,7 +2319,9 @@ export default function Generate() {
                   variant="primary"
                   size="xs"
                   disabled={
-                    visibleVariants.length < 2 || comparePickMutation.isPending
+                    cardActionsDisabled ||
+                    visibleVariants.length < 2 ||
+                    comparePickMutation.isPending
                   }
                   onClick={() => void handleSelectForMe()}
                 >
@@ -1915,7 +2353,7 @@ export default function Generate() {
                     variant="muted"
                     size="xs"
                     onClick={enterCompareMode}
-                    disabled={visibleVariants.length < 2}
+                    disabled={cardActionsDisabled || visibleVariants.length < 2}
                   >
                     <MsIcon name="view_kanban" size={16} />
                     Compare
@@ -1925,7 +2363,9 @@ export default function Generate() {
                     variant="muted"
                     size="xs"
                     disabled={
-                      visibleVariants.length < 2 || comparePickMutation.isPending
+                      cardActionsDisabled ||
+                      visibleVariants.length < 2 ||
+                      comparePickMutation.isPending
                     }
                     onClick={() => void handleSelectForMe()}
                   >
@@ -1959,7 +2399,7 @@ export default function Generate() {
                         },
                       )
                     }
-                    disabled={!canSubmitGenerate}
+                    disabled={!canSubmitGenerate || cardActionsDisabled}
                   >
                     <MsIcon name="refresh" size={16} />
                     Regenerate ({QUICK_DRAFT_CREDIT_COST} credit)
@@ -1986,23 +2426,23 @@ export default function Generate() {
               const isActing = actionVariantIndex === i;
               const isSendingToReview = reviewVariantIndex === i;
               const isEditing = editingVariantIndex === i;
-              const isGeneratingMedia =
-                mediaVariantIndex === i &&
-                (generatePostMedia.isPending || mediaJobActive);
+              const isRegeneratingText = regeneratingVariantIndex === i;
               const mediaPreviewUrl = variantMediaUrls[i];
+              const postMediaGenerating = variantPostStatuses[i] === "media_generating";
+              const isGeneratingMedia =
+                (mediaVariantIndex === i && !mediaPreviewUrl) ||
+                (postMediaGenerating && !mediaPreviewUrl);
               const generateMediaDisabledReason = getGenerateMediaDisabledReason(i);
               const generateMediaDisabled =
-                isSaving ||
-                isActing ||
+                cardActionsDisabled ||
                 isGeneratingMedia ||
-                !!generateMediaDisabledReason ||
-                createPost.isPending;
+                !!generateMediaDisabledReason;
 
               const isAiPick = aiPick?.variantIndex === i;
 
               return (
                 <div
-                  key={`${variant.hook}-${i}`}
+                  key={`variant-${i}`}
                   className={`animate-ppscale overflow-hidden rounded-2xl border bg-white shadow-[0_1px_3px_rgba(24,28,64,0.05)] ${
                     isAiPick
                       ? "border-[#4f46e5] ring-2 ring-[#4f46e5]/ring-offset-2"
@@ -2031,6 +2471,7 @@ export default function Generate() {
                         variant="icon"
                         size="icon"
                         aria-label="Copy post"
+                        disabled={cardActionsDisabled}
                         onClick={() => void handleCopyVariant(i)}
                       >
                         <MsIcon
@@ -2051,6 +2492,7 @@ export default function Generate() {
                             : "Read aloud"
                         }
                         onClick={() => handleToggleSpeak(i)}
+                        disabled={cardActionsDisabled}
                       >
                         <MsIcon
                           name={
@@ -2073,6 +2515,7 @@ export default function Generate() {
                         variant="icon"
                         size="icon"
                         aria-label="Reject option"
+                        disabled={cardActionsDisabled}
                         onClick={() => void rejectVariant(i)}
                       >
                         <MsIcon name="close" size={16} className="text-[#475569]" />
@@ -2080,6 +2523,32 @@ export default function Generate() {
                     </div>
                   </div>
                   <div className="p-[18px]">
+                    {mediaPreviewUrl ? (
+                      <PostMediaImage
+                        className="mb-4"
+                        src={mediaPreviewUrl}
+                        alt="Generated media"
+                      />
+                    ) : isGeneratingMedia ? (
+                      <MediaGeneratingSkeleton label="Generating media…" />
+                    ) : null}
+                    {isRegeneratingText ? (
+                      <div className="mb-4 space-y-2.5 py-2">
+                        <div className="flex items-center gap-2.5 text-sm font-semibold text-[#4f46e5]">
+                          <MsIcon
+                            name="progress_activity"
+                            size={20}
+                            className="animate-ppspin"
+                          />
+                          Regenerating text…
+                        </div>
+                        <div className="animate-ppshimmer h-3.5 w-[60%] rounded-md" />
+                        <div className="animate-ppshimmer h-2.5 w-full rounded-md" />
+                        <div className="animate-ppshimmer h-2.5 w-[95%] rounded-md" />
+                        <div className="animate-ppshimmer h-2.5 w-[80%] rounded-md" />
+                      </div>
+                    ) : (
+                    <>
                     <div className="mb-3 flex flex-wrap gap-1.5">
                       {getPostTypeLabel(variant.postType) ? (
                         <span className="rounded-full bg-[#f1f5f9] px-2 py-0.5 text-[10.5px] font-semibold text-[#475569]">
@@ -2205,24 +2674,14 @@ export default function Generate() {
                         </div>
                       </>
                     )}
-                    {mediaPreviewUrl ? (
-                      <PostMediaImage
-                        className="mb-4"
-                        src={mediaPreviewUrl}
-                        alt="Generated media"
-                      />
-                    ) : isGeneratingMedia ? (
-                      <div className="mb-4 flex items-center gap-2 rounded-xl border border-dashed border-[#d8dce8] bg-[#fbfbfd] px-4 py-6 text-[13px] font-semibold text-[#0891b2]">
-                        <MsIcon name="progress_activity" size={18} className="animate-ppspin" />
-                        Generating image…
-                      </div>
-                    ) : null}
+                    </>
+                    )}
                     <div className="flex flex-wrap gap-2">
                       <Button
                         type="button"
                         variant="secondary"
                         size="sm"
-                        disabled={isSaving || isActing}
+                        disabled={cardActionsDisabled}
                         onClick={() =>
                           setEditingVariantIndex(isEditing ? null : i)
                         }
@@ -2234,9 +2693,7 @@ export default function Generate() {
                         type="button"
                         variant="secondary"
                         size="sm"
-                        disabled={
-                          isSaving || isActing || quickDraftSingle.isPending
-                        }
+                        disabled={cardActionsDisabled}
                         onClick={() =>
                           setPromptModal({ kind: "regen", variantIndex: i, value: "" })
                         }
@@ -2248,7 +2705,7 @@ export default function Generate() {
                         type="button"
                         variant="secondary"
                         size="sm"
-                        disabled={isSaving || isActing || createPost.isPending}
+                        disabled={cardActionsDisabled}
                         onClick={() => void handleSaveDraft(i)}
                       >
                         <MsIcon name="bookmark_add" size={16} style={{ color: "#7c3aed" }} />
@@ -2258,9 +2715,7 @@ export default function Generate() {
                         type="button"
                         variant="secondary"
                         size="sm"
-                        disabled={
-                          isSaving || isActing || isSendingToReview || createPost.isPending
-                        }
+                        disabled={cardActionsDisabled}
                         onClick={() => void handleSendToReview(i)}
                       >
                         <MsIcon name="rate_review" size={16} style={{ color: "#0891b2" }} />
@@ -2289,7 +2744,7 @@ export default function Generate() {
                         type="button"
                         variant="success"
                         size="sm"
-                        disabled={isSaving || isActing}
+                        disabled={cardActionsDisabled}
                         onClick={() => void handleSchedule(i)}
                       >
                         <MsIcon name="event_available" size={16} />
@@ -2299,7 +2754,7 @@ export default function Generate() {
                         type="button"
                         variant="linkedin"
                         size="sm"
-                        disabled={isSaving || isActing}
+                        disabled={cardActionsDisabled}
                         onClick={() => void handlePublishNow(i)}
                       >
                         <MsIcon name="send" size={16} />
@@ -2358,11 +2813,7 @@ export default function Generate() {
 
       <PromptModal
         open={!!promptModal}
-        title={
-          promptModal?.kind === "media" || promptModal?.kind === "council-media"
-            ? "Image direction"
-            : "What should change?"
-        }
+        title="What should change?"
         description="Optional. Leave blank to let AI decide."
         confirmLabel="Continue"
         value={promptModal?.value ?? ""}
@@ -2374,15 +2825,25 @@ export default function Generate() {
         onClose={() => setPromptModal(null)}
         onConfirm={() => void confirmPromptModal()}
         isSubmitting={
-          quickDraftSingle.isPending ||
-          generatePostMedia.isPending ||
-          applyPostChanges.isPending
+          quickDraftSingle.isPending || applyPostChanges.isPending
         }
-        creditCost={
-          promptModal?.kind === "media" || promptModal?.kind === "council-media"
-            ? MEDIA_GENERATION_CREDIT_COST
-            : QUICK_DRAFT_CREDIT_COST
+        creditCost={QUICK_DRAFT_CREDIT_COST}
+      />
+
+      <GenerateMediaModal
+        open={!!generateMediaModal}
+        values={generateMediaModal?.values ?? buildGenerateMediaModalValues()}
+        templateOptions={mediaTemplateOptions}
+        isSubmitting={generatePostMedia.isPending || mediaJobActive}
+        onChange={(patch) =>
+          setGenerateMediaModal((current) =>
+            current
+              ? { ...current, values: { ...current.values, ...patch } }
+              : current,
+          )
         }
+        onClose={() => setGenerateMediaModal(null)}
+        onConfirm={() => confirmGenerateMediaModal()}
       />
     </div>
   );

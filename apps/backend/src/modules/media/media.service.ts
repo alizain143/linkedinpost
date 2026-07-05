@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PostMediaType } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { POST_MEDIA_MIME_TYPES } from '../../common/constants/media.constants';
@@ -96,7 +96,7 @@ export class MediaService {
 
   async listForPost(postPackageId: string): Promise<PostMediaResponse[]> {
     const rows = await this.prisma.postMedia.findMany({
-      where: { postPackageId },
+      where: { postPackageId, archivedAt: null },
       orderBy: { sortOrder: 'asc' },
     });
 
@@ -108,6 +108,72 @@ export class MediaService {
         ),
       ),
     );
+  }
+
+  async listVersionsForPost(
+    postPackageId: string,
+  ): Promise<PostMediaResponse[]> {
+    const rows = await this.prisma.postMedia.findMany({
+      where: { postPackageId },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return Promise.all(
+      rows.map(async (row) =>
+        toPostMediaResponse(
+          row,
+          await this.resolveUrl(row.storageBucket, row.storageKey),
+        ),
+      ),
+    );
+  }
+
+  async archiveActiveForPost(postPackageId: string): Promise<void> {
+    await this.prisma.postMedia.updateMany({
+      where: { postPackageId, archivedAt: null },
+      data: { archivedAt: new Date() },
+    });
+  }
+
+  async applyMediaVersion(
+    postPackageId: string,
+    mediaId: string,
+  ): Promise<PostMediaResponse> {
+    const target = await this.prisma.postMedia.findFirst({
+      where: { id: mediaId, postPackageId },
+    });
+
+    if (!target) {
+      throw new NotFoundException({
+        error: 'Media not found on this post',
+        code: 'RESOURCE_NOT_FOUND',
+      });
+    }
+
+    if (target.archivedAt == null) {
+      const url = await this.resolveUrl(target.storageBucket, target.storageKey);
+      return toPostMediaResponse(target, url);
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.postMedia.updateMany({
+        where: { postPackageId, archivedAt: null },
+        data: { archivedAt: new Date() },
+      });
+      await tx.postMedia.update({
+        where: { id: mediaId },
+        data: { archivedAt: null, sortOrder: 0 },
+      });
+    });
+
+    const restored = await this.prisma.postMedia.findUniqueOrThrow({
+      where: { id: mediaId },
+    });
+    const url = await this.resolveUrl(
+      restored.storageBucket,
+      restored.storageKey,
+    );
+    return toPostMediaResponse(restored, url);
   }
 
   async deleteAllForPost(postPackageId: string): Promise<void> {
@@ -146,7 +212,7 @@ export class MediaService {
     postPackageId: string,
   ): Promise<PublishMediaPayload | null> {
     const media = await this.prisma.postMedia.findFirst({
-      where: { postPackageId },
+      where: { postPackageId, archivedAt: null },
       orderBy: { sortOrder: 'asc' },
     });
 

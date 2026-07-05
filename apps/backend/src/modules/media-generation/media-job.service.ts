@@ -76,7 +76,7 @@ export class MediaJobService {
           code: 'POST_ALREADY_HAS_MEDIA',
         });
       }
-      await this.mediaService.deleteAllForPost(postId);
+      await this.mediaService.archiveActiveForPost(postId);
     }
 
     const activeJob = await this.prisma.generationJob.findFirst({

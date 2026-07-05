@@ -37,6 +37,19 @@ Generate media / council accept optional `mediaMode` + `mediaTemplateId`.
 
 - `/app/templates` — list, presets, defaults, AI create
 - `/app/templates/[id]` — Figma-lite editor (layers, drag, properties, PNG preview)
+  - Add/delete any layer type (text, avatar, visual zone, headline, subhead, rect)
+  - At most **one** visual zone per template
+  - Canvas bounds clamping on drag, edit, and save
+  - Live preview uses workspace LinkedIn name/title/photo when connected
+
+## Template profile binds
+
+| Bind | Resolution order |
+|------|------------------|
+| `profile.name` | LinkedIn `fullName` → content profile `name` → Clerk name |
+| `profile.roleTitle` | LinkedIn `currentTitle` → content profile `roleTitle` |
+| `profile.avatar` | LinkedIn `pictureUrl` → Clerk `profileImageUrl` → initials |
+| `profile.industry` | content profile `industry` |
 
 ## Progress
 

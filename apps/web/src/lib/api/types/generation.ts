@@ -85,6 +85,12 @@ export type QuickDraftSingleRequestBody = QuickDraftRequestBody & {
     cta: string;
     tags: string[];
   };
+  avoidVariants?: {
+    hook: string;
+    body: string;
+    cta: string;
+    tags: string[];
+  }[];
 };
 
 export type ApplyChangesRequestBody = {
@@ -153,6 +159,7 @@ export type CalendarGenerateRequestBody = {
   postingTime?: string;
   postingDays?: number[];
   additionalContext?: string;
+  slotGenerationMode?: "quick_draft" | "council";
 };
 
 export type MediaJobResult = {

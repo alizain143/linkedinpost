@@ -1,9 +1,11 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { BillingModule } from '../billing/billing.module';
+import { CouncilModule } from '../council/council.module';
 import { CreditsModule } from '../credits/credits.module';
 import { GenerationModule } from '../generation/generation.module';
 import { WorkspacesModule } from '../workspaces/workspaces.module';
+import { CalendarCouncilSlotService } from './calendar-council-slot.service';
 import { CalendarJobHandler } from './calendar-job.handler';
 import { CalendarJobHandlerRegistrar } from './calendar-job-handler.registrar';
 import { CalendarJobService } from './calendar-job.service';
@@ -18,6 +20,7 @@ import { CalendarPlannerOutputParser } from './parsers/calendar-planner-output.p
     BillingModule,
     WorkspacesModule,
     CreditsModule,
+    CouncilModule,
     forwardRef(() => GenerationModule),
   ],
   providers: [
@@ -27,6 +30,7 @@ import { CalendarPlannerOutputParser } from './parsers/calendar-planner-output.p
     CalendarOrchestrator,
     CalendarPlannerService,
     CalendarSlotService,
+    CalendarCouncilSlotService,
     CalendarPlannerOutputParser,
   ],
   exports: [CalendarJobService],

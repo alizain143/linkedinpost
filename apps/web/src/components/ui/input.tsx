@@ -103,6 +103,7 @@ export function InputField({
 type TextareaFieldProps = React.TextareaHTMLAttributes<HTMLTextAreaElement> & {
   label: string;
   hint?: string;
+  labelAside?: React.ReactNode;
   fieldClassName?: string;
   variant?: InputVariant;
   textareaClassName?: string;
@@ -111,6 +112,7 @@ type TextareaFieldProps = React.TextareaHTMLAttributes<HTMLTextAreaElement> & {
 export function TextareaField({
   label,
   hint,
+  labelAside,
   fieldClassName,
   variant = "app",
   textareaClassName,
@@ -119,10 +121,18 @@ export function TextareaField({
 }: TextareaFieldProps) {
   return (
     <div className={fieldClassName}>
-      <label className={labelClass}>
-        {label}
-        {hint ? <span className="font-normal text-[#94a3b8]"> {hint}</span> : null}
-      </label>
+      <div
+        className={cn(
+          "mb-[7px]",
+          labelAside ? "flex items-center justify-between gap-2" : "block",
+        )}
+      >
+        <label className={cn(labelClass, labelAside && "mb-0")}>
+          {label}
+          {hint ? <span className="font-normal text-[#94a3b8]"> {hint}</span> : null}
+        </label>
+        {labelAside}
+      </div>
       <textarea
         {...props}
         className={cn(

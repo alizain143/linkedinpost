@@ -70,13 +70,18 @@ describe('OpenAiTextCompletionProvider', () => {
     const result = await provider.complete({
       messages: [{ role: 'user', content: 'hi' }],
       responseFormat: 'json',
+      maxTokens: 4096,
     });
 
     expect(createMock).toHaveBeenCalledWith(
       expect.objectContaining({
         model: 'gpt-5.4',
+        max_completion_tokens: 4096,
         response_format: { type: 'json_object' },
       }),
+    );
+    expect(createMock).not.toHaveBeenCalledWith(
+      expect.objectContaining({ max_tokens: expect.anything() }),
     );
     expect(result).toEqual({
       content: '{"variants":[]}',

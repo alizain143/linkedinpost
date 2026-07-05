@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { MediaMode, PostType } from '@prisma/client';
 import { IsEnum, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import { MEDIA_CUSTOM_PROMPT_MAX_LENGTH } from '../../../common/constants/media.constants';
 
 export class QuickDraftRequestDto {
   @ApiProperty({ example: 'Shipping weekly as a founder' })
@@ -39,7 +40,7 @@ export class QuickDraftRequestDto {
   @ApiPropertyOptional({ example: 'Minimal dark background with gold accents' })
   @IsOptional()
   @IsString()
-  @MaxLength(500)
+  @MaxLength(MEDIA_CUSTOM_PROMPT_MAX_LENGTH)
   mediaCustomPrompt?: string;
 
   @ApiPropertyOptional({ enum: MediaMode })

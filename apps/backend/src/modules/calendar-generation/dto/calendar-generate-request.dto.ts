@@ -59,4 +59,13 @@ export class CalendarGenerateRequestDto {
   @IsString()
   @MaxLength(2000)
   additionalContext?: string;
+
+  @ApiPropertyOptional({
+    enum: ['quick_draft', 'council'],
+    default: 'quick_draft',
+    description: 'Per-slot generation mode: text-only quick draft or AI council with image',
+  })
+  @IsOptional()
+  @IsIn(['quick_draft', 'council'])
+  slotGenerationMode?: 'quick_draft' | 'council';
 }

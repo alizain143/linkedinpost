@@ -30,11 +30,28 @@ export class ClerkOAuthService {
     );
   }
 
-  async getLinkedInExternalAccount(clerkId: string) {
+  async getLinkedInExternalAccount(
+    clerkId: string,
+    externalAccountId?: string | null,
+  ) {
     const clerkUser = await this.getClerkClient().users.getUser(clerkId);
     const linkedInCandidates = clerkUser.externalAccounts.filter((item) =>
       LINKEDIN_PROVIDER_ALIASES.has(item.provider),
     );
+
+    if (externalAccountId) {
+      const bound = linkedInCandidates.find(
+        (item) => item.id === externalAccountId,
+      );
+      if (
+        !bound ||
+        bound.verification?.status !== 'verified'
+      ) {
+        return null;
+      }
+      return bound;
+    }
+
     const verifiedCandidates = linkedInCandidates.filter(
       (item) => item.verification?.status === 'verified',
     );
@@ -50,6 +67,15 @@ export class ClerkOAuthService {
     return account;
   }
 
+  async listVerifiedLinkedInExternalAccounts(clerkId: string) {
+    const clerkUser = await this.getClerkClient().users.getUser(clerkId);
+    return clerkUser.externalAccounts.filter(
+      (item) =>
+        LINKEDIN_PROVIDER_ALIASES.has(item.provider) &&
+        item.verification?.status === 'verified',
+    );
+  }
+
   getApprovedScopes(account: { approvedScopes?: string } | null | undefined) {
     if (!account?.approvedScopes) return [] as string[];
     return account.approvedScopes
@@ -62,8 +88,14 @@ export class ClerkOAuthService {
     return scopes.includes(LINKEDIN_PUBLISH_SCOPE);
   }
 
-  async getLinkedInAccessToken(clerkId: string): Promise<string> {
-    const account = await this.getLinkedInExternalAccount(clerkId);
+  async getLinkedInAccessToken(
+    clerkId: string,
+    externalAccountId?: string | null,
+  ): Promise<string> {
+    const account = await this.getLinkedInExternalAccount(
+      clerkId,
+      externalAccountId,
+    );
     if (!account) {
       throw new UnauthorizedException({
         error: 'LinkedIn is not connected',
@@ -84,7 +116,13 @@ export class ClerkOAuthService {
       this.provider() as 'oauth_linkedin_oidc',
     );
 
-    const token = response.data[0]?.token;
+    const tokenEntry = externalAccountId
+      ? response.data.find(
+          (entry) => entry.externalAccountId === externalAccountId,
+        )
+      : response.data[0];
+
+    const token = tokenEntry?.token;
     if (!token) {
       throw new BadRequestException({
         error: 'LinkedIn access token is unavailable',

@@ -26,6 +26,7 @@ import {
   IDENTITY_CARD_LAYOUT,
 } from './presets/identity-card.preset';
 import { TemplatePngRenderer } from './template-png.renderer';
+import { TemplateProfileResolverService } from './template-profile-resolver.service';
 
 @Injectable()
 export class MediaTemplatesService {
@@ -34,6 +35,7 @@ export class MediaTemplatesService {
     private readonly workspacesService: WorkspacesService,
     private readonly resolveService: MediaTemplateResolveService,
     private readonly pngRenderer: TemplatePngRenderer,
+    private readonly templateProfileResolver: TemplateProfileResolverService,
   ) {}
 
   async list(workspaceId: string, userId: string) {
@@ -98,15 +100,17 @@ export class MediaTemplatesService {
     dto: CreateMediaTemplateDto,
   ) {
     await this.workspacesService.assertMember(userId, workspaceId);
-    const layout = parseMediaTemplateLayout(dto.layout);
+    const width = dto.width ?? 1080;
+    const height = dto.height ?? 1080;
+    const layout = parseMediaTemplateLayout(dto.layout, { width, height });
 
     const row = await this.prisma.mediaTemplate.create({
       data: {
         workspaceId,
         name: dto.name.trim(),
         description: dto.description?.trim() || null,
-        width: dto.width ?? 1080,
-        height: dto.height ?? 1080,
+        width,
+        height,
         layout: layout as unknown as Prisma.InputJsonValue,
       },
     });
@@ -147,7 +151,7 @@ export class MediaTemplatesService {
     dto: UpdateMediaTemplateDto,
   ) {
     await this.workspacesService.assertMember(userId, workspaceId);
-    await this.findInWorkspace(workspaceId, id);
+    const existing = await this.findInWorkspace(workspaceId, id);
 
     const data: Prisma.MediaTemplateUpdateInput = {};
     if (dto.name !== undefined) data.name = dto.name.trim();
@@ -157,9 +161,12 @@ export class MediaTemplatesService {
     if (dto.width !== undefined) data.width = dto.width;
     if (dto.height !== undefined) data.height = dto.height;
     if (dto.layout !== undefined) {
-      data.layout = parseMediaTemplateLayout(
-        dto.layout,
-      ) as unknown as Prisma.InputJsonValue;
+      const canvasWidth = dto.width ?? existing.width;
+      const canvasHeight = dto.height ?? existing.height;
+      data.layout = parseMediaTemplateLayout(dto.layout, {
+        width: canvasWidth,
+        height: canvasHeight,
+      }) as unknown as Prisma.InputJsonValue;
     }
 
     const row = await this.prisma.mediaTemplate.update({
@@ -283,36 +290,26 @@ export class MediaTemplatesService {
     }
 
     if (dto.layout) {
-      layout = parseMediaTemplateLayout(dto.layout);
+      layout = parseMediaTemplateLayout(dto.layout, { width, height });
     }
 
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        firstName: true,
-        lastName: true,
-        profileImageUrl: true,
+    const resolved = await this.templateProfileResolver.resolveForWorkspace(
+      workspaceId,
+      userId,
+      {
+        profileName: dto.profileName,
+        roleTitle: dto.roleTitle,
       },
-    });
-
-    const profile = await this.prisma.contentProfile.findFirst({
-      where: { workspaceId, ...NOT_DELETED },
-      orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }],
-    });
-
-    const displayName =
-      [user?.firstName, user?.lastName].filter(Boolean).join(' ') ||
-      profile?.name ||
-      'Your Name';
+    );
 
     const ctx: TemplateBindContext = {
-      profileName: dto.profileName?.trim() || displayName,
-      roleTitle:
-        dto.roleTitle?.trim() || profile?.roleTitle || 'Your Title',
-      industry: profile?.industry ?? '',
-      avatarUrl: user?.profileImageUrl,
-      brandPrimary: profile?.brandPrimary,
-      brandAccent: profile?.brandAccent,
+      profileName: resolved.profileName,
+      roleTitle: resolved.roleTitle,
+      currentCompany: resolved.currentCompany,
+      industry: resolved.industry,
+      avatarUrl: resolved.avatarUrl,
+      brandPrimary: resolved.brandPrimary,
+      brandAccent: resolved.brandAccent,
       slots: {
         headline:
           dto.headline?.trim() ||

@@ -42,7 +42,8 @@ Maps to backend SLICE-04.
 ## Behaviors
 
 - Month grid and week columns from API (`cells` / `days`); list from `items`
-- Filters: All, Needs Approval, Scheduled, Published, Failed (no Autopilot/Manual — API has no `source`)
+- Filters: All, Ready for Approval, Scheduled, Published, Failed (legacy URL `filter=Needs Approval` maps to Ready for Approval)
+- **All** sends explicit status union including `ready_for_approval`
 - URL sync: `?view=month&date=2026-06-15&filter=All`
 - Prev/next: ±1 month (month view) or ±7 days (week/list)
 - Today button resets anchor to user timezone

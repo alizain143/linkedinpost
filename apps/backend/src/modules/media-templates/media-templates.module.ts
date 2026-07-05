@@ -2,6 +2,7 @@ import { Module, forwardRef } from '@nestjs/common';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { AuthModule } from '../auth/auth.module';
 import { GenerationModule } from '../generation/generation.module';
+import { LinkedInModule } from '../linkedin/linkedin.module';
 import { WorkspacesModule } from '../workspaces/workspaces.module';
 import { MediaTemplateAiService } from './media-template-ai.service';
 import { MediaTemplateResolveService } from './media-template-resolve.service';
@@ -9,6 +10,7 @@ import { MediaTemplatesController } from './media-templates.controller';
 import { MediaTemplatesService } from './media-templates.service';
 import { TemplateMediaRenderService } from './template-media-render.service';
 import { TemplatePngRenderer } from './template-png.renderer';
+import { TemplateProfileResolverService } from './template-profile-resolver.service';
 import { TemplateSlotFillParser } from './template-slot-fill.parser';
 
 @Module({
@@ -16,6 +18,7 @@ import { TemplateSlotFillParser } from './template-slot-fill.parser';
     PrismaModule,
     AuthModule,
     WorkspacesModule,
+    LinkedInModule,
     forwardRef(() => GenerationModule),
   ],
   controllers: [MediaTemplatesController],
@@ -26,11 +29,13 @@ import { TemplateSlotFillParser } from './template-slot-fill.parser';
     TemplatePngRenderer,
     TemplateSlotFillParser,
     TemplateMediaRenderService,
+    TemplateProfileResolverService,
   ],
   exports: [
     MediaTemplatesService,
     MediaTemplateResolveService,
     TemplateMediaRenderService,
+    TemplateProfileResolverService,
   ],
 })
 export class MediaTemplatesModule {}
