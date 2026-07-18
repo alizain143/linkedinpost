@@ -5,6 +5,8 @@ import {
   Plus_Jakarta_Sans,
 } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
+import { WebMcpBootstrap } from "@/components/agent/webmcp-bootstrap";
+import { WebMcpProvider } from "@/components/agent/webmcp-provider";
 import { GaPageView } from "@/components/analytics/ga-page-view";
 import { GoogleAnalytics } from "@/components/analytics/google-analytics";
 import { MicrosoftClarity } from "@/components/analytics/microsoft-clarity";
@@ -66,11 +68,13 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <head>
+          <WebMcpBootstrap />
           <GoogleAnalytics />
           <MicrosoftClarity />
         </head>
         <body className="min-h-full bg-[#f6f7f9] text-slate-900">
           <AppProviders>
+            <WebMcpProvider />
             <OrganizationJsonLd />
             <WebSiteJsonLd />
             <SoftwareApplicationJsonLd />

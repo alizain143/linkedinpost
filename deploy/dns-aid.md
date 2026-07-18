@@ -4,51 +4,71 @@ Ops checklist so agents can discover linkedinpost.ai via DNS (draft-mozleywillia
 
 Application code cannot make this check pass — records must exist in the public DNS zone and ideally be signed with **DNSSEC**.
 
-## Target names
+**Provider for this domain:** Cloudflare (`george.ns.cloudflare.com` / `mira.ns.cloudflare.com`).
 
-Replace `linkedinpost.ai` if you use a different apex.
+## Cloudflare dashboard (do this once)
+
+1. Open [Cloudflare Dashboard](https://dash.cloudflare.com) → zone **linkedinpost.ai** → **DNS** → **Records**.
+2. **Add record**:
+   - Type: `HTTPS` (if missing in UI, use API below or Type `SVCB`)
+   - Name: `_index._agents`
+   - Priority: `1`
+   - Target: `linkedinpost.ai`
+   - Value / SvcParams: `alpn="h2,h3" port=443`
+   - Proxy status: **DNS only** (grey cloud)
+3. Optional second record:
+   - Name: `_a2a._agents`
+   - Target: `api.linkedinpost.ai`
+   - SvcParams: `alpn="h2" port=443`
+4. **DNSSEC**: DNS → Settings → enable **DNSSEC** (and add DS at the registrar if Cloudflare asks).
+
+### Cloudflare API alternative
+
+```bash
+# Requires a token with Zone.DNS Edit for linkedinpost.ai
+export CF_API_TOKEN=...
+export ZONE_ID=$(curl -s -H "Authorization: Bearer $CF_API_TOKEN" \
+  "https://api.cloudflare.com/client/v4/zones?name=linkedinpost.ai" | jq -r '.result[0].id')
+
+curl -s -X POST "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records" \
+  -H "Authorization: Bearer $CF_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  --data '{
+    "type": "HTTPS",
+    "name": "_index._agents.linkedinpost.ai",
+    "data": {
+      "priority": 1,
+      "target": "linkedinpost.ai",
+      "value": "alpn=\"h2,h3\" port=443"
+    }
+  }' | jq .
+```
+
+If your Cloudflare plan/UI rejects `HTTPS` type, create an equivalent `SVCB` record with the same name/target/params.
+
+## Target names
 
 | Name | Purpose |
 |------|---------|
 | `_index._agents.linkedinpost.ai` | Index / general agent discovery |
-| `_a2a._agents.linkedinpost.ai` | Optional A2A-style agent endpoint pointer |
+| `_a2a._agents.linkedinpost.ai` | Optional API agent pointer |
 
-## Example HTTPS / SVCB records
-
-Point discovery at the marketing site (and optionally the API host):
+## Example zone file form
 
 ```dns
-; General index — HTTPS ServiceMode to the website
 _index._agents.linkedinpost.ai. 3600 IN HTTPS 1 linkedinpost.ai. alpn="h2,h3" port=443
-
-; Optional: explicit SVCB alias form
-_index._agents.linkedinpost.ai. 3600 IN SVCB 1 linkedinpost.ai. alpn="h2,h3" port=443 mandatory=alpn,port
-
-; Optional API pointer (agents that need the Nest API)
 _a2a._agents.linkedinpost.ai. 3600 IN HTTPS 1 api.linkedinpost.ai. alpn="h2" port=443
 ```
-
-Use your real API hostname (`API_DOMAIN` from deploy config) instead of `api.linkedinpost.ai` if different.
-
-Until IANA registers DNS-AID-specific SvcParamKeys, prefer standard `alpn` / `port` parameters. Experimental keys should use numeric `keyNNNNN` form per the draft.
-
-## DNSSEC
-
-1. Enable DNSSEC at your DNS provider for `linkedinpost.ai`.
-2. Publish DS records at the registrar.
-3. Confirm validating DoH resolvers return `AD` bit for `_index._agents.linkedinpost.ai`.
 
 ## Verify
 
 ```bash
-# Cloudflare DoH
 curl -sG 'https://cloudflare-dns.com/dns-query' \
   --data-urlencode 'name=_index._agents.linkedinpost.ai' \
   --data-urlencode 'type=HTTPS' \
   -H 'accept: application/dns-json' | jq .
 
-# Or
-dig HTTPS _index._agents.linkedinpost.ai +dnssec
+dig HTTPS _index._agents.linkedinpost.ai +dnssec @1.1.1.1
 ```
 
 Then re-scan:
@@ -59,11 +79,9 @@ curl -s -X POST https://isitagentready.com/api/scan \
   -d '{"url":"https://linkedinpost.ai"}' | jq '.checks.discoverability.dnsAid'
 ```
 
-## Related app discovery (already in the web app)
-
-These do **not** replace DNS-AID but help HTTP-based agents:
+## Related app discovery (already live on the web app)
 
 - `https://linkedinpost.ai/llms.txt`
 - `https://linkedinpost.ai/.well-known/api-catalog`
-- `https://linkedinpost.ai/.well-known/agent-skills/index.json`
+- `https://linkedinpost.ai/.well-known/mcp/server-card.json`
 - `https://linkedinpost.ai/auth.md`

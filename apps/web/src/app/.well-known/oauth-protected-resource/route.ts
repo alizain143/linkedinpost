@@ -1,29 +1,21 @@
 import { getApiOrigin } from "@/lib/api/api-origin";
-import { getClerkIssuer } from "@/lib/auth/clerk-discovery";
 import { getSiteUrl } from "@/lib/site";
 
-/** OAuth 2.0 Protected Resource Metadata (RFC 9728). */
+/**
+ * OAuth 2.0 Protected Resource Metadata (RFC 9728).
+ * Also published on the API host — scanners resolve PRM from the resource origin.
+ */
 export function GET() {
+  const site = getSiteUrl().origin;
   const resource = getApiOrigin();
-  const issuer = getClerkIssuer();
-
-  if (!issuer) {
-    return Response.json(
-      {
-        error:
-          "Clerk issuer not configured. Set NEXT_PUBLIC_CLERK_FRONTEND_API or NEXT_PUBLIC_CLERK_ISSUER.",
-      },
-      { status: 503 },
-    );
-  }
 
   return Response.json(
     {
       resource,
-      authorization_servers: [issuer],
+      authorization_servers: [site],
       bearer_methods_supported: ["header"],
       scopes_supported: ["openid", "profile", "email"],
-      resource_documentation: `${getSiteUrl().origin}/auth.md`,
+      resource_documentation: `${site}/auth.md`,
     },
     {
       headers: {

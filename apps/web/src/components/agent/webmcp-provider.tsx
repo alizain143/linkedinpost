@@ -54,11 +54,10 @@ export function WebMcpProvider() {
   const router = useRouter();
 
   useEffect(() => {
-    const ctx = navigator.modelContext;
-    if (!ctx) return;
-
     const controller = new AbortController();
     const { signal } = controller;
+    let tries = 0;
+    let intervalId: ReturnType<typeof setInterval> | undefined;
 
     const tools: ModelContextTool[] = [
       {
@@ -133,17 +132,40 @@ export function WebMcpProvider() {
       },
     ];
 
-    if (typeof ctx.registerTool === "function") {
-      for (const tool of tools) {
-        ctx.registerTool(tool);
+    const register = () => {
+      const ctx = navigator.modelContext;
+      if (!ctx) return false;
+      try {
+        if (typeof ctx.provideContext === "function") {
+          ctx.provideContext({ tools });
+        }
+        if (typeof ctx.registerTool === "function") {
+          for (const tool of tools) {
+            ctx.registerTool(tool);
+          }
+        }
+        return (
+          typeof ctx.provideContext === "function" ||
+          typeof ctx.registerTool === "function"
+        );
+      } catch {
+        return false;
       }
-    } else if (typeof ctx.provideContext === "function") {
-      ctx.provideContext({ tools });
+    };
+
+    if (!register()) {
+      intervalId = setInterval(() => {
+        if (register() || ++tries > 100) {
+          if (intervalId) clearInterval(intervalId);
+        }
+      }, 50);
     }
 
     return () => {
       controller.abort();
-      if (typeof ctx.unregisterTool === "function") {
+      if (intervalId) clearInterval(intervalId);
+      const ctx = navigator.modelContext;
+      if (typeof ctx?.unregisterTool === "function") {
         for (const tool of tools) {
           try {
             ctx.unregisterTool(tool.name);
