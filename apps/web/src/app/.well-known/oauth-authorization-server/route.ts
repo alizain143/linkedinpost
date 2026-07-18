@@ -8,8 +8,7 @@ import { getSiteUrl } from "@/lib/site";
 
 /**
  * OAuth 2.0 Authorization Server Metadata (RFC 8414) + Auth.md agent_auth.
- * Issuer is the marketing site so PRM → AS discovery stays on an origin we control
- * (Clerk remains the real token issuer documented in auth.md).
+ * `claim_uri` / `register_uri` are top-level (isitagentready / agents-txt.com schema).
  */
 export async function GET() {
   const site = getSiteUrl().origin;
@@ -28,6 +27,9 @@ export async function GET() {
     );
   }
 
+  const registerUri = `${site}/sign-up`;
+  const claimUri = `${site}/sign-up`;
+
   return Response.json(
     {
       issuer: site,
@@ -43,25 +45,28 @@ export async function GET() {
       subject_types_supported: clerk.subject_types_supported,
       id_token_signing_alg_values_supported:
         clerk.id_token_signing_alg_values_supported,
+      resource: getApiOrigin(),
       agent_auth: {
         skill: `${site}/auth.md`,
-        register_uri: `${site}/sign-up`,
+        register_uri: registerUri,
+        claim_uri: claimUri,
+        revocation_uri: `${site}/sign-in`,
         identity_types_supported: ["anonymous", "identity_assertion"],
+        anonymous: {
+          credential_types_supported: ["bearer"],
+        },
         identity_assertion: {
           assertion_types_supported: ["verified_email"],
           credential_types_supported: ["bearer"],
-          claim_uri: `${site}/sign-up`,
         },
-        anonymous: {
-          credential_types_supported: ["bearer"],
-          claim_uri: `${site}/sign-up`,
-        },
+        events_supported: [
+          "https://schemas.workos.com/events/agent/auth/identity/assertion/revoked",
+        ],
       },
-      resource: getApiOrigin(),
     },
     {
       headers: {
-        "Cache-Control": "public, max-age=3600",
+        "Cache-Control": "public, max-age=60",
       },
     },
   );
