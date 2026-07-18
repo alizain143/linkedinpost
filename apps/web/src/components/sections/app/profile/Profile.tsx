@@ -372,6 +372,7 @@ function ProfileEditor() {
                 type="button"
                 variant="outline"
                 size="md"
+                data-tour="profile-ai-wizard"
                 onClick={() => setAiWizardOpen(true)}
               >
                 Generate with AI
@@ -423,7 +424,7 @@ function ProfileEditor() {
               </div>
             ) : null}
 
-            <div className="mt-5 space-y-4">
+            <div className="mt-5 space-y-4" data-tour="profile-form">
               <InputField
                 label="Profile name"
                 value={form.name}
@@ -593,6 +594,7 @@ function ProfileEditor() {
                 type="button"
                 variant="primary"
                 size="md"
+                data-tour="profile-save"
                 disabled={isSaving || isDeleting}
                 onClick={() => void handleSave()}
               >

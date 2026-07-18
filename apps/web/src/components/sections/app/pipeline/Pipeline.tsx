@@ -311,7 +311,10 @@ function PipelineList({
   const [openMenuPostId, setOpenMenuPostId] = useState<string | null>(null);
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-[#eceef4] bg-white">
+    <div
+      className="overflow-hidden rounded-2xl border border-[#eceef4] bg-white"
+      data-tour="pipeline-board"
+    >
       <div className="divide-y divide-[#f1f3f8]">
         {posts.map((post) => (
           <div
@@ -396,8 +399,11 @@ export default function Pipeline() {
     router.replace(`?${params.toString()}`, { scroll: false });
   };
 
-  const pipelineSkeleton =
-    view === "list" ? <PipelineListSkeleton /> : <PipelineKanbanSkeleton />;
+  const pipelineSkeleton = (
+    <div data-tour="pipeline-board">
+      {view === "list" ? <PipelineListSkeleton /> : <PipelineKanbanSkeleton />}
+    </div>
+  );
 
   const scrollKanbanHorizontally = useCallback((clientX: number) => {
     const kanban = kanbanRef.current;
@@ -564,7 +570,10 @@ export default function Pipeline() {
         isEmpty={!!data && allPosts.length === 0}
         skeleton={pipelineSkeleton}
         empty={
-          <div className="rounded-2xl border border-[#eceef4] bg-white px-5 py-10 text-center">
+          <div
+            className="rounded-2xl border border-[#eceef4] bg-white px-5 py-10 text-center"
+            data-tour="pipeline-board"
+          >
             <p className="text-[14px] text-[#64748b]">
               No posts in your pipeline yet. Create a draft or generate content to
               get started.
@@ -586,6 +595,7 @@ export default function Pipeline() {
             <div
               ref={kanbanRef}
               className="pp-kanban pp-kanban--expanded"
+              data-tour="pipeline-board"
               onDragOver={(event) => {
                 if (!dragging) return;
                 trackDragPointer(event.clientX);

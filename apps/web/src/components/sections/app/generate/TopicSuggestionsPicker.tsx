@@ -24,7 +24,10 @@ export function TopicSuggestionsPicker({
   }
 
   return (
-    <div className="mb-4 rounded-xl border border-[#eceef4] bg-[#fafbff] p-3">
+    <div
+      className="mb-4 rounded-xl border border-[#eceef4] bg-[#fafbff] p-3"
+      data-tour="generate-topic-suggestions"
+    >
       <div className="mb-2 flex items-center justify-between gap-2">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-[#94a3b8]">
           Suggested topics
@@ -82,6 +85,7 @@ export function TopicMagicButton({
         type="button"
         variant="ghost"
         size="sm"
+        data-tour="generate-suggest-topics"
         disabled={disabled || loading}
         aria-label={
           hasSuggestions

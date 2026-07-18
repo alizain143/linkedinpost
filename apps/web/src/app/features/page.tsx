@@ -8,7 +8,7 @@ import { FEATURE_DETAIL } from "@/lib/marketing-data";
 import { pageMetadata } from "@/lib/seo/metadata";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Features | linkedinpost.ai",
+  title: "Features",
   description:
     "Everything you need to post on LinkedIn consistently. AI post generator, content calendar, voice presets, and agency workspaces.",
   path: "/features",

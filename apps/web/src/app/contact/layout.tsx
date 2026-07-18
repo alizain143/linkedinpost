@@ -3,7 +3,7 @@ import { BreadcrumbJsonLd } from "@/components/seo/json-ld";
 import { pageMetadata } from "@/lib/seo/metadata";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Contact | linkedinpost.ai",
+  title: "Contact",
   description: "Contact linkedinpost.ai for support, partnerships, or agency inquiries.",
   path: "/contact",
 });

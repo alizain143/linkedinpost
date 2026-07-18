@@ -26,6 +26,7 @@ Client approval actions always send email; in-app + push follow prefs.
 ```env
 RESEND_API_KEY=
 RESEND_FROM_EMAIL=notifications@yourdomain.com
+CONTACT_TO_EMAIL=hello@linkedinpost.ai
 FIREBASE_PROJECT_ID=
 FIREBASE_CLIENT_EMAIL=
 FIREBASE_PRIVATE_KEY=
@@ -35,6 +36,8 @@ FIREBASE_VAPID_KEY=
 Requires `REDIS_URL` for async delivery workers.
 
 HTML emails use branded templates in `email-template.ts` (inline PNG logo — email clients block SVG; per-type accent colors and CTAs).
+
+**Contact form:** `POST /v1/public/contact` (no auth) sends a raw Resend email to `CONTACT_TO_EMAIL` (default `hello@linkedinpost.ai`) with `replyTo` set to the submitter. Uses `ResendEmailSender.sendRaw` — not the notification queue.
 
 **Push device tokens:** `POST /notifications/devices` keeps one active token per browser `userAgent` (revokes older tokens for the same UA) and caps active tokens at 5 per user. The web app persists the registered token in `localStorage` and skips re-registering when Firebase returns the same value.
 

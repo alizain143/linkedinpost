@@ -61,8 +61,8 @@ Per-slice specs (when started): `FE-SLICE-NN-*.md` at repo root — same pattern
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:3001/v1
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=...
-# Production only — Chrome Web Store install URL (see deploy/extension/)
-NEXT_PUBLIC_LINKEDIN_EXTENSION_INSTALL_URL=https://chromewebstore.google.com/detail/{EXTENSION_ID}
+# Optional — defaults to Chrome Web Store listing; set local path for load-unpacked testing
+# NEXT_PUBLIC_LINKEDIN_EXTENSION_INSTALL_URL=/app/install-linkedin-extension
 ```
 
 ---
@@ -754,6 +754,10 @@ When a FE slice ships, update in the **same PR**:
 - Offline / optimistic council timeline
 - E2E Playwright suite (add after F06+)
 - Delete `lib/mock-app-data.ts` only when **all** consumers are wired
+
+### Shipped after initial slices
+
+- Product tour (`product-core-v1` auto-start + Settings replay), plan-unlock tours — see `CURRENT_ARCHITECTURE.md`
 
 ---
 

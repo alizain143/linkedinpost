@@ -36,10 +36,11 @@ User-initiated Chrome extension (Manifest V3) that reads the LinkedIn profile pa
 5. Fill **Privacy practices** — declare that data is sent only on user click to your API; no LinkedIn cookies collected
 6. Set **host permissions** justification: `linkedin.com/in/*` to read profile page user is viewing; your API host to POST imported fields
 7. Submit for **review** (typically a few days to 2 weeks)
-8. After approval, set on Vercel (production):
-   ```env
-   NEXT_PUBLIC_LINKEDIN_EXTENSION_INSTALL_URL=https://chromewebstore.google.com/detail/{EXTENSION_ID}
-   ```
+8. After approval, the web app defaults to the published listing:
+   [linkedinpost — Profile Import](https://chromewebstore.google.com/detail/linkedinpost-%E2%80%94-profile-im/fbghhjbahijljiejdnmhmkkjiiaekigf)
+   (`fbghhjbahijljiejdnmhmkkjiiaekigf`). Override with
+   `NEXT_PUBLIC_LINKEDIN_EXTENSION_INSTALL_URL` if needed (e.g. point at
+   `/app/install-linkedin-extension` for local load-unpacked testing).
 
 ## Update a published extension
 

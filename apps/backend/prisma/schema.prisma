@@ -199,6 +199,8 @@ model User {
   emailPublishAlerts      Boolean   @default(true)
   pushEnabled             Boolean   @default(true)
   plan                    UserPlan  @default(free)
+  toursSeen               Json?
+  lastAcknowledgedPlan    UserPlan?
   linkedInMemberId        String?
   linkedInProfileSyncedAt DateTime? @db.Timestamptz(6)
   linkedInProfile         Json?

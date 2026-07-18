@@ -6,7 +6,7 @@ import { getPublishedGuides } from "@/lib/guides/content";
 import { pageMetadata } from "@/lib/seo/metadata";
 
 export const metadata: Metadata = pageMetadata({
-  title: "LinkedIn Content Guides | linkedinpost.ai",
+  title: "LinkedIn Content Guides",
   description:
     "Practical guides on LinkedIn posting frequency, content calendars, hooks, and writing posts that don't sound like AI.",
   path: "/guides",

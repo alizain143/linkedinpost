@@ -41,6 +41,7 @@ function NavLinks({
             key={item.id}
             href={item.href}
             onClick={onNavigate}
+            data-tour={`nav-${item.id}`}
             className={cn(
               "flex items-center gap-[11px] rounded-[9px] px-[11px] py-2 text-[13px] transition-colors",
               active

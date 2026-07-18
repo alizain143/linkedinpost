@@ -88,12 +88,6 @@ export function Footer() {
                 </Link>
               ))}
               <Link
-                href="/features"
-                className="text-sm text-[#cdd5e6] transition-colors hover:text-white"
-              >
-                Use cases
-              </Link>
-              <Link
                 href="/sign-in"
                 className="text-sm text-[#cdd5e6] transition-colors hover:text-white"
               >

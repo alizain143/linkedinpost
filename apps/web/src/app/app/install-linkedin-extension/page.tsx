@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,38 +14,25 @@ export default function InstallLinkedInExtensionPage() {
   const installUrl = linkedInExtensionInstallUrl();
   const storeInstall = isExternalExtensionInstallUrl(installUrl);
 
+  useEffect(() => {
+    if (storeInstall) {
+      window.location.replace(installUrl);
+    }
+  }, [storeInstall, installUrl]);
+
   if (storeInstall) {
     return (
       <div className="mx-auto max-w-lg px-4 py-10">
-        <h1 className="font-display text-2xl font-bold text-[#0f172a]">
-          Install the LinkedIn import extension
-        </h1>
-        <p className="mt-2 text-sm leading-relaxed text-[#64748b]">
-          linkedinpost needs the Chrome extension to read your LinkedIn profile
-          when you click import. We never auto-scrape. You control when data is
-          sent.
+        <p className="text-sm text-[#64748b]">
+          Redirecting to the Chrome Web Store…
         </p>
-
-        <div className="mt-8 flex flex-wrap gap-3">
-          <Button type="button" variant="primary" size="sm" href={installUrl}>
-            Install from Chrome Web Store
-          </Button>
-          <Button type="button" variant="secondary" size="sm" href="/app/settings">
-            Back to Settings
-          </Button>
-        </div>
-
-        <ol className="mt-8 list-decimal space-y-3 pl-5 text-sm text-[#475569]">
-          <li>Click <strong>Install from Chrome Web Store</strong> above</li>
-          <li>Add the extension to Chrome and pin it from the puzzle icon</li>
-          <li>
-            Return to{" "}
-            <Link href="/app/settings" className="text-[#4f46e5] underline">
-              Settings
-            </Link>{" "}
-            and click <strong>Import profile</strong> again
-          </li>
-        </ol>
+        <p className="mt-4 text-sm text-[#475569]">
+          If nothing happens,{" "}
+          <a href={installUrl} className="text-[#4f46e5] underline">
+            open the extension listing
+          </a>
+          .
+        </p>
       </div>
     );
   }
@@ -61,9 +49,16 @@ export default function InstallLinkedInExtensionPage() {
       </p>
 
       <ol className="mt-6 list-decimal space-y-3 pl-5 text-sm text-[#475569]">
-        <li>Open Chrome and go to <code className="rounded bg-[#f1f5f9] px-1">chrome://extensions</code></li>
-        <li>Enable <strong>Developer mode</strong> (top right)</li>
-        <li>Click <strong>Load unpacked</strong></li>
+        <li>
+          Open Chrome and go to{" "}
+          <code className="rounded bg-[#f1f5f9] px-1">chrome://extensions</code>
+        </li>
+        <li>
+          Enable <strong>Developer mode</strong> (top right)
+        </li>
+        <li>
+          Click <strong>Load unpacked</strong>
+        </li>
         <li>
           Select the folder{" "}
           <code className="rounded bg-[#f1f5f9] px-1">{EXTENSION_PATH}</code> in

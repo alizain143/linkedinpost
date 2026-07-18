@@ -1,0 +1,225 @@
+/* Product tour (driver.js) — matches app shell: indigo accent, soft surfaces */
+
+.pp-tour-popover.driver-popover {
+  all: unset;
+  box-sizing: border-box;
+  position: fixed;
+  z-index: 1000000000;
+  display: block;
+  width: min(320px, calc(100vw - 32px));
+  max-width: 320px;
+  padding: 18px 18px 16px;
+  border-radius: 16px;
+  border: 1px solid #e8eaf2;
+  background: #ffffff;
+  color: #0f172a;
+  pointer-events: auto !important;
+  /* Smooth popover reposition between steps (after layout has settled) */
+  transition:
+    left 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    top 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.18s ease;
+  box-shadow:
+    0 18px 40px rgba(15, 23, 42, 0.14),
+    0 4px 12px rgba(15, 23, 42, 0.06);
+  font-family:
+    var(--font-sans, "Inter"),
+    ui-sans-serif,
+    system-ui,
+    sans-serif;
+}
+
+.pp-tour-popover .driver-popover-close-btn {
+  all: unset;
+  box-sizing: border-box;
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  pointer-events: auto !important;
+  font-family: inherit;
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1;
+  /* Optical center for the × glyph */
+  text-indent: 0;
+  color: #94a3b8;
+  background: transparent;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.pp-tour-popover .driver-popover-close-btn:hover,
+.pp-tour-popover .driver-popover-close-btn:focus {
+  color: #475569;
+  background: #f1f5f9;
+}
+
+.pp-tour-popover .driver-popover-title {
+  font-family:
+    var(--font-display, "Plus Jakarta Sans"),
+    ui-sans-serif,
+    system-ui,
+    sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  color: #0f172a;
+  margin: 0;
+  padding-right: 36px;
+  /* Title paints after the close btn in DOM — don't steal its clicks */
+  pointer-events: none;
+}
+
+.pp-tour-popover .driver-popover-description {
+  margin: 8px 0 0;
+  font-size: 13.5px;
+  font-weight: 450;
+  line-height: 1.55;
+  color: #64748b;
+  pointer-events: none;
+}
+
+.pp-tour-popover .driver-popover-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #f1f3f8;
+}
+
+.pp-tour-popover .driver-popover-progress-text {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #94a3b8;
+  white-space: nowrap;
+}
+
+.pp-tour-popover .driver-popover-navigation-btns {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-grow: 1;
+}
+
+.pp-tour-popover .driver-popover-footer button {
+  all: unset;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+/* Previous / secondary */
+.pp-tour-popover .driver-popover-prev-btn {
+  border: 1px solid #e3e6ef;
+  background: #ffffff;
+  color: #475569;
+}
+
+.pp-tour-popover .driver-popover-prev-btn:hover,
+.pp-tour-popover .driver-popover-prev-btn:focus {
+  background: #f6f7fb;
+  border-color: #cbd2e0;
+  color: #1e293b;
+}
+
+/* Next / Done — primary */
+.pp-tour-popover .driver-popover-footer button.driver-popover-next-btn {
+  border: 1px solid transparent !important;
+  background: #4f46e5 !important;
+  color: #ffffff !important;
+  box-shadow: 0 5px 14px rgba(79, 70, 229, 0.28);
+}
+
+.pp-tour-popover .driver-popover-footer button.driver-popover-next-btn:hover,
+.pp-tour-popover .driver-popover-footer button.driver-popover-next-btn:focus {
+  background: #4338ca !important;
+  color: #ffffff !important;
+}
+
+.pp-tour-popover .driver-popover-footer .driver-popover-btn-disabled {
+  opacity: 0.4;
+  pointer-events: none;
+  box-shadow: none;
+}
+
+/* Arrow matches card surface */
+.pp-tour-popover .driver-popover-arrow {
+  border: 7px solid #ffffff;
+}
+
+.pp-tour-popover .driver-popover-arrow-side-left {
+  border-right-color: transparent;
+  border-bottom-color: transparent;
+  border-top-color: transparent;
+}
+
+.pp-tour-popover .driver-popover-arrow-side-right {
+  border-left-color: transparent;
+  border-bottom-color: transparent;
+  border-top-color: transparent;
+}
+
+.pp-tour-popover .driver-popover-arrow-side-top {
+  border-right-color: transparent;
+  border-bottom-color: transparent;
+  border-left-color: transparent;
+}
+
+.pp-tour-popover .driver-popover-arrow-side-bottom {
+  border-left-color: transparent;
+  border-top-color: transparent;
+  border-right-color: transparent;
+}
+
+/* Spotlight stage — softer cutout */
+.driver-active .driver-active-element {
+  outline: 2px solid rgba(79, 70, 229, 0.45);
+  outline-offset: 2px;
+  border-radius: 10px !important;
+}
+
+/* Walkthrough mode: app chrome is inert; only the tour popover is interactive */
+body[data-pp-tour-active] .pp-sidebar,
+body[data-pp-tour-active] .pp-appmain,
+body[data-pp-tour-active] header {
+  pointer-events: none !important;
+}
+
+body[data-pp-tour-active] .pp-sidebar a,
+body[data-pp-tour-active] .pp-sidebar button,
+body[data-pp-tour-active] header button,
+body[data-pp-tour-active] header a,
+body[data-pp-tour-active] .pp-appmain button,
+body[data-pp-tour-active] .pp-appmain a {
+  cursor: default !important;
+}

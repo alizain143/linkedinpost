@@ -1,20 +1,60 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { MarketingLayout } from "@/components/layout/marketing-layout";
 import { Button } from "@/components/ui/button";
 import { InputField, TextareaField } from "@/components/ui/input";
 import { MsIcon } from "@/components/ui/ms-icon";
 import { SelectField } from "@/components/ui/select";
+import { useSubmitContactMutation } from "@/hooks/api/use-contact-api";
+import { getApiErrorMessage } from "@/lib/api-error-messages";
+import type { ContactSubject } from "@/lib/api/types/contact";
 import { CONTACT_SUBJECT_OPTIONS } from "@/lib/form-options";
 import { usePpToast } from "@/providers/pp-toast-provider";
 
 export default function ContactPage() {
   const { showToast } = usePpToast();
+  const submitContact = useSubmitContactMutation();
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [subject, setSubject] = useState<ContactSubject>("General question");
+  const [message, setMessage] = useState("");
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    showToast("Message sent. We'll reply within 1 business day", "send");
+
+    const trimmedEmail = email.trim();
+    const trimmedMessage = message.trim();
+
+    if (!trimmedEmail || !trimmedMessage) {
+      showToast("Please fill in your email and message", "error");
+      return;
+    }
+
+    if (trimmedMessage.length < 10) {
+      showToast("Message must be at least 10 characters", "error");
+      return;
+    }
+
+    try {
+      await submitContact.mutateAsync({
+        firstName: firstName.trim() || undefined,
+        lastName: lastName.trim() || undefined,
+        email: trimmedEmail,
+        subject,
+        message: trimmedMessage,
+      });
+      showToast("Message sent. We'll reply within 1 business day", "send");
+      setFirstName("");
+      setLastName("");
+      setEmail("");
+      setSubject("General question");
+      setMessage("");
+    } catch (error) {
+      showToast(getApiErrorMessage(error, "Could not send your message"), "error");
+    }
   };
 
   return (
@@ -45,11 +85,17 @@ export default function ContactPage() {
               label="First name"
               variant="marketing"
               placeholder="Maya"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              disabled={submitContact.isPending}
             />
             <InputField
               label="Last name"
               variant="marketing"
               placeholder="Reyes"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              disabled={submitContact.isPending}
             />
           </div>
           <InputField
@@ -59,12 +105,17 @@ export default function ContactPage() {
             variant="marketing"
             fieldClassName="mb-4"
             placeholder="you@company.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            disabled={submitContact.isPending}
           />
           <SelectField
             label="What can we help with?"
             fieldClassName="mb-4"
             options={CONTACT_SUBJECT_OPTIONS}
-            defaultValue="General question"
+            value={subject}
+            onChange={(e) => setSubject(e.target.value as ContactSubject)}
+            disabled={submitContact.isPending}
           />
           <TextareaField
             label="Message"
@@ -73,10 +124,19 @@ export default function ContactPage() {
             fieldClassName="mb-5"
             className="h-[120px]"
             placeholder="Tell us a bit about what you need…"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            disabled={submitContact.isPending}
           />
-          <Button type="submit" variant="primary" size="md" className="rounded-xl shadow-[0_6px_16px_rgba(79,70,229,0.28)]">
+          <Button
+            type="submit"
+            variant="primary"
+            size="md"
+            className="rounded-xl shadow-[0_6px_16px_rgba(79,70,229,0.28)]"
+            disabled={submitContact.isPending}
+          >
             <MsIcon name="send" size={18} />
-            Send message
+            {submitContact.isPending ? "Sending…" : "Send message"}
           </Button>
         </form>
 

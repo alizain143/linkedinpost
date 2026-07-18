@@ -37,6 +37,7 @@ ${SITE_DESCRIPTION}
 - [Features](${url("/features")}): AI Council, content calendar, media generator, autopilot
 - [How it works](${url("/how-it-works")}): Voice profile → AI Council → media → publish
 - [Pricing](${url("/pricing")}): Free + paid plans (${planSummary})
+- [FAQ](${url("/faq")}): Credits, voice, plans, and scheduling
 - [About](${url("/about")}): Mission and team
 - [Sign up free](${url("/sign-up")}): 5 AI credits/month, no credit card
 

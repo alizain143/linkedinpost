@@ -7,7 +7,7 @@ import { pageMetadata } from "@/lib/seo/metadata";
 import Link from "next/link";
 
 export const metadata: Metadata = pageMetadata({
-  title: "About | linkedinpost.ai",
+  title: "About",
   description:
     "We're fixing the blank page for a million professionals. linkedinpost.ai helps founders and creators post consistently without sounding like generic AI.",
   path: "/about",

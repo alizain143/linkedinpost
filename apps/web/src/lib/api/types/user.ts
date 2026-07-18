@@ -8,6 +8,8 @@ export type UserNotificationPrefs = {
   pushEnabled: boolean;
 };
 
+export type ToursSeenMap = Record<string, string>;
+
 export type ApiUser = {
   id: string;
   email: string;
@@ -18,6 +20,8 @@ export type ApiUser = {
   timezone: string;
   notifications: UserNotificationPrefs;
   plan: UserPlan;
+  toursSeen: ToursSeenMap;
+  lastAcknowledgedPlan: UserPlan | null;
   defaultWorkspaceId: string | null;
   createdAt: string;
   updatedAt: string;

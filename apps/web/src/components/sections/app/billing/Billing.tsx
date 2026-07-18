@@ -183,7 +183,7 @@ export default function Billing() {
             </div>
           ) : null}
 
-          <div className="pp-grid3">
+          <div className="pp-grid3" data-tour="billing-summary">
             <div className="rounded-2xl border border-[#eceef4] bg-white p-5">
               <div className="text-[12.5px] font-medium text-[#7886a0]">
                 Current plan

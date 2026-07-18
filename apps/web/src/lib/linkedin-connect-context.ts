@@ -64,4 +64,22 @@ export function clearLinkedInConnectSession() {
   clearLinkedInConnectWorkspaceId();
   clearLinkedInPreConnectAccountIds();
   clearLinkedInPendingExternalAccountId();
+  clearLinkedInOAuthReturnPath();
+}
+
+const LINKEDIN_OAUTH_RETURN_PATH_KEY = "pp.linkedin.oauthReturnPath";
+
+export function writeLinkedInOAuthReturnPath(path: string) {
+  if (typeof window === "undefined") return;
+  window.sessionStorage.setItem(LINKEDIN_OAUTH_RETURN_PATH_KEY, path);
+}
+
+export function readLinkedInOAuthReturnPath(): string | null {
+  if (typeof window === "undefined") return null;
+  return window.sessionStorage.getItem(LINKEDIN_OAUTH_RETURN_PATH_KEY);
+}
+
+export function clearLinkedInOAuthReturnPath() {
+  if (typeof window === "undefined") return;
+  window.sessionStorage.removeItem(LINKEDIN_OAUTH_RETURN_PATH_KEY);
 }

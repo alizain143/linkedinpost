@@ -73,6 +73,7 @@ import {
   needsLinkedInProfileImport,
 } from "@/lib/linkedin-utils";
 import { useAppUi } from "@/providers/app-ui-provider";
+import { useTour } from "@/providers/tour-provider";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
 import { useWorkspace } from "@/hooks/use-workspace";
 import {
@@ -145,6 +146,7 @@ export default function Settings() {
     confirmDeleteAccount,
     showToast,
   } = useAppUi();
+  const { startProductTour } = useTour();
   const { data: linkedInProfile, refetch: refetchLinkedInProfile } =
     useLinkedInProfile(activeWorkspaceId);
   const syncLinkedInProfile = useSyncLinkedInProfile(activeWorkspaceId);
@@ -650,7 +652,7 @@ export default function Settings() {
             />
           </div>
 
-          <div className="mt-4">
+          <div className="mt-4" data-tour="settings-account-timezone">
             <SelectField
               label="Timezone"
               hint="used for calendar and scheduling"
@@ -760,6 +762,7 @@ export default function Settings() {
                     type="button"
                     variant="primary"
                     size="xs"
+                    data-tour="settings-linkedin-import"
                     onClick={() => void runImportProfileFlow()}
                   >
                     Import profile
@@ -810,6 +813,7 @@ export default function Settings() {
                   type="button"
                   variant="linkedin"
                   size="xs"
+                  data-tour="settings-linkedin-connect"
                   onClick={openConnect}
                 >
                   Connect LinkedIn
@@ -972,6 +976,25 @@ export default function Settings() {
               </div>
             )}
           </div>
+        </div>
+
+        <div className="rounded-2xl border border-[#eceef4] bg-white p-6">
+          <h2 className="font-display text-lg font-bold">Help</h2>
+          <p className="mt-1 text-sm text-[#64748b]">
+            Replay the product walkthrough covering dashboard, generate,
+            profile, calendar, and billing.
+          </p>
+          <Button
+            type="button"
+            variant="muted"
+            size="sm"
+            className="mt-4 rounded-[10px] px-[15px]"
+            data-tour="settings-replay-tour"
+            onClick={startProductTour}
+          >
+            <MsIcon name="touch_app" size={17} className="text-[#64748b]" />
+            Replay product tour
+          </Button>
         </div>
 
         <div className="rounded-2xl border border-[#eceef4] bg-white p-6">

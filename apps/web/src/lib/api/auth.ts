@@ -1,5 +1,6 @@
 import { apiFetch } from "@/lib/api/fetch";
 import type { ApiUser } from "@/lib/api/types/user";
+import type { UserPlan } from "@/lib/api/types/enums";
 
 export type { ApiUser, UserNotificationPrefs } from "@/lib/api/types/user";
 
@@ -20,6 +21,8 @@ export type UpdateUserBody = Partial<
     "firstName" | "lastName" | "timezone" | "profileDocumentId"
   > & {
     notifications: Partial<ApiUser["notifications"]>;
+    markTourSeen: string;
+    lastAcknowledgedPlan: UserPlan;
   }
 >;
 

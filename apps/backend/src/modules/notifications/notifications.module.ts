@@ -48,6 +48,6 @@ const redisEnabled = Boolean(process.env.REDIS_URL);
     WeeklyReminderJob,
     ...(redisEnabled ? [NotificationDeliveryProcessor] : []),
   ],
-  exports: [NotificationEventService],
+  exports: [NotificationEventService, ResendEmailSender],
 })
 export class NotificationsModule {}

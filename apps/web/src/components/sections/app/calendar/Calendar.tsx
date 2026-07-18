@@ -290,7 +290,7 @@ export default function Calendar() {
               Times shown in {timezoneLabel(displayTimezone)}
             </p>
           </div>
-          <div className="flex gap-1">
+          <div className="flex gap-1" data-tour="calendar-nav">
             <Button
               type="button"
               variant="icon"

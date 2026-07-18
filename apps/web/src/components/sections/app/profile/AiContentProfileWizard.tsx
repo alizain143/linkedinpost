@@ -297,12 +297,14 @@ export function AiContentProfileWizard({
       className="animate-ppfade fixed inset-0 z-[90] flex items-center justify-center bg-[rgba(15,19,38,0.5)] p-6 backdrop-blur-[4px]"
       onClick={onClose}
       role="presentation"
+      data-tour="profile-ai-modal-backdrop"
     >
       <div
         className="animate-ppscale flex max-h-[90vh] w-full max-w-[720px] flex-col overflow-hidden rounded-[20px] bg-white shadow-[0_40px_90px_-30px_rgba(15,19,38,0.6)]"
         onClick={(event) => event.stopPropagation()}
         role="dialog"
         aria-modal="true"
+        data-tour="profile-ai-modal"
       >
         <div className="border-b border-[#eceef4] p-[26px] pb-5">
           <ModalHeader
@@ -320,7 +322,7 @@ export function AiContentProfileWizard({
           </p>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-[26px] pt-5">
+        <div className="flex-1 overflow-y-auto p-[26px] pt-5" data-tour="profile-ai-form">
           {step === "questionnaire" ? (
             <div className="space-y-4">
               {linkedInProfile ? (
@@ -422,7 +424,7 @@ export function AiContentProfileWizard({
               />
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-4" data-tour="profile-ai-suggestions">
               {suggestions.map((profile, index) => (
                 <SuggestionCard
                   key={`${profile.name}-${index}`}
@@ -456,10 +458,21 @@ export function AiContentProfileWizard({
               <p className="mr-2 text-[12.5px] text-[#64748b]">
                 {selectedCount} selected · {approveCost} credit
                 {approveCost === 1 ? "" : "s"}
+                {!canAffordApprove ? (
+                  <span className="mt-0.5 block text-[#b45309]">
+                    Not enough credits — deselect profiles or upgrade Billing.
+                  </span>
+                ) : null}
               </p>
             ) : null}
 
-            <Button type="button" variant="outline" size="md" onClick={onClose}>
+            <Button
+              type="button"
+              variant="outline"
+              size="md"
+              data-tour="profile-ai-cancel"
+              onClick={onClose}
+            >
               Cancel
             </Button>
 
@@ -468,6 +481,7 @@ export function AiContentProfileWizard({
                 type="button"
                 variant="primary"
                 size="md"
+                data-tour="profile-ai-generate"
                 disabled={suggestProfiles.isPending}
                 onClick={() => void handleGenerate()}
               >
@@ -483,6 +497,7 @@ export function AiContentProfileWizard({
                 type="button"
                 variant="primary"
                 size="md"
+                data-tour="profile-ai-save"
                 disabled={
                   approveProfiles.isPending ||
                   selectedCount === 0 ||

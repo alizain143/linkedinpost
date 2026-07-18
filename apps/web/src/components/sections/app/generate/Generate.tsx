@@ -1736,6 +1736,9 @@ export default function Generate() {
           <button
             key={m.id}
             type="button"
+            data-tour={
+              m.id === "quick" ? "generate-mode-quick" : "generate-mode-council"
+            }
             disabled={formDisabled || m.disabled}
             onClick={() => handleModeClick(m.id)}
             className={`flex flex-1 flex-col items-start gap-0.5 rounded-[11px] border p-2.5 text-left ${
@@ -1871,25 +1874,27 @@ export default function Generate() {
         />
       ) : null}
 
-      <InputField
-        label="Topic"
-        fieldClassName="mb-4"
-        value={form.topic}
-        maxLength={500}
-        placeholder="A hard lesson from scaling my team"
-        labelAside={
-          <TopicMagicButton
-            onClick={() => void handleSuggestTopics()}
-            loading={topicSuggestionsMutation.isPending}
-            disabled={!form.contentProfileId || formDisabled}
-            hasSuggestions={topicSuggestions.length > 0}
-          />
-        }
-        onChange={(event) =>
-          setForm((current) => ({ ...current, topic: event.target.value }))
-        }
-        disabled={formDisabled}
-      />
+      <div data-tour="generate-topic">
+        <InputField
+          label="Topic"
+          fieldClassName="mb-4"
+          value={form.topic}
+          maxLength={500}
+          placeholder="A hard lesson from scaling my team"
+          labelAside={
+            <TopicMagicButton
+              onClick={() => void handleSuggestTopics()}
+              loading={topicSuggestionsMutation.isPending}
+              disabled={!form.contentProfileId || formDisabled}
+              hasSuggestions={topicSuggestions.length > 0}
+            />
+          }
+          onChange={(event) =>
+            setForm((current) => ({ ...current, topic: event.target.value }))
+          }
+          disabled={formDisabled}
+        />
+      </div>
 
       <TopicSuggestionsPicker
         suggestions={topicSuggestions}
@@ -1960,6 +1965,7 @@ export default function Generate() {
         variant="gradient"
         size="lg"
         fullWidth
+        data-tour="generate-submit"
         onClick={() =>
           requestCreditAction(
             modeCost,
@@ -2030,7 +2036,10 @@ export default function Generate() {
         </div>
       ) : null}
 
-      <div className={compareMode ? "w-full min-w-0" : undefined}>
+      <div
+        className={compareMode ? "w-full min-w-0" : undefined}
+        data-tour="generate-results"
+      >
         {generateError && !generating && !generated && !activeCouncilJobId ? (
           <div className="mb-4 rounded-[11px] border border-[#fecaca] bg-[#fef2f2] px-3 py-2.5 text-[13px] text-[#b91c1c]">
             {generateError}

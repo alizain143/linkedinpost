@@ -15,6 +15,25 @@ function escapeXml(value: string): string {
     .replace(/'/g, '&apos;');
 }
 
+/** Ensure Resvg can resolve text when Inter is not installed (e.g. slim Docker). */
+const FONT_FALLBACKS = ['Liberation Sans', 'Arial', 'DejaVu Sans', 'sans-serif'];
+
+export function resolveSvgFontFamily(fontFamily?: string): string {
+  const requested = (fontFamily ?? 'Inter')
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean);
+  const ordered = [...requested];
+  for (const fallback of FONT_FALLBACKS) {
+    if (
+      !ordered.some((name) => name.toLowerCase() === fallback.toLowerCase())
+    ) {
+      ordered.push(fallback);
+    }
+  }
+  return ordered.join(', ');
+}
+
 function resolveTextBind(
   bind: string,
   value: string | undefined,
@@ -99,10 +118,10 @@ function renderTextBlock(
           }
         });
         void cursor;
-        return `<text x="${textX}" y="${lineY}" text-anchor="${anchor}" font-family="${escapeXml(style.fontFamily ?? 'Inter, Arial, sans-serif')}" font-size="${fontSize}" font-weight="${style.fontWeight ?? 400}">${spans.join('')}</text>`;
+        return `<text x="${textX}" y="${lineY}" text-anchor="${anchor}" font-family="${escapeXml(resolveSvgFontFamily(style.fontFamily))}" font-size="${fontSize}" font-weight="${style.fontWeight ?? 400}">${spans.join('')}</text>`;
       }
 
-      return `<text x="${textX}" y="${lineY}" text-anchor="${anchor}" font-family="${escapeXml(style.fontFamily ?? 'Inter, Arial, sans-serif')}" font-size="${fontSize}" font-weight="${style.fontWeight ?? 400}" fill="${escapeXml(style.color)}">${escapeXml(line)}</text>`;
+      return `<text x="${textX}" y="${lineY}" text-anchor="${anchor}" font-family="${escapeXml(resolveSvgFontFamily(style.fontFamily))}" font-size="${fontSize}" font-weight="${style.fontWeight ?? 400}" fill="${escapeXml(style.color)}">${escapeXml(line)}</text>`;
     })
     .join('\n');
 }
@@ -135,7 +154,7 @@ function renderAvatar(
 
   return `
     <circle cx="${cx}" cy="${cy}" r="${r}" fill="#E4E4E7" />
-    <text x="${cx}" y="${cy + el.size * 0.12}" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="${el.size * 0.36}" font-weight="600" fill="#52525B">${escapeXml(initials || '?')}</text>
+    <text x="${cx}" y="${cy + el.size * 0.12}" text-anchor="middle" font-family="${escapeXml(resolveSvgFontFamily('Inter'))}" font-size="${el.size * 0.36}" font-weight="600" fill="#52525B">${escapeXml(initials || '?')}</text>
   `;
 }
 

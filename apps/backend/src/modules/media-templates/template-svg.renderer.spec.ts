@@ -22,6 +22,7 @@ describe('renderTemplateSvg', () => {
     expect(svg).toContain('Too Easy To Break.');
     expect(svg).toContain('Save &amp; Repost');
     expect(svg).toContain('viewBox="0 0 1080 1080"');
+    expect(svg).toContain('Liberation Sans');
     // Empty visual zone renders a placeholder rect until AI inset is provided
     expect(svg).toContain('fill="#F4F4F5"');
   });

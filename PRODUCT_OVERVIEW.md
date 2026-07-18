@@ -40,6 +40,7 @@ Update this section as features land. Tell the agent to mark items `[x]` when do
 ### Foundation
 
 - [x] Clerk auth (sign-in, JWT guard, webhooks, `/auth/me`)
+- [x] In-app product tour (`product-core-v1`) + plan-unlock walkthroughs (versioned; Pro/Agency)
 - [x] Prisma `User` + `Document` models
 - [x] R2 presigned document upload
 - [x] Personal `Workspace` auto-created on signup
@@ -154,12 +155,13 @@ Core promise: generate authentic LinkedIn posts, plan a content calendar, run an
 
 ### Marketing (mostly static — low backend)
 
-- Landing, Features, How it Works, Pricing, About, Privacy, Terms, Contact
+- Landing, Features, How it Works, Pricing, FAQ, About, Privacy, Terms, Contact (`POST /v1/public/contact` → Resend)
+- Agent discovery: `/robots.txt`, `/sitemap.xml`, `/llms.txt`, `/.well-known/api-catalog`, `/auth.md`, OAuth PRM/OIDC via Clerk; DNS-AID ops in `deploy/dns-aid.md`
 - Auth: sign-in / sign-up (Clerk — started)
 
 ### App shell (shared layout)
 
-- Sidebar nav: Dashboard, Generate, Autopilot, Pipeline, Calendar, Approvals, Clients, Profile, Billing, Settings
+- Sidebar nav: Dashboard, Profile, Templates, Generate, Autopilot, Pipeline, Approvals, Calendar, Clients, Billing, Settings
 - Workspace switcher (personal vs agency clients)
 - Notifications dropdown (topbar) + full inbox at `/app/notifications` (via **View all**)
 - Global search (“Search posts, drafts…”)
@@ -500,7 +502,6 @@ Beyond current `User` / `Document`:
 
 ## 11. Deferred (not building yet)
 
-- Full onboarding wizard
 - Apple sign-in
 - Auto-approve by score threshold (COMING SOON in design)
 - Marketing CMS backend (keep static)

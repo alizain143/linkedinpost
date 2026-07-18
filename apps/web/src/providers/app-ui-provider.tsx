@@ -28,7 +28,10 @@ import {
   getLinkedInConnectionState,
   type LinkedInConnectionState,
 } from "@/lib/linkedin-utils";
-import { writeLinkedInConnectWorkspaceId } from "@/lib/linkedin-connect-context";
+import {
+  readLinkedInOAuthReturnPath,
+  writeLinkedInConnectWorkspaceId,
+} from "@/lib/linkedin-connect-context";
 import { startLinkedInOAuth } from "@/lib/api/linkedin";
 import { DEFAULT_TIMEZONE } from "@/lib/timezones";
 import { revokeCurrentPushToken } from "@/lib/push-token-lifecycle";
@@ -161,7 +164,10 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
         invalidateLinkedIn();
       }
 
-      const { url } = await startLinkedInOAuth(token, activeWorkspaceId);
+      const returnPath = readLinkedInOAuthReturnPath() ?? undefined;
+      const { url } = await startLinkedInOAuth(token, activeWorkspaceId, {
+        returnPath,
+      });
       window.location.assign(url);
     } catch (err) {
       setConnecting(false);

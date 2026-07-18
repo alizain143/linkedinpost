@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHmac, timingSafeEqual } from 'crypto';
+import { primaryFrontendUrl } from '../../config/frontend-url';
 import { PrismaService } from '../../prisma/prisma.service';
 import { WorkspacesService } from '../workspaces/workspaces.service';
 import { LinkedInApiClient } from './linkedin-api.client';
@@ -23,6 +24,8 @@ type OAuthStatePayload = {
   workspaceId: string;
   userId: string;
   exp: number;
+  /** Optional relative app path to return to after OAuth (e.g. /app/settings) */
+  returnPath?: string;
 };
 
 type LinkedInTokenResponse = {
@@ -51,6 +54,7 @@ export class LinkedInOAuthService {
   async createAuthorizationUrl(
     workspaceId: string,
     userId: string,
+    returnPath?: string,
   ): Promise<string> {
     if (!this.isDirectOAuthConfigured()) {
       throw new BadRequestException({
@@ -61,10 +65,13 @@ export class LinkedInOAuthService {
 
     await this.workspacesService.assertMember(userId, workspaceId);
 
+    const safeReturnPath = this.sanitizeReturnPath(returnPath);
+
     const state = this.signState({
       workspaceId,
       userId,
       exp: Math.floor(Date.now() / 1000) + 600,
+      ...(safeReturnPath ? { returnPath: safeReturnPath } : {}),
     });
 
     const params = new URLSearchParams({
@@ -86,12 +93,21 @@ export class LinkedInOAuthService {
     state: string | undefined,
     error: string | undefined,
   ): Promise<string> {
-    const frontendUrl = (
-      process.env.FRONTEND_URL ?? 'http://localhost:3000'
-    ).split(',')[0]!.trim();
+    const frontendUrl = primaryFrontendUrl();
+    const fallbackPath = '/app/dashboard';
 
     if (error || !code || !state) {
-      return `${frontendUrl}/app/dashboard?linkedin=error&message=${encodeURIComponent(error ?? 'LinkedIn authorization was cancelled')}`;
+      let returnPath = fallbackPath;
+      try {
+        if (state) {
+          returnPath =
+            this.sanitizeReturnPath(this.verifyState(state).returnPath) ??
+            fallbackPath;
+        }
+      } catch {
+        returnPath = fallbackPath;
+      }
+      return `${frontendUrl}${returnPath}?linkedin=error&message=${encodeURIComponent(error ?? 'LinkedIn authorization was cancelled')}`;
     }
 
     const payload = this.verifyState(state);
@@ -129,7 +145,9 @@ export class LinkedInOAuthService {
       },
     });
 
-    return `${frontendUrl}/app/dashboard?linkedin=connected&workspaceId=${payload.workspaceId}`;
+    const returnPath =
+      this.sanitizeReturnPath(payload.returnPath) ?? fallbackPath;
+    return `${frontendUrl}${returnPath}?linkedin=connected&workspaceId=${payload.workspaceId}`;
   }
 
   async getWorkspaceAccessToken(workspaceId: string): Promise<string | null> {
@@ -219,6 +237,16 @@ export class LinkedInOAuthService {
     }
 
     return (await response.json()) as LinkedInTokenResponse;
+  }
+
+  private sanitizeReturnPath(returnPath: string | undefined): string | null {
+    if (!returnPath || typeof returnPath !== 'string') return null;
+    // Only allow same-origin relative /app paths (no open redirects)
+    if (!returnPath.startsWith('/app')) return null;
+    if (returnPath.includes('://') || returnPath.includes('//')) return null;
+    if (returnPath.includes('?') || returnPath.includes('#')) return null;
+    if (returnPath.length > 200) return null;
+    return returnPath;
   }
 
   private signState(payload: OAuthStatePayload): string {

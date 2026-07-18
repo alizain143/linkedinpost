@@ -16,6 +16,7 @@ export const FOOTER_PRODUCT = [
 
 export const FOOTER_COMPANY = [
   { label: "About", href: "/about" },
+  { label: "FAQ", href: "/faq" },
   { label: "Contact", href: "/contact" },
 ];
 
@@ -26,14 +27,18 @@ export const FOOTER_LEGAL = [
 
 export const APP_NAV = [
   { id: "dashboard", href: "/app/dashboard", icon: "dashboard", label: "Dashboard" },
+  // Setup before create
+  { id: "profile", href: "/app/profile", icon: "badge", label: "Profile" },
+  { id: "templates", href: "/app/templates", icon: "dashboard_customize", label: "Templates" },
+  // Create
   { id: "generate", href: "/app/generate", icon: "auto_awesome", label: "Generate" },
   { id: "autopilot", href: "/app/autopilot", icon: "auto_mode", label: "Autopilot" },
+  // Review & ship
   { id: "pipeline", href: "/app/pipeline", icon: "account_tree", label: "Pipeline" },
-  { id: "calendar", href: "/app/calendar", icon: "calendar_month", label: "Calendar" },
   { id: "approvals", href: "/app/approvals", icon: "fact_check", label: "Approvals" },
+  { id: "calendar", href: "/app/calendar", icon: "calendar_month", label: "Calendar" },
+  // Scale + account
   { id: "clients", href: "/app/clients", icon: "groups", label: "Clients" },
-  { id: "templates", href: "/app/templates", icon: "dashboard_customize", label: "Templates" },
-  { id: "profile", href: "/app/profile", icon: "badge", label: "Profile" },
   { id: "billing", href: "/app/billing", icon: "credit_card", label: "Billing" },
   { id: "settings", href: "/app/settings", icon: "settings", label: "Settings" },
 ] as const;

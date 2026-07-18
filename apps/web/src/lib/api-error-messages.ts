@@ -78,6 +78,12 @@ export function getApiErrorMessage(
         return error.message || fallback;
       case "BILLING_UNAVAILABLE":
         return "Billing is not available right now. Try again later.";
+      case "CONTACT_UNAVAILABLE":
+      case "CONTACT_SEND_FAILED":
+        return (
+          error.message ||
+          "Contact form is temporarily unavailable. Email hello@linkedinpost.ai instead."
+        );
       case "ALREADY_SUBSCRIBED":
         return "You're already on this plan.";
       case "BILLING_ACCOUNT_REQUIRED":

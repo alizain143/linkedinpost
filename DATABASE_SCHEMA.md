@@ -2,7 +2,7 @@
 
 > **Source of truth:** `apps/backend/prisma/schema.prisma`  
 > **Companion docs:** [CURRENT_ARCHITECTURE.md](CURRENT_ARCHITECTURE.md) · [PRODUCT_OVERVIEW.md](PRODUCT_OVERVIEW.md)  
-> **Last synced:** July 2026 (Slice 24 — changesApplyMode, revise/quick_draft_single job types)
+> **Last synced:** July 2026 (drop setup wizard columns; keep product tours)
 
 Developer reference for every PostgreSQL table, field, enum, and relationship. Read this before writing Prisma queries, migrations, or API mappers.
 
@@ -296,6 +296,8 @@ Account identity. Synced from Clerk on sign-in/webhook.
 | `emailPublishAlerts` | Boolean | No | `true` | Email pref for publish success/failure |
 | `pushEnabled` | Boolean | No | `true` | Master web push toggle (`PATCH /auth/me`) |
 | `plan` | UserPlan | No | `free` | **Denormalized** from XPay subscription webhooks. Credit limit source |
+| `toursSeen` | JSON | Yes | — | Map of tour id → ISO timestamp (e.g. `product-core-v1`). Updated via `markTourSeen` |
+| `lastAcknowledgedPlan` | UserPlan | Yes | — | Last plan the user dismissed unlock UI for. Compared to `plan` for Pro/Agency feature unlocks |
 | `linkedInMemberId` | String | Yes | — | LinkedIn member URN/id for publish API |
 | `linkedInProfileSyncedAt` | Timestamptz | Yes | — | Last profile sync timestamp |
 | `linkedInProfile` | JSON | Yes | — | Cached profile: OIDC fields + optional user import (`enrichmentStatus`, `headline`, `summary`, `positions`, etc.) |

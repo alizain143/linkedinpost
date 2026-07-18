@@ -5,6 +5,7 @@ import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { globalValidationPipe } from './common/pipes/validation.pipe';
+import { frontendUrlOrigins } from './config/frontend-url';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -17,10 +18,7 @@ async function bootstrap() {
 
   app.setGlobalPrefix('v1');
 
-  const frontendUrls = (process.env.FRONTEND_URL ?? 'http://localhost:3000')
-    .split(',')
-    .map((origin) => origin.trim())
-    .filter(Boolean);
+  const frontendUrls = frontendUrlOrigins();
   const corsOrigins =
     process.env.NODE_ENV === 'production'
       ? frontendUrls

@@ -577,6 +577,7 @@ export default function CalendarGenerate() {
         variant="gradient"
         size="lg"
         fullWidth
+        data-tour="calgen-submit"
         onClick={() => handleGenerateClick()}
         disabled={!canSubmit}
       >

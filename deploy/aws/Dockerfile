@@ -1,8 +1,15 @@
 # Production image only — Nest is built on the deploy machine (t3.micro OOMs on nest build).
 FROM node:20-bookworm-slim
 
+# fontconfig + Liberation/DejaVu: Resvg needs TTF/OTF in the image or template text is blank
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && apt-get install -y --no-install-recommends \
+    openssl \
+    ca-certificates \
+    fontconfig \
+    fonts-liberation \
+    fonts-dejavu-core \
+  && fc-cache -f \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

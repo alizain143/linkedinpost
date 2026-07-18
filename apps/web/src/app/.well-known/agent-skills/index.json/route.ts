@@ -18,6 +18,11 @@ export function GET() {
       llmsTxt: `${origin}/llms.txt`,
       llmsFullTxt: `${origin}/llms-full.txt`,
       sitemap: `${origin}/sitemap.xml`,
+      robotsTxt: `${origin}/robots.txt`,
+      apiCatalog: `${origin}/.well-known/api-catalog`,
+      authMd: `${origin}/auth.md`,
+      oauthProtectedResource: `${origin}/.well-known/oauth-protected-resource`,
+      openidConfiguration: `${origin}/.well-known/openid-configuration`,
     },
   });
 }

@@ -46,6 +46,16 @@ export class UserResponseDto {
   @ApiProperty({ enum: UserPlan, example: UserPlan.free })
   plan!: UserPlan;
 
+  @ApiProperty({
+    type: 'object',
+    additionalProperties: { type: 'string' },
+    example: { 'product-core-v1': '2026-07-19T00:00:00.000Z' },
+  })
+  toursSeen!: Record<string, string>;
+
+  @ApiProperty({ enum: UserPlan, nullable: true })
+  lastAcknowledgedPlan!: UserPlan | null;
+
   @ApiProperty({ format: 'uuid', nullable: true })
   defaultWorkspaceId!: string | null;
 

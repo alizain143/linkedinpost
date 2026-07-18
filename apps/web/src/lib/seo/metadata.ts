@@ -78,6 +78,8 @@ type PageMetaInput = {
   description?: string;
   path: string;
   noIndex?: boolean;
+  /** Skip root `"%s | linkedinpost.ai"` template (e.g. home title). */
+  absolute?: boolean;
   openGraphImage?: string;
   openGraphImageAlt?: string;
 };
@@ -87,23 +89,25 @@ export function pageMetadata({
   description = SITE_DESCRIPTION,
   path,
   noIndex,
+  absolute,
   openGraphImage,
   openGraphImageAlt,
 }: PageMetaInput): Metadata {
   const shouldIndex = isIndexingAllowed() && !noIndex;
   const ogImage = openGraphImage ?? "/opengraph-image";
   const ogAlt = openGraphImageAlt ?? title;
+  const displayTitle = absolute ? title : `${title} | ${SITE_NAME}`;
 
   return {
-    title,
+    title: absolute ? { absolute: title } : title,
     description,
     keywords: SITE_KEYWORDS,
     alternates: { canonical: path },
     openGraph: {
-      ...defaultOpenGraph(title, description, ogImage, ogAlt),
+      ...defaultOpenGraph(displayTitle, description, ogImage, ogAlt),
       url: path,
     },
-    twitter: defaultTwitter(title, description, ogImage, ogAlt),
+    twitter: defaultTwitter(displayTitle, description, ogImage, ogAlt),
     robots: shouldIndex ? INDEX_ROBOTS : NOINDEX_ROBOTS,
   };
 }

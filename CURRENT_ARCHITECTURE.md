@@ -33,7 +33,7 @@ AI LinkedIn content engine: generate posts → AI Council pipeline → human app
 
 ---
 
-## Backend modules (22)
+## Backend modules (23)
 
 | Module | Responsibility |
 |--------|----------------|
@@ -47,6 +47,7 @@ AI LinkedIn content engine: generate posts → AI Council pipeline → human app
 | calendar | Month/week/list views (scheduledAt on PostPackage) |
 | approvals | Approval queue tabs |
 | approval-share | Tokenized public approve/reject links |
+| contact | Public marketing contact form → Resend email to `CONTACT_TO_EMAIL` |
 | scheduling | Schedule/unschedule/reschedule |
 | linkedin | Per-workspace connection bind, profile sync, **user-initiated profile import** (extension DOM capture → LLM extract + paste fallback), publish now, scheduled publish worker |
 | credits | Ledger with billing-aligned credit period |
@@ -201,7 +202,7 @@ Council agent pipeline: writer → reviewer → editor → media_creator → med
 | Area | Routes |
 |------|--------|
 | Health | `GET /v1/health` |
-| Auth | `GET/PATCH /v1/auth/me`, `POST /v1/auth/logout`, Clerk webhook |
+| Auth | `GET/PATCH /v1/auth/me` (profile, notifications, `markTourSeen`, `lastAcknowledgedPlan`), `POST /v1/auth/logout`, Clerk webhook |
 | Documents | `POST /v1/documents/init`, `GET /v1/documents/:id` |
 | Workspaces | `GET /v1/workspaces`, `GET current`, `POST`, `GET/PATCH/DELETE :workspaceId` |
 | Content profiles | CRUD + AI suggest/approve `/v1/workspaces/:workspaceId/content-profiles` |
@@ -221,7 +222,14 @@ Council agent pipeline: writer → reviewer → editor → media_creator → med
 | LinkedIn publish | Single image via `content.media`; 2–20 carousel slides via `content.multiImage` |
 | Autopilot | `GET/PUT .../autopilot`, planned posts |
 | Approval share | create/list/revoke tokens + public approve endpoints |
+| Contact | `POST /v1/public/contact` (no auth) — emails `CONTACT_TO_EMAIL` via Resend |
 | Dashboard | `GET .../dashboard/stats` |
+
+### Product tours (web)
+
+- **Core product tour** (`product-core-v1`) — auto-starts once when unseen; Settings → Replay; show-only coachmarks (app locked during tour); Profile → LinkedIn → Generate → Pipeline → Approvals → Calendar → Billing (conditional Pro/Agency)
+- **Plan unlock** — when `plan` unlocks features vs `lastAcknowledgedPlan`, modal + optional `pro-unlock-v1` / `agency-unlock-v1` tour
+- State on `User`: `toursSeen`, `lastAcknowledgedPlan`; updated via `PATCH /v1/auth/me`
 
 ---
 
@@ -234,7 +242,7 @@ Council agent pipeline: writer → reviewer → editor → media_creator → med
 | R2 | Profile images, post media (AI feed images) |
 | OpenAI | Text generation (GPT-5.4 default) |
 | Google Gemini | Feed images (Nano Banana 2) |
-| Resend | Transactional notification email |
+| Resend | Transactional notification email + public contact form |
 | Firebase FCM | Web push notifications |
 | Redis | BullMQ job queue |
 

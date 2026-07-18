@@ -18,6 +18,7 @@ type ButtonProps = {
   "aria-checked"?: boolean;
   "aria-label"?: string;
   "aria-expanded"?: boolean;
+  "data-tour"?: string;
 };
 
 const base =
@@ -130,6 +131,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       "aria-checked": ariaChecked,
       "aria-label": ariaLabel,
       "aria-expanded": ariaExpanded,
+      "data-tour": dataTour,
     },
     ref,
   ) {
@@ -137,7 +139,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 
     if (href) {
       return (
-        <Link href={href} className={classes}>
+        <Link href={href} className={classes} data-tour={dataTour}>
           {children}
         </Link>
       );
@@ -154,6 +156,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         aria-checked={ariaChecked}
         aria-label={ariaLabel}
         aria-expanded={ariaExpanded}
+        data-tour={dataTour}
       >
         {children}
       </button>

@@ -28,6 +28,22 @@ describe('user.mapper', () => {
         pushEnabled: true,
       });
       expect(result.plan).toBe(UserPlan.starter);
+      expect(result.toursSeen).toEqual({});
+      expect(result.lastAcknowledgedPlan).toBe(UserPlan.pro);
+    });
+
+    it('parses toursSeen json map', () => {
+      const user = buildUser({
+        toursSeen: { 'product-core-v1': '2026-07-19T00:00:00.000Z' },
+        lastAcknowledgedPlan: UserPlan.free,
+      });
+
+      const result = toUserResponse(user);
+
+      expect(result.toursSeen).toEqual({
+        'product-core-v1': '2026-07-19T00:00:00.000Z',
+      });
+      expect(result.lastAcknowledgedPlan).toBe(UserPlan.free);
     });
   });
 });

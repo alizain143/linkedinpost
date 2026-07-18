@@ -36,6 +36,7 @@ import { ApprovalShareModule } from './modules/approval-share/approval-share.mod
 import { MediaGenerationModule } from './modules/media-generation/media-generation.module';
 import { MediaTemplatesModule } from './modules/media-templates/media-templates.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { ContactModule } from './modules/contact/contact.module';
 import { HealthController } from './health.controller';
 
 @Module({
@@ -81,6 +82,7 @@ import { HealthController } from './health.controller';
     BillingModule,
     ApprovalShareModule,
     NotificationsModule,
+    ContactModule,
   ],
   controllers: [HealthController],
 })

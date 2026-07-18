@@ -1,4 +1,5 @@
 import { registerAs } from '@nestjs/config';
+import { primaryFrontendUrl } from './frontend-url';
 
 export default registerAs('xpay', () => ({
   publicKey: process.env.XPAY_PUBLIC_KEY,
@@ -19,5 +20,5 @@ export default registerAs('xpay', () => ({
     : 120,
   apiBaseUrl:
     process.env.XPAY_API_BASE_URL ?? 'https://api.xpaycheckout.com',
-  frontendUrl: process.env.FRONTEND_URL ?? 'http://localhost:3000',
+  frontendUrl: primaryFrontendUrl(),
 }));

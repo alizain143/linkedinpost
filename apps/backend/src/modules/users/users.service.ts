@@ -1,21 +1,23 @@
 import {
   ConflictException,
-  HttpException,
-  HttpStatus,
   Inject,
   Injectable,
   NotFoundException,
   UnauthorizedException,
   forwardRef,
 } from '@nestjs/common';
-import { User } from '@prisma/client';
+import { Prisma, User } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { DocumentsService } from '../documents/documents.service';
 import { WorkspacesService } from '../workspaces/workspaces.service';
 import { resolveClerkProfileImageUrl } from './clerk-profile-image.util';
 import { CreateFromClerkDto } from './dto/create-from-clerk.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { toUserResponse, UserResponse } from './user.mapper';
+import {
+  parseToursSeen,
+  toUserResponse,
+  UserResponse,
+} from './user.mapper';
 
 @Injectable()
 export class UsersService {
@@ -191,8 +193,14 @@ export class UsersService {
 
   async updateProfile(userId: string, dto: UpdateUserDto): Promise<User> {
     await this.findById(userId);
-    const { profileDocumentId, notifications, timezone, ...profileFields } =
-      dto;
+    const {
+      profileDocumentId,
+      notifications,
+      timezone,
+      markTourSeen,
+      lastAcknowledgedPlan,
+      ...profileFields
+    } = dto;
 
     return this.prisma.$transaction(async (tx) => {
       const user = await tx.user.findUniqueOrThrow({ where: { id: userId } });
@@ -233,16 +241,29 @@ export class UsersService {
           }
         : {};
 
+      const now = new Date();
+      const data: Prisma.UserUncheckedUpdateInput = {
+        ...profileFields,
+        ...(timezone !== undefined ? { timezone } : {}),
+        ...notificationData,
+        ...(profileDocumentId !== undefined ? { profileDocumentId } : {}),
+      };
+
+      if (markTourSeen) {
+        const existing = parseToursSeen(user.toursSeen);
+        data.toursSeen = {
+          ...existing,
+          [markTourSeen]: now.toISOString(),
+        };
+      }
+
+      if (lastAcknowledgedPlan !== undefined) {
+        data.lastAcknowledgedPlan = lastAcknowledgedPlan;
+      }
+
       return tx.user.update({
         where: { id: userId },
-        data: {
-          ...profileFields,
-          ...(timezone !== undefined ? { timezone } : {}),
-          ...notificationData,
-          ...(profileDocumentId !== undefined
-            ? { profileDocumentId }
-            : undefined),
-        },
+        data,
       });
     });
   }

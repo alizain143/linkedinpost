@@ -19,6 +19,7 @@ export const metadata: Metadata = pageMetadata({
   title: SITE_TITLE_DEFAULT,
   description: SITE_DESCRIPTION,
   path: "/",
+  absolute: true,
 });
 
 export default async function HomePage() {

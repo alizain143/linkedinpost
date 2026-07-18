@@ -208,7 +208,7 @@ function DashboardContent({
             </Link>
           </div>
 
-          <div className="pp-metrics mb-5">
+          <div className="pp-metrics mb-5" data-tour="dashboard-metrics">
             {buildDashboardMetrics(stats, balance).map((metric) => {
               const tint =
                 METRIC_TINTS[metric.icon] ?? { bg: "#eef2ff", color: "#4f46e5" };
@@ -483,7 +483,10 @@ export default function Dashboard() {
   return (
     <div>
       {linkedinConnectionState === "disconnected" ? (
-        <div className="mb-5 flex flex-wrap items-center gap-4 rounded-2xl border border-[#cfe3f7] bg-gradient-to-br from-[#eaf3fc] to-[#f4f9ff] px-5 py-4">
+        <div
+          className="mb-5 flex flex-wrap items-center gap-4 rounded-2xl border border-[#cfe3f7] bg-gradient-to-br from-[#eaf3fc] to-[#f4f9ff] px-5 py-4"
+          data-tour="dashboard-linkedin-banner"
+        >
           <div className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-[11px] bg-[#0a66c2] font-display text-[19px] font-extrabold text-white">
             in
           </div>
@@ -508,7 +511,10 @@ export default function Dashboard() {
           </Button>
         </div>
       ) : linkedinConnectionState === "needsPublishScope" ? (
-        <div className="mb-5 flex flex-wrap items-center gap-4 rounded-2xl border border-[#fde68a] bg-gradient-to-br from-[#fffbeb] to-[#fffdf5] px-5 py-4">
+        <div
+          className="mb-5 flex flex-wrap items-center gap-4 rounded-2xl border border-[#fde68a] bg-gradient-to-br from-[#fffbeb] to-[#fffdf5] px-5 py-4"
+          data-tour="dashboard-linkedin-banner"
+        >
           <div className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-[11px] bg-[#d97706]">
             <MsIcon name="warning" size={22} className="text-white" />
           </div>
@@ -580,6 +586,7 @@ export default function Dashboard() {
             variant="primary"
             size="md"
             className="inline-flex shrink-0 items-center gap-1.5 rounded-[11px] px-[18px] py-[11px] text-[14px] shadow-[0_5px_14px_rgba(79,70,229,0.28)]"
+            data-tour="dashboard-generate"
             disabled={!canGeneratePost}
             onClick={handleGenerateClick}
           >

@@ -4,7 +4,7 @@ import { TERMS_SECTIONS } from "@/lib/marketing-data";
 import { pageMetadata } from "@/lib/seo/metadata";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Terms & Conditions | linkedinpost.ai",
+  title: "Terms & Conditions",
   description: "Terms and conditions for using linkedinpost.ai.",
   path: "/terms",
 });

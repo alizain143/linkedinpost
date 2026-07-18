@@ -25,6 +25,18 @@ Next.js App Router · Clerk auth · TanStack Query · API at `NEXT_PUBLIC_API_UR
 - **UI:** Prefer wiring existing section components; delete unused mock data as slices ship
 - **Types:** Align with backend DTOs — see Swagger or `apps/backend/src/common/swagger/`
 
+## Agent / SEO discovery env
+
+```env
+NEXT_PUBLIC_SITE_URL=https://linkedinpost.ai
+NEXT_PUBLIC_API_URL=https://api.example.com/v1
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_live_...
+# Issuer is derived from the publishable key; override only if needed:
+# NEXT_PUBLIC_CLERK_FRONTEND_API=https://your-instance.clerk.accounts.dev
+```
+
+DNS-AID records (ops): see [deploy/dns-aid.md](../../deploy/dns-aid.md).
+
 ## Keep docs updated
 
 When shipping a frontend slice: check off [FRONTEND_IMPLEMENTATION.md](../../FRONTEND_IMPLEMENTATION.md), update `PRODUCT_OVERVIEW.md` frontend section, and mark `FE-SLICE-NN-*.md` complete.

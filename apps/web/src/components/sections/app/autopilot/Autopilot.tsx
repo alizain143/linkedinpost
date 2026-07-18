@@ -412,6 +412,7 @@ export default function Autopilot() {
             <Button
               variant={config.enabled ? "secondary" : "primary"}
               size="md"
+              data-tour="autopilot-toggle"
               disabled={!autopilotAllowed || upsertMutation.isPending}
               onClick={handleToggleEnabled}
             >

@@ -27,10 +27,12 @@ export class LinkedInOAuthController {
   async startWorkspaceOAuth(
     @CurrentUser() user: User,
     @Param('workspaceId') workspaceId: string,
+    @Query('returnPath') returnPath?: string,
   ) {
     const url = await this.linkedInOAuthService.createAuthorizationUrl(
       workspaceId,
       user.id,
+      returnPath,
     );
     return { url };
   }

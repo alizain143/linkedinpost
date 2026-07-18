@@ -70,7 +70,7 @@ If the member is already logged into LinkedIn, LinkedIn may **skip** the login s
 
 | Method | Route | Auth | Purpose |
 |--------|-------|------|---------|
-| `GET` | `/v1/workspaces/:workspaceId/linkedin/oauth/start` | Bearer | Returns `{ url }` for LinkedIn authorization |
+| `GET` | `/v1/workspaces/:workspaceId/linkedin/oauth/start` | Bearer | Returns `{ url }` for LinkedIn authorization. Optional `?returnPath=/app/...` (same-origin `/app` only) stored in OAuth state for post-connect redirect |
 | `GET` | `/v1/linkedin/oauth/callback` | None | LinkedIn redirect; stores tokens; redirects to app |
 | `GET` | `/v1/workspaces/:workspaceId/linkedin/connection` | Bearer | Connection + `publishReady` for workspace |
 | `DELETE` | `/v1/workspaces/:workspaceId/linkedin/connection` | Bearer | Clear workspace LinkedIn binding + tokens |

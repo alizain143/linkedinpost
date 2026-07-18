@@ -81,4 +81,30 @@ describe('UsersService', () => {
       expect(workspacesService.ensurePersonalWorkspace).toHaveBeenCalled();
     });
   });
+
+  describe('updateProfile tours', () => {
+    it('merges markTourSeen into toursSeen', async () => {
+      const user = buildUser({
+        toursSeen: { 'product-core-v1': '2026-01-01T00:00:00.000Z' },
+      });
+      prisma.user.findFirst.mockResolvedValue(user);
+      prisma.user.findUniqueOrThrow.mockResolvedValue(user);
+      prisma.user.update.mockResolvedValue(user);
+
+      await service.updateProfile(user.id, {
+        markTourSeen: 'pro-unlock-v1',
+      });
+
+      expect(prisma.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            toursSeen: expect.objectContaining({
+              'product-core-v1': '2026-01-01T00:00:00.000Z',
+              'pro-unlock-v1': expect.any(String),
+            }),
+          }),
+        }),
+      );
+    });
+  });
 });

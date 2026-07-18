@@ -209,7 +209,7 @@ export default function Approvals() {
         }
         onRetry={() => void refetch()}
       >
-        <div className="pp-2col">
+        <div className="pp-2col" data-tour="approvals-approve">
           {data?.items.map((item) => {
             const scoreStyle = getApprovalScoreStyle(item.score);
             const pending = isCardPending(item.id);

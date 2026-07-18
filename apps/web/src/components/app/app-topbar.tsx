@@ -255,6 +255,7 @@ export function AppTopbar({ title, onMenuClick }: AppTopbarProps) {
         <div className="relative" ref={genRef}>
           <button
             type="button"
+            data-tour="topbar-generate"
             onClick={handleGenerateToggle}
             className={`flex items-center gap-1.5 rounded-[10px] px-4 py-2 text-[13.5px] font-semibold text-white shadow-[0_3px_10px_rgba(79,70,229,0.26)] ${
               canGeneratePost

@@ -12,6 +12,15 @@ export interface SendEmailParams {
   actionUrl: string | null;
 }
 
+export interface SendRawEmailParams {
+  to: string;
+  subject: string;
+  html: string;
+  text: string;
+  replyTo?: string;
+  tags?: Array<{ name: string; value: string }>;
+}
+
 @Injectable()
 export class ResendEmailSender {
   private readonly logger = new Logger(ResendEmailSender.name);
@@ -23,7 +32,7 @@ export class ResendEmailSender {
   }
 
   isConfigured(): boolean {
-    return Boolean(this.client);
+    return Boolean(this.client && this.configService.get<string>('resend.fromEmail'));
   }
 
   async send(params: SendEmailParams): Promise<string | null> {
@@ -59,14 +68,51 @@ export class ResendEmailSender {
       frontendUrl,
     });
 
-    const payload = {
+    return this.deliver({
       from: fromEmail,
       to: params.to,
       subject,
       html,
       text,
       tags: [{ name: 'type', value: params.type }],
-    };
+    });
+  }
+
+  async sendRaw(params: SendRawEmailParams): Promise<string | null> {
+    if (!this.client) {
+      this.logger.warn('Resend not configured; skipping email send');
+      return null;
+    }
+
+    const fromEmail = this.configService.get<string>('resend.fromEmail');
+    if (!fromEmail) {
+      this.logger.warn('RESEND_FROM_EMAIL not configured; skipping email send');
+      return null;
+    }
+
+    return this.deliver({
+      from: fromEmail,
+      to: params.to,
+      subject: params.subject,
+      html: params.html,
+      text: params.text,
+      replyTo: params.replyTo,
+      tags: params.tags,
+    });
+  }
+
+  private async deliver(payload: {
+    from: string;
+    to: string;
+    subject: string;
+    html: string;
+    text: string;
+    replyTo?: string;
+    tags?: Array<{ name: string; value: string }>;
+  }): Promise<string | null> {
+    if (!this.client) {
+      return null;
+    }
 
     let lastError: string | null = null;
 

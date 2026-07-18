@@ -183,6 +183,7 @@ export default function Clients() {
           variant="primary"
           size="sm"
           className="rounded-[10px]"
+          data-tour="clients-add"
           disabled={!canAddClient || createMutation.isPending}
           onClick={() => {
             setModalError(null);

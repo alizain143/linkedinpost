@@ -24,7 +24,8 @@ export class TemplatePngRenderer {
         fitTo: { mode: 'width', value: width },
         font: {
           loadSystemFonts: true,
-          defaultFontFamily: 'Arial',
+          // Liberation Sans ships in the prod Docker image (Arial-compatible).
+          defaultFontFamily: 'Liberation Sans',
         },
       });
       return Buffer.from(resvg.render().asPng());

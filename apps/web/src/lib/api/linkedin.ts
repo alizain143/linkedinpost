@@ -19,10 +19,16 @@ export async function fetchLinkedInConnection(
 export async function startLinkedInOAuth(
   token: string,
   workspaceId: string,
+  options?: { returnPath?: string },
 ): Promise<{ url: string }> {
+  const params = new URLSearchParams();
+  if (options?.returnPath) {
+    params.set("returnPath", options.returnPath);
+  }
+  const qs = params.toString();
   return apiFetch<{ url: string }>(
     token,
-    `/workspaces/${workspaceId}/linkedin/oauth/start`,
+    `/workspaces/${workspaceId}/linkedin/oauth/start${qs ? `?${qs}` : ""}`,
   );
 }
 

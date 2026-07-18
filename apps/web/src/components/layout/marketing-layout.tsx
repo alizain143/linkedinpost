@@ -1,5 +1,6 @@
 "use client";
 
+import { WebMcpProvider } from "@/components/agent/webmcp-provider";
 import { Footer } from "@/components/layout/marketing-footer";
 import { Nav } from "@/components/layout/nav";
 
@@ -14,6 +15,7 @@ export function MarketingLayout({
 }: MarketingLayoutProps) {
   return (
     <div className="min-h-screen bg-[#f6f7f9] text-[#0f172a]">
+      <WebMcpProvider />
       {!hideNav ? <Nav /> : null}
       <main>{children}</main>
       <Footer />
