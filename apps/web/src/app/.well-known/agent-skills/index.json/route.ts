@@ -23,6 +23,8 @@ export function GET() {
       authMd: `${origin}/auth.md`,
       oauthProtectedResource: `${origin}/.well-known/oauth-protected-resource`,
       openidConfiguration: `${origin}/.well-known/openid-configuration`,
+      mcpServerCard: `${origin}/.well-known/mcp/server-card.json`,
+      mcp: `${origin}/mcp`,
     },
   });
 }

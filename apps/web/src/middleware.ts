@@ -7,6 +7,16 @@ import {
   prefersMarkdown,
 } from "@/lib/agent/markdown-pages";
 
+/** RFC 8288 / RFC 9727 agent discovery Link relations for the homepage. */
+export const AGENT_DISCOVERY_LINK_HEADER = [
+  '</.well-known/api-catalog>; rel="api-catalog"',
+  '</llms.txt>; rel="describedby"',
+  '</.well-known/agent-skills/index.json>; rel="describedby"',
+  '</.well-known/oauth-protected-resource>; rel="oauth-protected-resource"',
+  '</auth.md>; rel="service-doc"',
+  '</.well-known/mcp/server-card.json>; rel="describedby"',
+].join(", ");
+
 const isPublicRoute = createRouteMatcher([
   "/",
   "/features",
@@ -19,6 +29,7 @@ const isPublicRoute = createRouteMatcher([
   "/terms",
   "/contact",
   "/auth.md",
+  "/mcp",
   "/robots.txt",
   "/sitemap.xml",
   "/llms.txt",
@@ -52,6 +63,13 @@ export default clerkMiddleware(async (auth, request) => {
 
   if (!isPublicRoute(request)) {
     await auth.protect();
+  }
+
+  // Ensure agent-useful Link relations survive Next font preload Links.
+  if (request.nextUrl.pathname === "/") {
+    const response = NextResponse.next();
+    response.headers.append("Link", AGENT_DISCOVERY_LINK_HEADER);
+    return response;
   }
 });
 

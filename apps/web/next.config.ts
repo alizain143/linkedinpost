@@ -13,6 +13,8 @@ const nextConfig: NextConfig = {
               '</llms.txt>; rel="describedby"',
               '</.well-known/agent-skills/index.json>; rel="describedby"',
               '</.well-known/oauth-protected-resource>; rel="oauth-protected-resource"',
+              '</auth.md>; rel="service-doc"',
+              '</.well-known/mcp/server-card.json>; rel="describedby"',
             ].join(", "),
           },
         ],

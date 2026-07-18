@@ -14,6 +14,8 @@ Discover linkedinpost.ai product pages, pricing, auth, and LLM-oriented indexes.
 - `/.well-known/oauth-protected-resource`: OAuth Protected Resource Metadata
 - `/.well-known/openid-configuration`: OpenID Provider Configuration (Clerk)
 - `/.well-known/oauth-authorization-server`: OAuth AS metadata (Clerk)
+- `/.well-known/mcp/server-card.json`: MCP Server Card (SEP-1649)
+- `/mcp`: MCP Streamable HTTP transport (site discovery tools)
 
 ## Product pages
 
