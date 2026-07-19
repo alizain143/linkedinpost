@@ -35,6 +35,8 @@ const isPublicRoute = createRouteMatcher([
   "/sitemap.xml",
   "/llms.txt",
   "/llms-full.txt",
+  // IndexNow ownership key (Bing / Yandex / etc.)
+  "/0e557d58d8924450975abdf0822ad276.txt",
   "/.well-known(.*)",
   "/sign-in(.*)",
   "/sign-up(.*)",
