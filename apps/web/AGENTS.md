@@ -33,9 +33,15 @@ NEXT_PUBLIC_API_URL=https://api.example.com/v1
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_live_...
 # Issuer is derived from the publishable key; override only if needed:
 # NEXT_PUBLIC_CLERK_FRONTEND_API=https://your-instance.clerk.accounts.dev
+# Production analytics (required for GA/Clarity to load in prod builds):
+# Production analytics IDs are defaults in src/lib/analytics/ids.ts
+# Optional overrides:
+# NEXT_PUBLIC_GA_MEASUREMENT_ID=G-ZG34TRGH9L
+# NEXT_PUBLIC_CLARITY_PROJECT_ID=xhsl8kcscj
 ```
 
-DNS-AID records (ops): see [deploy/dns-aid.md](../../deploy/dns-aid.md).
+DNS-AID records (ops): see [deploy/dns-aid.md](../../deploy/dns-aid.md).  
+Host redirects / DMARC: see [deploy/seo-host.md](../../deploy/seo-host.md).
 
 ## Keep docs updated
 

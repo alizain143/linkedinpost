@@ -2,10 +2,12 @@
 export const SITE_NAME = "linkedinpost.ai";
 export const SITE_TAGLINE =
   "Create a month of LinkedIn content in minutes with AI";
+/** Keep within ~50–60 characters for SERP title display. */
 export const SITE_TITLE_DEFAULT =
-  "linkedinpost.ai | Create a Month of LinkedIn Content in Minutes with AI";
+  "linkedinpost.ai | Month of LinkedIn Content with AI";
+/** Keep within ~120–160 characters for SERP meta description. */
 export const SITE_DESCRIPTION =
-  "linkedinpost.ai is the AI LinkedIn content engine for founders, creators, and agencies. Generate authentic posts, plan a 30-day content calendar, and schedule without sounding like generic AI. Start free, no credit card.";
+  "AI LinkedIn content for founders and creators. Generate authentic posts, plan a 30-day calendar, and schedule without sounding generic. Start free.";
 export const SITE_KEYWORDS = [
   "LinkedIn post generator",
   "AI LinkedIn content",

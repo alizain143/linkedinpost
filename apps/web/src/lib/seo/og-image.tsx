@@ -44,7 +44,13 @@ export async function renderMarketingOgImage({
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 20, marginBottom: 32 }}>
-          <img src={logoSrc} width={72} height={72} alt="" style={{ borderRadius: 16 }} />
+          <img
+            src={logoSrc}
+            width={72}
+            height={72}
+            alt={SITE_NAME}
+            style={{ borderRadius: 16 }}
+          />
           <div style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-0.02em" }}>
             {SITE_NAME}
           </div>

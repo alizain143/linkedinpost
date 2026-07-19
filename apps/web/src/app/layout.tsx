@@ -69,10 +69,10 @@ export default function RootLayout({
       >
         <head>
           <WebMcpBootstrap />
-          <GoogleAnalytics />
-          <MicrosoftClarity />
         </head>
         <body className="min-h-full bg-[#f6f7f9] text-slate-900">
+          <GoogleAnalytics />
+          <MicrosoftClarity />
           <AppProviders>
             <WebMcpProvider />
             <OrganizationJsonLd />

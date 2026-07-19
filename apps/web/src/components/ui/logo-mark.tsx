@@ -18,7 +18,11 @@ export function LogoMark({ size = 34, className }: LogoMarkProps) {
       )}
       style={{ width: size, height: size }}
     >
-      <SvgIcon src={ICON_PATHS.logoMarkSymbol} size={iconSize} />
+      <SvgIcon
+        src={ICON_PATHS.logoMarkSymbol}
+        size={iconSize}
+        alt="linkedinpost.ai"
+      />
     </div>
   );
 }

@@ -4,6 +4,8 @@ type SvgIconProps = {
   src: string;
   size?: number;
   className?: string;
+  /** Accessible label. Empty string marks the image as decorative. */
+  alt?: string;
   /** Tint the icon with the current text color (for monochrome SVGs). */
   inheritColor?: boolean;
 };
@@ -12,6 +14,7 @@ export function SvgIcon({
   src,
   size = 18,
   className,
+  alt = "",
   inheritColor = false,
 }: SvgIconProps) {
   if (inheritColor) {
@@ -35,14 +38,16 @@ export function SvgIcon({
     );
   }
 
+  const decorative = alt === "";
+
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
       src={src}
       width={size}
       height={size}
-      alt=""
-      aria-hidden
+      alt={alt}
+      aria-hidden={decorative || undefined}
       className={cn("block shrink-0", className)}
     />
   );
