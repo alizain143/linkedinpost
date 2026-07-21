@@ -2,10 +2,13 @@ import { ApiError } from "@/lib/api/client";
 
 export function getApiErrorMessage(
   error: unknown,
-  fallback = "Something went wrong. Try again.",
+  fallback = "Something went wrong",
 ): string {
   if (error instanceof ApiError) {
     switch (error.code) {
+      case "REQUEST_FAILED":
+      case "API_ERROR":
+        return error.message || fallback;
       case "ACCOUNT_DELETED":
         return "This account has been deleted. Contact support if you need help.";
       case "UNAUTHORIZED":

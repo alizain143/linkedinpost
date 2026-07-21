@@ -1,5 +1,4 @@
 import {
-  ConflictException,
   Inject,
   Injectable,
   NotFoundException,
@@ -123,29 +122,24 @@ export class UsersService {
     });
 
     if (existingByEmail) {
-      if (existingByEmail.deletedAt) {
-        const user = await this.prisma.user.update({
-          where: { id: existingByEmail.id },
-          data: {
-            deletedAt: null,
-            clerkId: dto.clerkId,
-            firstName: dto.firstName ?? existingByEmail.firstName,
-            lastName: dto.lastName ?? existingByEmail.lastName,
-            profileImageUrl:
-              profileImageUrl &&
-              !existingByEmail.profileDocumentId &&
-              !existingByEmail.profileImageUrl
-                ? profileImageUrl
-                : existingByEmail.profileImageUrl,
-          },
-        });
-        return this.finalizeUser(user);
-      }
-
-      throw new ConflictException({
-        error: 'Email already registered to another account',
-        code: 'EMAIL_ALREADY_REGISTERED',
+      // Same verified email, different Clerk user id (e.g. account recreated).
+      // Relink — Clerk session already proves email ownership.
+      const user = await this.prisma.user.update({
+        where: { id: existingByEmail.id },
+        data: {
+          deletedAt: null,
+          clerkId: dto.clerkId,
+          firstName: dto.firstName ?? existingByEmail.firstName,
+          lastName: dto.lastName ?? existingByEmail.lastName,
+          profileImageUrl:
+            profileImageUrl &&
+            !existingByEmail.profileDocumentId &&
+            !existingByEmail.profileImageUrl
+              ? profileImageUrl
+              : existingByEmail.profileImageUrl,
+        },
       });
+      return this.finalizeUser(user);
     }
 
     try {

@@ -53,7 +53,10 @@ export default function ContactPage() {
       setSubject("General question");
       setMessage("");
     } catch (error) {
-      showToast(getApiErrorMessage(error, "Could not send your message"), "error");
+      showToast(
+        getApiErrorMessage(error, "Something went wrong"),
+        "error",
+      );
     }
   };
 

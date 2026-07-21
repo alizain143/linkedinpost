@@ -1,6 +1,7 @@
 import {
   CanActivate,
   ExecutionContext,
+  HttpException,
   Injectable,
   NotFoundException,
   UnauthorizedException,
@@ -100,7 +101,7 @@ export class ClerkAuthGuard implements CanActivate {
       request.user = await this.ensureUserSynced(payload.sub);
       return true;
     } catch (error) {
-      if (error instanceof UnauthorizedException) {
+      if (error instanceof HttpException) {
         throw error;
       }
 

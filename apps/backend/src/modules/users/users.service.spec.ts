@@ -1,4 +1,4 @@
-import { ConflictException, UnauthorizedException } from '@nestjs/common';
+import { UnauthorizedException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { buildUser } from '../../test/fixtures';
 import { createMockPrismaService } from '../../test/prisma.mock';
@@ -45,17 +45,35 @@ describe('UsersService', () => {
   });
 
   describe('createFromClerk', () => {
-    it('rejects email merge when an active user already owns the email', async () => {
+    it('relinks clerkId when an active user already owns the email', async () => {
+      const existing = buildUser({
+        email: 'taken@example.com',
+        clerkId: 'clerk_old',
+      });
       prisma.user.findUnique
         .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce(buildUser({ email: 'taken@example.com' }));
+        .mockResolvedValueOnce(existing);
+      prisma.user.update.mockResolvedValue({
+        ...existing,
+        clerkId: 'clerk_new',
+      });
 
-      await expect(
-        service.createFromClerk({
-          clerkId: 'clerk_new',
-          email: 'taken@example.com',
+      const user = await service.createFromClerk({
+        clerkId: 'clerk_new',
+        email: 'taken@example.com',
+      });
+
+      expect(user.clerkId).toBe('clerk_new');
+      expect(prisma.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: existing.id },
+          data: expect.objectContaining({
+            clerkId: 'clerk_new',
+            deletedAt: null,
+          }),
         }),
-      ).rejects.toBeInstanceOf(ConflictException);
+      );
+      expect(workspacesService.ensurePersonalWorkspace).toHaveBeenCalled();
     });
 
     it('reactivates a soft-deleted user with matching email', async () => {
