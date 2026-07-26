@@ -502,7 +502,7 @@ Beyond current `User` / `Document`:
 
 ## 11. Deferred (not building yet)
 
-- Apple sign-in
+- Apple sign-in (requires Apple Developer account — not supported)
 - Auto-approve by score threshold (COMING SOON in design)
 - Marketing CMS backend (keep static)
 

@@ -80,15 +80,35 @@
   function profileSlugFromUrl(url) {
     try {
       const match = new URL(url).pathname.match(/\/in\/([^/?#]+)/i);
-      return match?.[1]?.toLowerCase() ?? null;
+      if (!match?.[1]) return null;
+      return decodeURIComponent(match[1]).toLowerCase().replace(/\/+$/, '');
     } catch {
       const match = String(url).match(/\/in\/([^/?#]+)/i);
-      return match?.[1]?.toLowerCase() ?? null;
+      if (!match?.[1]) return null;
+      try {
+        return decodeURIComponent(match[1]).toLowerCase().replace(/\/+$/, '');
+      } catch {
+        return match[1].toLowerCase();
+      }
     }
   }
 
+  /**
+   * LinkedIn often redirects vanity URLs to a canonical slug (e.g. jane-doe →
+   * jane-doe-a1b2c3). Treat those as the same profile so we don't loop.
+   */
+  function profileSlugsMatch(a, b) {
+    if (!a || !b) return false;
+    if (a === b) return true;
+    // Canonical often appends a suffix after the vanity slug.
+    if (a.startsWith(`${b}-`) || b.startsWith(`${a}-`)) return true;
+    return false;
+  }
+
   function buildExpectedProfileUrl(expectedSlug, searchParams) {
-    const url = new URL(`https://www.linkedin.com/in/${expectedSlug}`);
+    const url = new URL(
+      `https://www.linkedin.com/in/${encodeURIComponent(expectedSlug)}/`,
+    );
     for (const key of ['lp_import', 'lp_workspace']) {
       const value = searchParams.get(key);
       if (value) url.searchParams.set(key, value);
@@ -97,12 +117,23 @@
   }
 
   function ensureOnExpectedProfile(stored) {
-    const expectedSlug = stored.lp_expected_profile_slug?.toLowerCase();
+    const expectedSlug = stored.lp_expected_profile_slug
+      ? decodeURIComponent(stored.lp_expected_profile_slug).toLowerCase()
+      : null;
     if (!expectedSlug) return true;
 
     const currentSlug = profileSlugFromUrl(window.location.href);
-    if (currentSlug === expectedSlug) return true;
+    if (profileSlugsMatch(currentSlug, expectedSlug)) return true;
 
+    // Only navigate once per import session — LinkedIn canonical redirects
+    // otherwise cause an infinite location.replace loop.
+    const navKey = `lp_slug_nav_${expectedSlug}`;
+    if (sessionStorage.getItem(navKey) === '1') {
+      // Already tried; stay on whatever LinkedIn served and continue (or fail later).
+      return true;
+    }
+
+    sessionStorage.setItem(navKey, '1');
     progress()?.setStep('opening');
     window.location.replace(
       buildExpectedProfileUrl(expectedSlug, new URLSearchParams(window.location.search)),
@@ -180,14 +211,25 @@
     try {
       if (!ensureOnExpectedProfile(stored)) return;
 
-      const expectedSlug = stored.lp_expected_profile_slug?.toLowerCase();
+      const expectedSlug = stored.lp_expected_profile_slug
+        ? decodeURIComponent(stored.lp_expected_profile_slug).toLowerCase()
+        : null;
       const currentSlug = profileSlugFromUrl(window.location.href);
-      if (expectedSlug && currentSlug && currentSlug !== expectedSlug) {
-        const label = stored.lp_expected_profile_name || expectedSlug;
-        progress()?.setError(
-          `This import is for ${label}'s profile (/in/${expectedSlug}), not the page you're viewing.`,
-        );
-        return;
+      if (
+        expectedSlug &&
+        currentSlug &&
+        !profileSlugsMatch(currentSlug, expectedSlug)
+      ) {
+        const navKey = `lp_slug_nav_${expectedSlug}`;
+        // After one redirect attempt, LinkedIn's canonical URL is authoritative
+        // for this session — don't block the import on vanity vs canonical slug.
+        if (sessionStorage.getItem(navKey) !== '1') {
+          const label = stored.lp_expected_profile_name || expectedSlug;
+          progress()?.setError(
+            `This import is for ${label}'s profile (/in/${expectedSlug}), not the page you're viewing.`,
+          );
+          return;
+        }
       }
 
       await waitForProfileReady();
@@ -205,13 +247,22 @@
       return;
     }
 
-    const expectedSlug = stored.lp_expected_profile_slug?.toLowerCase();
+    const expectedSlug = stored.lp_expected_profile_slug
+      ? decodeURIComponent(stored.lp_expected_profile_slug).toLowerCase()
+      : null;
     const currentSlug = profileSlugFromUrl(window.location.href);
-    if (expectedSlug && currentSlug !== expectedSlug) {
-      progress()?.setError(
-        `Profile mismatch — expected /in/${expectedSlug}.`,
-      );
-      return;
+    if (
+      expectedSlug &&
+      currentSlug &&
+      !profileSlugsMatch(currentSlug, expectedSlug)
+    ) {
+      const navKey = `lp_slug_nav_${expectedSlug}`;
+      if (sessionStorage.getItem(navKey) !== '1') {
+        progress()?.setError(
+          `Profile mismatch — expected /in/${expectedSlug}.`,
+        );
+        return;
+      }
     }
 
     if (typeof captureProfileSnapshot !== 'function') {

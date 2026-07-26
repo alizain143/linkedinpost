@@ -2,17 +2,12 @@
 
 import { useSignIn } from "@clerk/nextjs/legacy";
 import { useSignUp } from "@clerk/nextjs/legacy";
-import {
-  AppleIcon,
-  GoogleIcon,
-  LinkedInIcon,
-} from "@/components/auth/auth-icons";
+import { GoogleIcon, LinkedInIcon } from "@/components/auth/auth-icons";
 import {
   authSocialBtnClass,
   authSocialBtnInnerClass,
   authSocialIconSlotClass,
 } from "@/components/auth/auth-ui";
-import { useAppleSignInAvailable } from "@/hooks/use-apple-sign-in-available";
 import { clerkErrorMessage } from "@/lib/auth/clerk";
 import {
   SIGN_IN_OAUTH_COMPLETE_URL,
@@ -22,10 +17,7 @@ import {
 } from "@/lib/auth/routes";
 import { useState } from "react";
 
-type OAuthStrategy =
-  | "oauth_google"
-  | "oauth_apple"
-  | "oauth_linkedin_oidc";
+type OAuthStrategy = "oauth_google" | "oauth_linkedin_oidc";
 
 type AuthSocialButtonsProps = {
   mode: "sign-in" | "sign-up";
@@ -38,22 +30,19 @@ export function AuthSocialButtons({
   disabled,
   onError,
 }: AuthSocialButtonsProps) {
-  const appleAvailable = useAppleSignInAvailable();
   const signIn = useSignIn();
   const signUp = useSignUp();
   const isSignIn = mode === "sign-in";
 
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [appleLoading, setAppleLoading] = useState(false);
   const [linkedInLoading, setLinkedInLoading] = useState(false);
 
   const googleLabel = isSignIn ? "Continue with Google" : "Sign up with Google";
-  const appleLabel = isSignIn ? "Continue with Apple" : "Sign up with Apple";
   const linkedInLabel = isSignIn
     ? "Continue with LinkedIn"
     : "Sign up with LinkedIn";
 
-  const oauthLoading = googleLoading || appleLoading || linkedInLoading;
+  const oauthLoading = googleLoading || linkedInLoading;
 
   const handleOAuth = async (
     strategy: OAuthStrategy,
@@ -101,22 +90,6 @@ export function AuthSocialButtons({
           {googleLoading ? "Connecting…" : googleLabel}
         </span>
       </button>
-
-      {appleAvailable ? (
-        <button
-          type="button"
-          onClick={() => void handleOAuth("oauth_apple", setAppleLoading)}
-          className={authSocialBtnClass}
-          disabled={isDisabled}
-        >
-          <span className={authSocialBtnInnerClass}>
-            <span className={authSocialIconSlotClass}>
-              <AppleIcon />
-            </span>
-            {appleLoading ? "Connecting…" : appleLabel}
-          </span>
-        </button>
-      ) : null}
 
       <button
         type="button"

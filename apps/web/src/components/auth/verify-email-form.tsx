@@ -5,16 +5,18 @@ import { useAuth } from "@clerk/nextjs";
 import { useSignUp } from "@clerk/nextjs/legacy";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { AuthError } from "@/components/auth/auth-ui";
+import {
+  OTP_LENGTH,
+  OtpDigitInputs,
+} from "@/components/auth/otp-digit-inputs";
 import { Button } from "@/components/ui/button";
 import { MsIcon } from "@/components/ui/ms-icon";
 import { clerkErrorMessage } from "@/lib/auth/clerk";
 import { syncCurrentUser } from "@/lib/auth/finish-session";
 import { DASHBOARD_ROUTE } from "@/lib/auth/routes";
 import { trackSignUpComplete } from "@/lib/analytics/events";
-
-const OTP_LENGTH = 6;
 
 export function VerifyEmailForm() {
   const { getToken } = useAuth();
@@ -25,27 +27,10 @@ export function VerifyEmailForm() {
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
     setEmail(sessionStorage.getItem("pp_verify_email") ?? "your email");
   }, []);
-
-  const updateDigit = (index: number, value: string) => {
-    const digit = value.replace(/\D/g, "").slice(-1);
-    const next = [...digits];
-    next[index] = digit;
-    setDigits(next);
-    if (digit && index < OTP_LENGTH - 1) {
-      inputsRef.current[index + 1]?.focus();
-    }
-  };
-
-  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Backspace" && !digits[index] && index > 0) {
-      inputsRef.current[index - 1]?.focus();
-    }
-  };
 
   const handleVerify = async () => {
     if (!isLoaded || !signUp) return;
@@ -90,7 +75,6 @@ export function VerifyEmailForm() {
     try {
       await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
       setDigits(Array(OTP_LENGTH).fill(""));
-      inputsRef.current[0]?.focus();
     } catch (err) {
       setError(clerkErrorMessage(err));
     }
@@ -112,23 +96,11 @@ export function VerifyEmailForm() {
 
       <AuthError message={error} />
 
-      <div className="mb-6 flex justify-center gap-2">
-        {digits.map((digit, i) => (
-          <input
-            key={i}
-            ref={(el) => {
-              inputsRef.current[i] = el;
-            }}
-            type="text"
-            inputMode="numeric"
-            maxLength={1}
-            value={digit}
-            onChange={(e) => updateDigit(i, e.target.value)}
-            onKeyDown={(e) => handleKeyDown(i, e)}
-            className="h-[58px] w-[50px] rounded-xl border border-[#e7e9f2] bg-[#f8f9fc] text-center font-display text-[22px] font-bold text-[#1e293b] outline-none focus:border-[#4f46e5] focus:bg-white"
-          />
-        ))}
-      </div>
+      <OtpDigitInputs
+        digits={digits}
+        onChange={setDigits}
+        disabled={loading || !isLoaded}
+      />
 
       <Button
         type="button"
