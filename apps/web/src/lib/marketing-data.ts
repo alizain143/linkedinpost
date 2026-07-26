@@ -156,41 +156,40 @@ export const PLANS: PlanTier[] = [
   {
     name: "Free",
     monthlyUsd: 0,
-    blurb: "Everything you need to try your first AI posts.",
+    blurb: "Try the full workflow with a small monthly credit budget.",
     cta: "Start Free",
     features: [
       "5 AI credits / month",
-      "Basic post generator",
-      "1 content profile",
-      "Copy posts",
+      "Drafts, AI Council & media",
+      "7-day & 30-day calendars",
+      "Schedule & publish to LinkedIn",
     ],
     style: { ...basePlanStyle },
   },
   {
     name: "Starter",
     monthlyUsd: STARTER_MONTHLY_USD,
-    blurb: "For getting into a consistent posting rhythm.",
+    blurb: "More credits for a consistent weekly posting rhythm.",
     cta: "Start Starter",
     features: [
       "50 AI credits / month",
-      "Saved drafts",
-      "Basic templates",
-      "1 LinkedIn profile",
+      "Everything on Free",
+      "Room for weekly drafting",
+      "Buy extra credits anytime",
     ],
     style: { ...basePlanStyle },
   },
   {
     name: "Pro",
     monthlyUsd: PRO_MONTHLY_USD,
-    blurb: "The full content system for serious creators.",
+    blurb: "High volume for creators who ship LinkedIn content every week.",
     cta: "Start Pro",
     popular: true,
     features: [
       "200 AI credits / month",
-      "30-day content calendar",
-      "Tone presets",
-      "Rewrite posts",
-      "Scheduling inside the app",
+      "Everything on Starter",
+      "Autopilot & month calendars (use credits)",
+      "Best solo creator value",
     ],
     style: {
       cardBg: "linear-gradient(170deg,#1e1b4b,#312e81 60%,#4338ca)",
@@ -209,13 +208,13 @@ export const PLANS: PlanTier[] = [
   {
     name: "Agency",
     monthlyUsd: AGENCY_MONTHLY_USD,
-    blurb: "Manage content for a roster of clients.",
+    blurb: "Run multiple LinkedIn brands — each with its own account and workspace.",
     cta: "Start Agency",
     features: [
       "1,000 AI credits / month",
-      "5 client workspaces",
-      "Multiple content profiles",
-      "Higher limits",
+      "Up to 5 client workspaces",
+      "Separate LinkedIn per client",
+      "Client approval share links",
     ],
     style: {
       ...basePlanStyle,
@@ -275,8 +274,8 @@ export const FEATURE_DETAIL = [
     body: "Agencies get separate workspaces per client, each with its own profile, drafts, calendar, and limits. Switch context in a click and keep every brand's voice distinct.",
     bullets: [
       "Up to 5 isolated client workspaces",
-      "Per-client profiles and calendars",
-      "Higher pooled credit limits",
+      "Per-client LinkedIn, profiles, and calendars",
+      "Client approval share links",
     ],
     color: "#16a34a",
     tint: "#f0fdf4",
@@ -296,19 +295,19 @@ export const FAQS = [
   },
   {
     q: "What is an AI credit?",
-    a: "One credit generates one batch of three post options. The Free plan includes 5 credits per month; paid plans range from 50 to 1,000 credits depending on your tier.",
+    a: "Credits power AI actions: quick drafts, AI Council, media, calendars, and autopilot. Plans differ mainly by monthly credit budget (Free 5 · Starter 50 · Pro 200 · Agency 1,000). You can also buy extra credits anytime.",
   },
   {
     q: "Can I use it for multiple brands or clients?",
-    a: "Yes. Pro supports multiple content profiles, and the Agency plan adds up to 5 isolated client workspaces, each with its own profile, drafts, and calendar.",
+    a: "Each workspace connects one LinkedIn account. For multiple brands, the Agency plan adds up to 5 client workspaces — each with its own LinkedIn, profile, calendar, and approval share links.",
   },
   {
     q: "Do I need a credit card to start?",
-    a: "No. The Free plan is genuinely free: 5 posts a month, no card required. Upgrade only when you're ready for more volume and the content calendar.",
+    a: "No. The Free plan includes 5 credits a month with no card required. Upgrade when you need more volume; features are available across plans as long as you have credits.",
   },
   {
     q: "Can I cancel anytime?",
-    a: "Absolutely. Cancel in one click from the billing page. You keep your paid features until the end of the billing period, then move to the Free plan.",
+    a: "Absolutely. Cancel in one click from the billing page. You keep your paid credit budget until the end of the billing period, then move to the Free plan.",
   },
 ] as const;
 
@@ -334,19 +333,23 @@ export const VALUES = [
 export const PRICING_FAQS = [
   {
     q: "Do I need a credit card to start?",
-    a: "No. The Free plan includes 5 credits a month with no card required. Upgrade when you want more volume or the content calendar.",
+    a: "No. The Free plan includes 5 credits a month with no card required. Upgrade when you want a larger monthly credit budget.",
   },
   {
     q: "What is an AI credit?",
-    a: "One credit generates one batch of three post options. Paid plans range from 50 to 1,000 credits depending on your tier.",
+    a: "Credits power drafts, AI Council, media, calendars, and autopilot. Free/Starter/Pro/Agency mainly differ by monthly credits (5 / 50 / 200 / 1,000). Extra credits can be purchased anytime.",
   },
   {
     q: "Can I cancel anytime?",
-    a: "Yes. Cancel from billing in one click. You keep paid features until the end of the billing period, then move to Free.",
+    a: "Yes. Cancel from billing in one click. You keep your paid credit budget until the end of the billing period, then move to Free.",
   },
   {
     q: "Which plan is right for agencies?",
-    a: "Agency adds client workspaces and higher credit limits. If you manage more than one brand voice, start there. Solo founders usually begin on Starter or Pro.",
+    a: "Agency is for multi-brand LinkedIn: up to 5 client workspaces, a separate LinkedIn connection per client, and approval share links. Solo creators usually start on Starter or Pro for more credits.",
+  },
+  {
+    q: "Are features locked by plan?",
+    a: "Generation, calendars, autopilot, and scheduling are available whenever you have credits. Agency uniquely unlocks client workspaces and client approval share links.",
   },
 ] as const;
 
@@ -367,15 +370,14 @@ export const ABOUT_STORY = [
 
 export const COMPARE_ROWS = [
   { label: "AI credits / month", free: "5", starter: "50", pro: "200", agency: "1,000" },
-  { label: "Manual post generation", free: "Limited", starter: true, pro: true, agency: true },
-  { label: "AI Council review", free: "Limited", starter: true, pro: true, agency: true },
-  { label: "Media generation", free: false, starter: "Limited", pro: true, agency: true },
-  { label: "7-day calendar", free: false, starter: true, pro: true, agency: true },
-  { label: "30-day calendar", free: false, starter: false, pro: true, agency: true },
-  { label: "Autopilot", free: false, starter: false, pro: true, agency: true },
-  { label: "Schedule & publish", free: false, starter: "Limited", pro: true, agency: true },
-  { label: "Client approval", free: false, starter: false, pro: "Limited", agency: true },
-  { label: "Client workspaces", free: false, starter: false, pro: false, agency: "5" },
+  { label: "Quick draft & AI Council", free: true, starter: true, pro: true, agency: true },
+  { label: "Media generation", free: true, starter: true, pro: true, agency: true },
+  { label: "7-day & 30-day calendars", free: true, starter: true, pro: true, agency: true },
+  { label: "Autopilot", free: true, starter: true, pro: true, agency: true },
+  { label: "Schedule & publish", free: true, starter: true, pro: true, agency: true },
+  { label: "Buy extra credits", free: true, starter: true, pro: true, agency: true },
+  { label: "Client workspaces", free: false, starter: false, pro: false, agency: "Up to 5" },
+  { label: "Client approval share links", free: false, starter: false, pro: false, agency: true },
 ] as const;
 
 export const PRIVACY_SECTIONS = [

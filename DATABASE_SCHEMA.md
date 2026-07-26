@@ -259,6 +259,7 @@ Mirrors Lemon Squeezy subscription status. Synced in `BillingSyncService`.
 | `publish_failed` | LinkedIn publish worker failure |
 | `weekly_content_reminder` | Monday 9am user timezone cron |
 | `product_update` | Admin broadcast (future) |
+| `autopilot_paused_credits` | Autopilot auto-disabled when a due run lacks credits |
 
 ### `NotificationDeliveryChannel`
 

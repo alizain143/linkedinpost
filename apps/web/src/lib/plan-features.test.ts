@@ -5,10 +5,8 @@ import {
 } from "@/lib/plan-features";
 
 describe("plan-features", () => {
-  it("detects pro unlocks from free", () => {
-    expect(newlyUnlockedFeatures("free", "pro").sort()).toEqual(
-      ["autopilot", "calendar_30_day"].sort(),
-    );
+  it("returns no plan-feature unlocks from free to pro (credits differ only)", () => {
+    expect(newlyUnlockedFeatures("free", "pro")).toEqual([]);
   });
 
   it("detects agency-only unlocks from pro", () => {
@@ -22,7 +20,7 @@ describe("plan-features", () => {
   });
 
   it("maps unlock tour ids", () => {
-    expect(unlockTourIdForPlan("pro")).toBe("pro-unlock-v1");
+    expect(unlockTourIdForPlan("pro")).toBeNull();
     expect(unlockTourIdForPlan("agency")).toBe("agency-unlock-v1");
     expect(unlockTourIdForPlan("starter")).toBeNull();
   });

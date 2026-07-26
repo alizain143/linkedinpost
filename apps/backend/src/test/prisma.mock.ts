@@ -9,6 +9,7 @@ export type MockPrismaService = {
   workspace: {
     findFirst: jest.Mock;
     findMany: jest.Mock;
+    findUnique: jest.Mock;
     findUniqueOrThrow: jest.Mock;
     create: jest.Mock;
     update: jest.Mock;
@@ -130,6 +131,7 @@ export function createMockPrismaService(): MockPrismaService {
     workspace: {
       findFirst: jest.fn(),
       findMany: jest.fn(),
+      findUnique: jest.fn(),
       findUniqueOrThrow: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),

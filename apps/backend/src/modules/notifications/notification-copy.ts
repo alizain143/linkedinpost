@@ -57,6 +57,11 @@ export function buildNotificationCopy(
         title: 'Product update',
         body: 'New features and tips from linkedinpost.ai.',
       };
+    case NotificationType.autopilot_paused_credits:
+      return {
+        title: 'Autopilot paused — out of credits',
+        body: 'Autopilot was turned off because you do not have enough credits for the next post. Buy credits or upgrade to resume.',
+      };
     default:
       return {
         title: 'Notification',
@@ -83,6 +88,8 @@ export function buildEmailSubject(type: NotificationType): string {
       return "Time to plan this week's content";
     case NotificationType.product_update:
       return 'Product update from linkedinpost.ai';
+    case NotificationType.autopilot_paused_credits:
+      return 'Autopilot paused — buy credits to resume';
     default:
       return 'Notification from linkedinpost.ai';
   }

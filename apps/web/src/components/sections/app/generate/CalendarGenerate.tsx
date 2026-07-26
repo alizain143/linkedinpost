@@ -32,7 +32,6 @@ import {
 import { getApiErrorMessage } from "@/lib/api-error-messages";
 import type { CalendarSlotGenerationMode } from "@/lib/credit-costs";
 import {
-  canUse30DayCalendar,
   DEFAULT_POSTING_DAYS,
   DEFAULT_POSTING_TIME,
   formatCalendarCreditBreakdown,
@@ -272,7 +271,6 @@ export default function CalendarGenerate() {
     [skipCreditConfirm],
   );
   const canAffordCalendar = canAfford(creditCost);
-  const thirtyDayAllowed = balance ? canUse30DayCalendar(balance.plan) : false;
   const calendarJobActive =
     !!activeCalendarJobId &&
     !!calendarJob.data &&
@@ -286,8 +284,7 @@ export default function CalendarGenerate() {
     !!form.contentProfileId &&
     canAffordCalendar &&
     !isRunning &&
-    (profiles?.length ?? 0) > 0 &&
-    (form.durationDays === 7 || thirtyDayAllowed);
+    (profiles?.length ?? 0) > 0;
 
   const togglePostingDay = (day: number) => {
     setForm((current) => {
@@ -328,18 +325,9 @@ export default function CalendarGenerate() {
   }, [form]);
 
   const runGenerate = async () => {
-    if (form.durationDays === 30 && !thirtyDayAllowed) {
-      showToast(
-        "Upgrade to Pro to unlock 30-day calendar generation.",
-        "error",
-      );
-      router.push("/app/billing");
-      return;
-    }
-
     if (!canAffordCalendar) {
       showToast(
-        `You need ${creditCost} credits to generate this calendar. Upgrade your plan to continue.`,
+        `You need ${creditCost} credits to generate this calendar. Buy more credits or upgrade your plan.`,
         "error",
       );
       router.push("/app/billing");
@@ -369,7 +357,7 @@ export default function CalendarGenerate() {
     } catch (err) {
       const message = getApiErrorMessage(
         err,
-        "Upgrade to Pro to unlock 30-day calendar generation.",
+        "Could not start calendar generation.",
       );
       setGenerateError(message);
       showToast(message, "error");
@@ -460,41 +448,27 @@ export default function CalendarGenerate() {
 
       <label className={appLabel}>Duration</label>
       <div className="mb-4 flex gap-1 rounded-[10px] bg-[#eef0f5] p-0.5">
-        {([7, 30] as const).map((days) => {
-          const disabled = days === 30 && !thirtyDayAllowed;
-          return (
-            <button
-              key={days}
-              type="button"
-              disabled={disabled || formDisabled}
-              onClick={() =>
-                setForm((current) => ({ ...current, durationDays: days }))
-              }
-              className={`flex flex-1 flex-col items-center rounded-[8px] px-3 py-2 text-center transition-colors ${
-                form.durationDays === days
-                  ? "bg-white text-[#4338ca] shadow-sm"
-                  : disabled
-                    ? "cursor-not-allowed text-[#cbd2e0]"
-                    : "text-[#64748b] hover:text-[#1e293b]"
-              }`}
-            >
-              <span className="text-[13px] font-bold">{days}-day</span>
-              <span className="text-[10.5px]">
-                {getCalendarCreditCost(days, form.slotGenerationMode, carouselCreditOptions)} credits
-              </span>
-            </button>
-          );
-        })}
+        {([7, 30] as const).map((days) => (
+          <button
+            key={days}
+            type="button"
+            disabled={formDisabled}
+            onClick={() =>
+              setForm((current) => ({ ...current, durationDays: days }))
+            }
+            className={`flex flex-1 flex-col items-center rounded-[8px] px-3 py-2 text-center transition-colors ${
+              form.durationDays === days
+                ? "bg-white text-[#4338ca] shadow-sm"
+                : "text-[#64748b] hover:text-[#1e293b]"
+            }`}
+          >
+            <span className="text-[13px] font-bold">{days}-day</span>
+            <span className="text-[10.5px]">
+              {getCalendarCreditCost(days, form.slotGenerationMode, carouselCreditOptions)} credits
+            </span>
+          </button>
+        ))}
       </div>
-
-      {form.durationDays === 30 && !thirtyDayAllowed ? (
-        <div className="mb-4 rounded-[11px] border border-[#e0e7ff] bg-[#eef2ff] px-3 py-2.5 text-[13px] text-[#4338ca]">
-          30-day calendars require Pro or Agency.{" "}
-          <Link href="/app/billing" className="font-semibold underline">
-            Upgrade plan
-          </Link>
-        </div>
-      ) : null}
 
       <SelectField
         label="Content profile"

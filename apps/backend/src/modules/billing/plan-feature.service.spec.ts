@@ -23,38 +23,6 @@ describe('PlanFeatureService', () => {
     service = module.get(PlanFeatureService);
   });
 
-  it('blocks starter users from autopilot', async () => {
-    prisma.user.findUniqueOrThrow.mockResolvedValue({
-      id: userId,
-      plan: UserPlan.starter,
-    });
-
-    await expect(
-      service.assertAllows(userId, 'autopilot'),
-    ).rejects.toThrow(ForbiddenException);
-  });
-
-  it('blocks starter users from 30-day calendar', async () => {
-    prisma.user.findUniqueOrThrow.mockResolvedValue({
-      id: userId,
-      plan: UserPlan.starter,
-    });
-
-    await expect(
-      service.assertAllows(userId, 'calendar_30_day'),
-    ).rejects.toThrow(ForbiddenException);
-  });
-
-  it('allows pro users for autopilot', async () => {
-    prisma.user.findUniqueOrThrow.mockResolvedValue({
-      id: userId,
-      plan: UserPlan.pro,
-    });
-
-    await expect(service.assertAllows(userId, 'autopilot')).resolves.toBeUndefined();
-    expect(await service.hasFeature(userId, 'autopilot')).toBe(true);
-  });
-
   it('allows agency users for client workspaces', async () => {
     prisma.user.findUniqueOrThrow.mockResolvedValue({
       id: userId,

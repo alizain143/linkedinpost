@@ -6,7 +6,10 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { CouncilJobService } from '../council/council-job.service';
 import { CreditsService } from '../credits/credits.service';
 import { GenerationJobEnqueueService } from '../job-queue/generation-job-enqueue.service';
-import { PlanFeatureService } from '../billing/plan-feature.service';
+import {
+  createMockNotificationEventService,
+  mockNotificationEventServiceProvider,
+} from '../../test/notification-event.mock';
 import { AutopilotDispatchService } from './autopilot-dispatch.service';
 
 describe('AutopilotDispatchService', () => {
@@ -21,9 +24,7 @@ describe('AutopilotDispatchService', () => {
   const enqueueService = {
     assertRedisAvailable: jest.fn(),
   };
-  const planFeatureService = {
-    hasFeature: jest.fn().mockResolvedValue(true),
-  };
+  const notificationEvents = createMockNotificationEventService();
 
   const config = {
     id: 'autopilot-1',
@@ -54,6 +55,9 @@ describe('AutopilotDispatchService', () => {
       workspaceId,
       pillars: [{ id: 'p1', name: 'Founder lessons', sortOrder: 0 }],
     });
+    prisma.autopilotConfig.updateMany.mockResolvedValue({ count: 1 });
+    prisma.workspace.findUnique.mockResolvedValue({ name: 'Personal' });
+    prisma.user.findUnique.mockResolvedValue({ plan: 'pro' });
     councilJobService.enqueueCouncil.mockResolvedValue({ id: 'job-1' });
 
     const module: TestingModule = await Test.createTestingModule({
@@ -63,14 +67,14 @@ describe('AutopilotDispatchService', () => {
         { provide: CreditsService, useValue: creditsService },
         { provide: CouncilJobService, useValue: councilJobService },
         { provide: GenerationJobEnqueueService, useValue: enqueueService },
-        { provide: PlanFeatureService, useValue: planFeatureService },
+        mockNotificationEventServiceProvider(notificationEvents),
       ],
     }).compile();
 
     service = module.get(AutopilotDispatchService);
   });
 
-  it('skips dispatch when credits are insufficient', async () => {
+  it('pauses autopilot and notifies when credits are insufficient', async () => {
     creditsService.getBalance.mockResolvedValue({
       remaining: 2,
       used: 198,
@@ -85,7 +89,23 @@ describe('AutopilotDispatchService', () => {
     );
 
     expect(result.success).toBe(false);
+    expect(result.pausedForCredits).toBe(true);
     expect(councilJobService.enqueueCouncil).not.toHaveBeenCalled();
+    expect(prisma.autopilotConfig.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ id: config.id, enabled: true }),
+        data: { enabled: false },
+      }),
+    );
+    expect(notificationEvents.emitAutopilotPausedCredits).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId,
+        workspaceId,
+        remaining: 2,
+        required: 3,
+        plan: 'pro',
+      }),
+    );
   });
 
   it('uses day profile override for the current weekday', async () => {

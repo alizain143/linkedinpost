@@ -146,10 +146,12 @@ Core promise: generate authentic LinkedIn posts, plan a content calendar, run an
 
 | Plan | Price | Credits/mo | Highlights |
 |------|-------|------------|------------|
-| Free | $0 | 5 | Basic generator, 1 content profile, copy posts |
-| Starter | $9.99 | 50 | Drafts, templates, 1 LinkedIn profile |
-| Pro | $19.99 | 200 | 30-day calendar, tone presets, rewrite, scheduling, Autopilot |
-| Agency | $69.99 | 1,000 | 5 client workspaces, multi-profile, higher limits |
+| Free | $0 | 5 | Full workflow (drafts, council, media, calendars, schedule) — limited by credits |
+| Starter | $9.99 | 50 | More credits for weekly rhythm; buy top-ups anytime |
+| Pro | $19.99 | 200 | Highest solo credit budget; autopilot/calendars use credits |
+| Agency | $69.99 | 1,000 | Up to 5 client workspaces, LinkedIn per client, approval share links |
+
+**Monetization model:** Plans differ mainly by monthly credit budget. Generation features are credit-gated. Agency uniquely unlocks multi-account client workspaces (+ approval share links).
 
 **Credit costs (from design):** Quick Draft 1 · AI Council 3 · Post+Media 10 · Regenerate Media 5 · Revision 1–2 · 7-day Calendar 10 · 30-day Calendar 30 · Autopilot package 10
 

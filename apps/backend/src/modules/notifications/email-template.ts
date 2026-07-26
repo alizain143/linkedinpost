@@ -97,6 +97,14 @@ const EMAIL_THEMES: Record<NotificationType, EmailTheme> = {
     accentHover: EMAIL_BRAND.violetDark,
     ctaLabel: "See what's new",
   },
+  [NotificationType.autopilot_paused_credits]: {
+    badge: 'Autopilot paused',
+    badgeBg: EMAIL_BRAND.warningBg,
+    badgeColor: EMAIL_BRAND.warning,
+    accent: EMAIL_BRAND.violet,
+    accentHover: EMAIL_BRAND.violetDark,
+    ctaLabel: 'Buy credits',
+  },
 };
 
 const DEFAULT_THEME: EmailTheme = {

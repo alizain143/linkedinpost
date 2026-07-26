@@ -20,6 +20,7 @@ import {
 import {
   useCreateLinkedInImportToken,
   useImportLinkedInProfile,
+  useLinkedInConnection,
   useLinkedInProfile,
   useSyncLinkedInProfile,
 } from "@/hooks/api/use-linkedin-api";
@@ -147,6 +148,7 @@ export default function Settings() {
     showToast,
   } = useAppUi();
   const { startProductTour } = useTour();
+  const { data: linkedInConnection } = useLinkedInConnection(activeWorkspaceId);
   const { data: linkedInProfile, refetch: refetchLinkedInProfile } =
     useLinkedInProfile(activeWorkspaceId);
   const syncLinkedInProfile = useSyncLinkedInProfile(activeWorkspaceId);
@@ -168,6 +170,10 @@ export default function Settings() {
   );
   const [importProfileUrlInput, setImportProfileUrlInput] = useState("");
   const linkedInProfileSubtitle = getLinkedInProfileSubtitle(linkedInProfile);
+  const linkedinBoundProfileName =
+    !linkedinConnected && linkedInConnection?.linkedInMemberId
+      ? linkedInConnection.profileName
+      : null;
   const showImportPrompt =
     linkedinConnected && needsLinkedInProfileImport(linkedInProfile);
 
@@ -715,12 +721,14 @@ export default function Settings() {
 
                   {linkedinConnectionState === "disconnected" ? (
                     <p className="mt-1.5 text-xs leading-relaxed text-[#64748b]">
-                      {activeWorkspace?.type === "client"
-                        ? "Connect this client's LinkedIn to schedule and publish posts for their workspace."
-                        : getLinkedInStatusDescription(
-                            linkedinConnectionState,
-                            linkedInProfileName,
-                          )}
+                      {linkedinBoundProfileName
+                        ? `Reconnect as ${linkedinBoundProfileName}. This workspace stays locked to that LinkedIn account.`
+                        : activeWorkspace?.type === "client"
+                          ? "Connect this client's LinkedIn to schedule and publish posts for their workspace."
+                          : getLinkedInStatusDescription(
+                              linkedinConnectionState,
+                              linkedInProfileName,
+                            )}
                     </p>
                   ) : (
                     <p className="mt-1.5 text-xs text-[#64748b]">
@@ -791,14 +799,6 @@ export default function Settings() {
                 <div className="flex flex-wrap gap-2">
                   <Button
                     type="button"
-                    variant="linkedin"
-                    size="xs"
-                    onClick={openConnect}
-                  >
-                    Switch account
-                  </Button>
-                  <Button
-                    type="button"
                     variant="destructive-outline"
                     size="xs"
                     onClick={disconnectLinkedIn}
@@ -816,7 +816,9 @@ export default function Settings() {
                   data-tour="settings-linkedin-connect"
                   onClick={openConnect}
                 >
-                  Connect LinkedIn
+                  {linkedinBoundProfileName
+                    ? `Reconnect as ${linkedinBoundProfileName}`
+                    : "Connect LinkedIn"}
                 </Button>
               </div>
             )}

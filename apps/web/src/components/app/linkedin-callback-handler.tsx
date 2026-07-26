@@ -34,15 +34,20 @@ export function LinkedInCallbackHandler() {
       sessionStorage.setItem("linkedin_show_import_prompt", "1");
     } else if (linkedin === "error") {
       clearLinkedInConnectSession();
-      showToast(
-        searchParams.get("message") ?? "Could not connect LinkedIn",
-        "link_off",
-      );
+      const code = searchParams.get("code");
+      const rawMessage = searchParams.get("message");
+      const message =
+        code === "LINKEDIN_ACCOUNT_MISMATCH"
+          ? rawMessage ||
+            "This workspace is locked to the previously connected LinkedIn account. Sign in as that account, or use an Agency client workspace for a different brand."
+          : rawMessage || "Could not connect LinkedIn";
+      showToast(message, "link_off");
     }
 
     const url = new URL(window.location.href);
     url.searchParams.delete("linkedin");
     url.searchParams.delete("message");
+    url.searchParams.delete("code");
     url.searchParams.delete("workspaceId");
     router.replace(url.pathname + url.search);
   }, [invalidateLinkedIn, router, searchParams, showToast]);

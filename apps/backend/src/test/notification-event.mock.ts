@@ -8,6 +8,7 @@ export function createMockNotificationEventService() {
     emitPublishResult: jest.fn().mockResolvedValue(undefined),
     emitClientApprovalAction: jest.fn().mockResolvedValue(undefined),
     emitWeeklyReminder: jest.fn().mockResolvedValue(undefined),
+    emitAutopilotPausedCredits: jest.fn().mockResolvedValue(undefined),
   };
 }
 

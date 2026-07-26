@@ -64,8 +64,8 @@ const PUBLISH_STATE_LABELS: Record<AutopilotPublishState, string> = {
   scheduled_for_linkedin: "Scheduled for LinkedIn",
 };
 
-export function canUseAutopilot(plan: UserPlan): boolean {
-  return plan === "pro" || plan === "agency";
+export function canUseAutopilot(_plan: UserPlan): boolean {
+  return true;
 }
 
 export function derivePostingPreset(

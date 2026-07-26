@@ -1,8 +1,6 @@
 import { UserPlan } from '@prisma/client';
 
 export const PLAN_FEATURES = {
-  autopilot: [UserPlan.pro, UserPlan.agency],
-  calendar_30_day: [UserPlan.pro, UserPlan.agency],
   client_workspaces: [UserPlan.agency],
   approval_share_links: [UserPlan.agency],
 } as const;

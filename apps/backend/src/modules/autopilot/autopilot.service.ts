@@ -10,9 +10,9 @@ import {
   Prisma,
 } from '@prisma/client';
 import { NOT_DELETED } from '../../common/constants/soft-delete.constants';
-import { PlanFeatureService } from '../billing/plan-feature.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { DEFAULT_TIMEZONE } from '../calendar/calendar-date.util';
+import { CreditsService } from '../credits/credits.service';
 import { LinkedInConnectionService } from '../linkedin/linkedin.services';
 import { toPostPackageResponse } from '../posts/post.mapper';
 import { WorkspacesService } from '../workspaces/workspaces.service';
@@ -27,6 +27,7 @@ import {
   readDayProfileOverrides,
 } from './autopilot-profile.util';
 import {
+  AUTOPILOT_CREDIT_COST,
   DEFAULT_POSTING_DAYS,
   DEFAULT_POSTING_TIME,
   resolvePostingDaysForPreset,
@@ -44,7 +45,7 @@ export class AutopilotService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly workspacesService: WorkspacesService,
-    private readonly planFeatureService: PlanFeatureService,
+    private readonly creditsService: CreditsService,
     private readonly linkedInConnectionService: LinkedInConnectionService,
   ) {}
 
@@ -103,7 +104,10 @@ export class AutopilotService {
 
     if (willBeEnabled) {
       const { ownerId } = await this.loadWorkspaceOwnerTimezone(workspaceId);
-      await this.planFeatureService.assertAllows(ownerId, 'autopilot');
+      await this.creditsService.assertHasCredits(
+        ownerId,
+        AUTOPILOT_CREDIT_COST,
+      );
       await this.assertProfilesHavePillars(
         workspaceId,
         contentProfileId,

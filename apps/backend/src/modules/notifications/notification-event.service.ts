@@ -16,6 +16,9 @@ export interface EmitNotificationInput {
   metadata?: Prisma.InputJsonValue;
   postHook?: string | null;
   workspaceName?: string | null;
+  /** When set, overrides buildNotificationCopy title/body. */
+  title?: string;
+  body?: string;
 }
 
 @Injectable()
@@ -39,11 +42,14 @@ export class NotificationEventService {
         }
       }
 
-      const copy = buildNotificationCopy({
-        type: input.type,
-        postHook: input.postHook,
-        workspaceName: input.workspaceName,
-      });
+      const copy =
+        input.title && input.body
+          ? { title: input.title, body: input.body }
+          : buildNotificationCopy({
+              type: input.type,
+              postHook: input.postHook,
+              workspaceName: input.workspaceName,
+            });
 
       const actionUrl =
         input.actionUrl ?? this.buildActionUrl(input) ?? null;
@@ -160,6 +166,39 @@ export class NotificationEventService {
     });
   }
 
+  async emitAutopilotPausedCredits(params: {
+    userId: string;
+    workspaceId: string;
+    workspaceName?: string | null;
+    plan: string;
+    remaining: number;
+    required: number;
+    dedupeKey: string;
+  }) {
+    const isAgency = params.plan === 'agency';
+    const cta = isAgency
+      ? 'Buy more credits on the Billing page to resume Autopilot.'
+      : 'Buy more credits or upgrade your plan on the Billing page to resume Autopilot.';
+
+    await this.emit({
+      userId: params.userId,
+      workspaceId: params.workspaceId,
+      type: NotificationType.autopilot_paused_credits,
+      dedupeKey: params.dedupeKey,
+      entityType: 'autopilot',
+      entityId: params.workspaceId,
+      workspaceName: params.workspaceName,
+      title: 'Autopilot paused — out of credits',
+      body: `Autopilot was turned off because this run needed ${params.required} credits and you only had ${params.remaining} left. ${cta}`,
+      actionUrl: undefined,
+      metadata: {
+        remaining: params.remaining,
+        required: params.required,
+        plan: params.plan,
+      },
+    });
+  }
+
   private buildActionUrl(input: EmitNotificationInput): string | null {
     const frontendUrl =
       this.configService.get<string>('resend.frontendUrl') ??
@@ -179,6 +218,8 @@ export class NotificationEventService {
         return `${frontendUrl}/app/calendar`;
       case NotificationType.weekly_content_reminder:
         return `${frontendUrl}/app/generate/calendar`;
+      case NotificationType.autopilot_paused_credits:
+        return `${frontendUrl}/app/billing#buy-credits`;
       default:
         return `${frontendUrl}/app`;
     }

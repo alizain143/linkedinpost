@@ -31,7 +31,6 @@ import {
   APPROVAL_MODE_OPTIONS,
   AUTOPILOT_CREDIT_COST,
   buildDayProfileOverrides,
-  canUseAutopilot,
   derivePostingPreset,
   formatAutopilotPublishState,
   formatPlannedPostSchedule,
@@ -105,10 +104,7 @@ export default function Autopilot() {
     isError: creditsError,
     balance,
   });
-  const autopilotAllowed =
-    planGate.status === "ready" &&
-    planGate.plan != null &&
-    canUseAutopilot(planGate.plan);
+  const autopilotAllowed = planGate.status === "ready";
 
   const {
     data: config,
@@ -202,6 +198,11 @@ export default function Autopilot() {
   const linkedInReady =
     linkedInConnection?.connected && linkedInConnection?.publishReady;
 
+  const canAffordAutopilot =
+    (balance?.remaining ?? 0) >= AUTOPILOT_CREDIT_COST;
+  const canEnableAutopilot =
+    autopilotAllowed && canAffordAutopilot && !profileMissingPillars;
+
   const handleToggleEnabled = useCallback(() => {
     if (!config || !autopilotAllowed) return;
 
@@ -216,6 +217,14 @@ export default function Autopilot() {
           },
         );
       });
+      return;
+    }
+
+    if (!canAffordAutopilot) {
+      showToast(
+        `You need at least ${AUTOPILOT_CREDIT_COST} credits to turn on Autopilot. Buy credits or upgrade your plan.`,
+        "error",
+      );
       return;
     }
 
@@ -236,21 +245,19 @@ export default function Autopilot() {
     }
 
     upsertMutation.mutate(buildUpsertBody(form, true), {
-        onSuccess: () => {
-          showToast("Autopilot turned on", "auto_mode");
-        },
-        onError: (err) => {
-          const fallback =
-            "Upgrade to Pro to unlock autopilot.";
-          showToast(
-            getApiErrorMessage(err, fallback),
-            "error",
-          );
-        },
+      onSuccess: () => {
+        showToast("Autopilot turned on", "auto_mode");
       },
-    );
+      onError: (err) => {
+        showToast(
+          getApiErrorMessage(err, "Could not turn on autopilot."),
+          "error",
+        );
+      },
+    });
   }, [
     autopilotAllowed,
+    canAffordAutopilot,
     config,
     confirmPauseAutopilot,
     form,
@@ -356,27 +363,6 @@ export default function Autopilot() {
               </Button>
             </div>
           ) : null}
-          {planGate.status === "ready" && !autopilotAllowed ? (
-            <div className="mb-5 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[#fde68a] bg-gradient-to-br from-[#fffbeb] to-[#fffdf5] px-5 py-4">
-              <div className="min-w-[200px] flex-1">
-                <div className="font-display text-[15px] font-bold text-[#92400e]">
-                  Upgrade to Pro for Autopilot
-                </div>
-                <div className="text-[13px] text-[#a16207]">
-                  Automatically generate posts on your schedule with AI Council
-                  (10 credits per post).
-                </div>
-              </div>
-              <Button
-                href="/app/billing"
-                variant="primary"
-                size="md"
-                className="shrink-0 rounded-[10px]"
-              >
-                View plans
-              </Button>
-            </div>
-          ) : null}
           {profileMissingPillars ? (
             <div className="mb-5 rounded-2xl border border-[#fde68a] bg-[#fffbeb] px-5 py-4">
               <p className="text-[13px] text-[#92400e]">
@@ -395,14 +381,34 @@ export default function Autopilot() {
               </Button>
             </div>
           ) : null}
+          {planGate.status === "ready" && !canAffordAutopilot ? (
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[#fde68a] bg-[#fffbeb] px-5 py-4">
+              <div className="min-w-[200px] flex-1">
+                <div className="font-display text-[15px] font-bold text-[#92400e]">
+                  Not enough credits for Autopilot
+                </div>
+                <div className="text-[13px] text-[#a16207]">
+                  Each Autopilot post uses {AUTOPILOT_CREDIT_COST} credits. You
+                  have {balance?.remaining ?? 0} remaining. Buy credits
+                  {balance?.plan === "agency" ? "" : " or upgrade"} to turn it
+                  on.
+                </div>
+              </div>
+              <Button
+                href="/app/billing#buy-credits"
+                variant="primary"
+                size="md"
+                className="shrink-0 rounded-[10px]"
+              >
+                Buy credits
+              </Button>
+            </div>
+          ) : null}
 
           <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="font-display text-xl font-bold">Autopilot</h2>
-                <span className="rounded-full bg-[#eef2ff] px-2 py-0.5 text-[10.5px] font-bold tracking-wide text-[#4f46e5]">
-                  PRO
-                </span>
               </div>
               <p className="mt-1 text-[14px] text-[#64748b]">
                 Automatically generates and queues posts from your content
@@ -413,7 +419,11 @@ export default function Autopilot() {
               variant={config.enabled ? "secondary" : "primary"}
               size="md"
               data-tour="autopilot-toggle"
-              disabled={!autopilotAllowed || upsertMutation.isPending}
+              disabled={
+                upsertMutation.isPending ||
+                !autopilotAllowed ||
+                (!config.enabled && !canEnableAutopilot)
+              }
               onClick={handleToggleEnabled}
             >
               <MsIcon

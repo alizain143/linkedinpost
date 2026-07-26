@@ -158,12 +158,8 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      // Clear this workspace's existing binding so we never silently reuse it.
-      if (connection?.connected) {
-        await disconnectWorkspaceLinkedIn.mutateAsync();
-        invalidateLinkedIn();
-      }
-
+      // Never auto-disconnect to "switch" accounts — workspace is locked to the
+      // first LinkedIn member after connect. Reconnect must use the same account.
       const returnPath = readLinkedInOAuthReturnPath() ?? undefined;
       const { url } = await startLinkedInOAuth(token, activeWorkspaceId, {
         returnPath,
@@ -178,21 +174,26 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
         );
         return;
       }
+      if (err instanceof ApiError && err.code === "LINKEDIN_ALREADY_CONNECTED") {
+        showToast(getApiErrorMessage(err), "link_off");
+        return;
+      }
+      if (err instanceof ApiError && err.code === "LINKEDIN_ACCOUNT_MISMATCH") {
+        showToast(getApiErrorMessage(err), "link_off");
+        return;
+      }
       if (isReverificationCancelledError(err)) {
         showToast("Verification cancelled", "link_off");
         return;
       }
       showToast(
-        err instanceof ApiError ? err.message : clerkErrorMessage(err),
+        err instanceof ApiError ? getApiErrorMessage(err) : clerkErrorMessage(err),
         "link_off",
       );
     }
   }, [
     activeWorkspaceId,
-    connection?.connected,
-    disconnectWorkspaceLinkedIn,
     getToken,
-    invalidateLinkedIn,
     showToast,
     user,
   ]);
@@ -202,7 +203,7 @@ export function AppUiProvider({ children }: { children: React.ReactNode }) {
       icon: "link_off",
       tone: "danger",
       title: "Disconnect LinkedIn?",
-      body: "Scheduled posts won't publish until you reconnect. Your drafts and calendar stay saved.",
+      body: "Scheduled posts won't publish until you reconnect the same LinkedIn account. Your drafts and calendar stay saved.",
       confirmLabel: "Disconnect",
       onConfirm: () => {
         if (!activeWorkspaceId) {

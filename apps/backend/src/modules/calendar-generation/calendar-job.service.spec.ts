@@ -1,4 +1,3 @@
-import { ForbiddenException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { GenerationJobType } from '@prisma/client';
 import { userId, workspaceId } from '../../test/fixtures';
@@ -7,7 +6,6 @@ import { CreditsService } from '../credits/credits.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { GenerationJobEnqueueService } from '../job-queue/generation-job-enqueue.service';
 import { WorkspacesService } from '../workspaces/workspaces.service';
-import { PlanFeatureService } from '../billing/plan-feature.service';
 import { CalendarJobService } from './calendar-job.service';
 
 describe('CalendarJobService', () => {
@@ -19,7 +17,6 @@ describe('CalendarJobService', () => {
     assertRedisAvailable: jest.fn(),
     enqueue: jest.fn(),
   };
-  const planFeatureService = { assertAllows: jest.fn() };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -60,7 +57,6 @@ describe('CalendarJobService', () => {
         { provide: WorkspacesService, useValue: workspacesService },
         { provide: CreditsService, useValue: creditsService },
         { provide: GenerationJobEnqueueService, useValue: enqueueService },
-        { provide: PlanFeatureService, useValue: planFeatureService },
       ],
     }).compile();
 
@@ -97,23 +93,11 @@ describe('CalendarJobService', () => {
   it('enqueues a 30-day calendar job with 30 credits', async () => {
     await service.enqueueCalendar(workspaceId, userId, { durationDays: 30 });
 
-    expect(planFeatureService.assertAllows).toHaveBeenCalledWith(
-      userId,
-      'calendar_30_day',
-    );
     expect(creditsService.assertHasCredits).toHaveBeenCalledWith(userId, 30);
     expect(enqueueService.enqueue).toHaveBeenCalledWith(
       expect.objectContaining({
         creditCost: 30,
       }),
     );
-  });
-
-  it('rejects 30-day calendar for plans without the feature', async () => {
-    planFeatureService.assertAllows.mockRejectedValue(new ForbiddenException());
-
-    await expect(
-      service.enqueueCalendar(workspaceId, userId, { durationDays: 30 }),
-    ).rejects.toThrow(ForbiddenException);
   });
 });

@@ -27,6 +27,7 @@ describe("plan-gate-utils", () => {
           limit: 1000,
           remaining: 900,
           percentUsed: 10,
+          purchased: 0,
         },
       }),
     ).toEqual({ status: "ready", plan: "agency" });
