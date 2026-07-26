@@ -20,7 +20,7 @@ describe("plan-features", () => {
   });
 
   it("maps unlock tour ids", () => {
-    expect(unlockTourIdForPlan("pro")).toBeNull();
+    expect(unlockTourIdForPlan("pro")).toBe("pro-unlock-v1");
     expect(unlockTourIdForPlan("agency")).toBe("agency-unlock-v1");
     expect(unlockTourIdForPlan("starter")).toBeNull();
   });

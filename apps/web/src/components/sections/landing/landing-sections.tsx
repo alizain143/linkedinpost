@@ -154,14 +154,14 @@ export function PricingSection() {
             Pricing
           </div>
           <h2 className="font-display text-[38px] font-extrabold leading-[1.12] tracking-[-0.025em]">
-            Same product. Bigger credit packs.
+            Posts that sound like you. Plans that match how you ship.
           </h2>
-          <p className="mx-auto mt-[15px] max-w-[560px] text-[17px] leading-[1.55] text-[#5a667a]">
-            Upgrade for more monthly credits, or Agency when you manage client
-            LinkedIn accounts. No card to start Free.
+          <p className="mx-auto mt-[15px] max-w-[580px] text-[17px] leading-[1.55] text-[#5a667a]">
+            Free proves the voice. Pro ships weekly. Agency runs clients. No
+            card to start Free.
           </p>
         </div>
-        <div className="pp-grid4 items-stretch pt-3">
+        <div className="pp-grid3 items-stretch pt-3">
           {PLANS.map((plan) => (
             <PlanCard key={plan.name} {...plan} />
           ))}

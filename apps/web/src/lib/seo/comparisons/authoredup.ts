@@ -115,14 +115,14 @@ export const AUTHOREDUP_COMPARISON: ComparisonPage = {
     },
     {
       label: "Pricing model",
-      us: "Free, Starter, Pro, Agency with credit-based generation",
+      us: "Free, Pro, Agency with credit-based generation",
       them: "Plans vary; verify current prices on AuthoredUp's site",
     },
   ],
   pricing: {
     verifiedAsOf: "July 2026",
     usSummary:
-      "linkedinpost.ai: Free $0, Starter $9.99, Pro $19.99, Agency $69.99 (monthly).",
+      "linkedinpost.ai: Free $0 (15 credits), Pro $19.99, Agency $69.99 (monthly).",
     themSummary:
       "AuthoredUp pricing depends on plan and features. Do not rely on a copied number here; verify current prices on AuthoredUp's site.",
     note: "We publish our own prices. For AuthoredUp, always confirm on their pricing page before you compare cost.",
@@ -204,7 +204,7 @@ Calendars are where systems beat one-off craft. Generating seven or thirty days 
     },
     {
       heading: "Pricing without invented numbers",
-      body: `As of July 2026, linkedinpost.ai is Free at $0, Starter at $9.99, Pro at $19.99, and Agency at $69.99 per month. Credits power quick drafts, council runs, calendars, and media. Heavier actions cost more credits than a simple draft.
+      body: `As of July 2026, linkedinpost.ai is Free at $0 (15 credits), Pro at $19.99, and Agency at $69.99 per month. Credits power quick drafts, council runs, calendars, and media. Heavier actions cost more credits than a simple draft.
 
 AuthoredUp's prices depend on plan and feature set. We will not invent a number and pretend it is current. Open their pricing page and compare against the job you actually buy: craft editor versus generation system.
 
@@ -264,7 +264,7 @@ Finally, decide whether hybrid is worth the friction. One craft tool plus one ge
     },
     {
       q: "How does pricing compare?",
-      a: "As of July 2026 we are Free $0, Starter $9.99, Pro $19.99, Agency $69.99. AuthoredUp's prices vary by plan. Verify on AuthoredUp's site before you budget.",
+      a: "As of July 2026 we are Free $0 (15 credits), Pro $19.99, Agency $69.99. AuthoredUp's prices vary by plan. Verify on AuthoredUp's site before you budget.",
     },
     {
       q: "Do you generate media?",

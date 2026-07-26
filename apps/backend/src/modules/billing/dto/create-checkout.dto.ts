@@ -1,15 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { UserPlan } from '@prisma/client';
 import { IsEnum } from 'class-validator';
-
-const CHECKOUT_PLANS = [
-  UserPlan.starter,
-  UserPlan.pro,
-  UserPlan.agency,
-] as const;
+import {
+  NEW_CHECKOUT_PLANS,
+  type NewCheckoutPlan,
+} from '../../../common/constants/checkout-plans';
 
 export class CreateCheckoutDto {
-  @ApiProperty({ enum: CHECKOUT_PLANS, example: UserPlan.pro })
-  @IsEnum(CHECKOUT_PLANS)
-  plan!: (typeof CHECKOUT_PLANS)[number];
+  @ApiProperty({ enum: NEW_CHECKOUT_PLANS, example: NEW_CHECKOUT_PLANS[0] })
+  @IsEnum(NEW_CHECKOUT_PLANS)
+  plan!: NewCheckoutPlan;
 }

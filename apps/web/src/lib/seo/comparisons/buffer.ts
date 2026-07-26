@@ -115,14 +115,14 @@ export const BUFFER_COMPARISON: ComparisonPage = {
     },
     {
       label: "Pricing model",
-      us: "Free, Starter, Pro, Agency with credit-based generation",
+      us: "Free, Pro, Agency with credit-based generation",
       them: "Plans priced by channels and features; verify on Buffer's site",
     },
   ],
   pricing: {
     verifiedAsOf: "July 2026",
     usSummary:
-      "linkedinpost.ai: Free $0, Starter $9.99, Pro $19.99, Agency $69.99 (monthly).",
+      "linkedinpost.ai: Free $0 (15 credits), Pro $19.99, Agency $69.99 (monthly).",
     themSummary:
       "Buffer pricing changes by plan and channel count. Do not rely on a screenshot here; verify current prices on Buffer's site.",
     note: "We list our numbers because we control them. For Buffer, treat any third-party price table as stale until you check theirs.",
@@ -200,7 +200,7 @@ If you try both for two weeks and hate the handoff, pick the tool that owns your
     },
     {
       heading: "Pricing and what you should verify",
-      body: `As of July 2026, linkedinpost.ai pricing is Free at $0, Starter at $9.99, Pro at $19.99, and Agency at $69.99 per month. Credits cover quick drafts, council runs, calendars, and media. Exact credit costs depend on the action (for example, council costs more than a quick draft).
+      body: `As of July 2026, linkedinpost.ai pricing is Free at $0 (15 credits), Pro at $19.99, and Agency at $69.99 per month. Credits cover quick drafts, council runs, calendars, and media. Exact credit costs depend on the action (for example, council costs more than a quick draft).
 
 Buffer's pricing depends on channels, team seats, and which features you need. We are not going to invent a number that will be wrong next month. Open Buffer's pricing page and check the plan that matches your channel count.
 
@@ -280,7 +280,7 @@ If three of four point at LinkedIn writing quality, start with linkedinpost.ai f
     },
     {
       q: "How does pricing compare?",
-      a: "As of July 2026 we are Free $0, Starter $9.99, Pro $19.99, Agency $69.99. Buffer's prices depend on channels and plan. Verify on Buffer's site before you budget.",
+      a: "As of July 2026 we are Free $0 (15 credits), Pro $19.99, Agency $69.99. Buffer's prices depend on channels and plan. Verify on Buffer's site before you budget.",
     },
     {
       q: "Is Buffer better for teams?",

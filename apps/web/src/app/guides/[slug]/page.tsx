@@ -226,7 +226,7 @@ export default async function GuidePage({ params }: Props) {
             href="/sign-up"
             className="mt-6 inline-flex rounded-[10px] bg-white px-5 py-3 text-sm font-semibold text-[#4338ca] transition-opacity hover:opacity-90"
           >
-            Start free, 5 credits / month
+            Start free, 15 credits / month
           </Link>
         </div>
       </article>

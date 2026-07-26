@@ -80,7 +80,7 @@ export const TAPLIO_COMPARISON: ComparisonPage = {
     },
     {
       label: "Free plan",
-      us: "Yes: Free at $0 with 5 credits to try the flow",
+      us: "Yes: Free at $0 with 15 credits to try the flow",
       them: "Typically paid growth tooling; check Taplio for current free/trial options",
     },
     {
@@ -115,7 +115,7 @@ export const TAPLIO_COMPARISON: ComparisonPage = {
     },
     {
       label: "Pricing posture (July 2026)",
-      us: "Free, Starter $9.99, Pro $19.99, Agency $69.99 monthly USD",
+      us: "Free (15 credits), Pro $19.99, Agency $69.99 monthly USD",
       them: "Paid tiers that change; check Taplio pricing page (verified posture July 2026)",
     },
     {
@@ -132,7 +132,7 @@ export const TAPLIO_COMPARISON: ComparisonPage = {
   pricing: {
     verifiedAsOf: "July 2026",
     usSummary:
-      "Free $0 (5 credits), Starter $9.99, Pro $19.99, Agency $69.99 monthly USD. Always check /pricing for current numbers.",
+      "Free $0 (15 credits), Pro $19.99, Agency $69.99 monthly USD. Always check /pricing for current numbers.",
     themSummary:
       "Taplio is typically paid LinkedIn growth tooling with plan tiers that change over time. Do not treat any third-party roundup as gospel. Check Taplio's pricing page for current amounts and limits. Verified posture July 2026: we are not inventing exact Taplio dollar figures here.",
     note: "Pricing changes on both sides. Numbers and posture verified July 2026. Confirm live pages before you buy.",
@@ -196,7 +196,7 @@ The AI Content Council is the other difference. Writer, reviewer, and editor age
 
 On Pro, the content calendar sits next to that review flow. On Agency, you get up to 5 client workspaces so each brand keeps its own voice and calendar instead of sharing one messy prompt history. Media generation is part of the product when you need more than plain text.
 
-There is also a Free plan at $0 with 5 credits, so you can test the draft-to-approval path without buying a growth suite first. That matters if you are not sure yet whether writing quality is your real bottleneck.`,
+There is also a Free plan at $0 with 15 credits, so you can test the draft-to-approval path without buying a growth suite first. That matters if you are not sure yet whether writing quality is your real bottleneck.`,
     },
     {
       heading: "Writing quality and the sounds-like-AI problem",
@@ -228,7 +228,7 @@ Ask what you invoice for. Voice-consistent posts and approvals point to linkedin
     },
     {
       heading: "Pricing without invented Taplio numbers",
-      body: `linkedinpost.ai pricing (monthly USD, check /pricing for live numbers): Free $0 with 5 credits, Starter $9.99, Pro $19.99, Agency $69.99. Verified posture July 2026.
+      body: `linkedinpost.ai pricing (monthly USD, check /pricing for live numbers): Free $0 with 15 credits, Pro $19.99, Agency $69.99. Verified posture July 2026.
 
 Taplio is typically paid growth tooling with tiers that change. We are not inventing exact Taplio dollar amounts here. Check Taplio's pricing page for current plans, limits, and trials. Verified posture July 2026: treat any blog that quotes a specific Taplio price as possibly stale until you confirm it yourself.
 
@@ -238,7 +238,7 @@ Price alone should not decide this. A cheaper writing tool that you rewrite for 
       heading: "Should you switch, stay, or use both?",
       body: `Stay on Taplio if growth and engagement are why you opened the tab every day, and AI writing is a convenience feature you already manage with a heavy edit pass. Switching would cost you a working system for a different product thesis.
 
-Move toward linkedinpost.ai if you are mainly fighting generic drafts, missing approvals, or running client voices without separation. Start on Free or Starter, build the voice profile properly, and only move scheduling after a week of drafts you did not hate editing.
+Move toward linkedinpost.ai if you are mainly fighting generic drafts, missing approvals, or running client voices without separation. Start on Free or Pro, build the voice profile properly, and only move scheduling after a week of drafts you did not hate editing.
 
 Use both if Taplio still wins for inspiration and engagement, and linkedinpost.ai wins for voice and review. That is not indecision. It is matching tools to jobs. LinkedIn-focused products can coexist when one is a growth suite and the other is a writing system.
 
@@ -278,7 +278,7 @@ If you are unsure, run the parallel week described in the migration steps above.
     },
     {
       q: "How does pricing compare to Taplio?",
-      a: "linkedinpost.ai: Free $0 (5 credits), Starter $9.99, Pro $19.99, Agency $69.99 monthly USD (check /pricing). Taplio is typically paid with tiers that change; check Taplio's pricing page for exact amounts. Verified posture July 2026. Do not buy on stale roundup numbers.",
+      a: "linkedinpost.ai: Free $0 (15 credits), Pro $19.99, Agency $69.99 monthly USD (check /pricing). Taplio is typically paid with tiers that change; check Taplio's pricing page for exact amounts. Verified posture July 2026. Do not buy on stale roundup numbers.",
     },
     {
       q: "Which is better for agencies?",
