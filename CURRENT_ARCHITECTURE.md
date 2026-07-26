@@ -1,6 +1,6 @@
 # linkedinpost.ai — Current Architecture (As Implemented)
 
-> Snapshot: July 2026. Backend slices 1–20 complete. Billing uses XPay (replaced Stripe).
+> Snapshot: July 2026. Backend slices 1–20 complete. Billing uses Lemon Squeezy (replaced Stripe).
 > Living reference for what exists today.
 >
 > **Field-level reference:** [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) (every table, column, enum).
@@ -9,7 +9,7 @@
 
 AI LinkedIn content engine: generate posts → AI Council pipeline → human approval → schedule/publish to LinkedIn.
 
-**Stack:** NestJS (`apps/backend`) · Next.js (`apps/web`) · PostgreSQL · Prisma · Redis/BullMQ · Clerk · XPay · Cloudflare R2 · OpenAI (text) · Google Gemini (images)
+**Stack:** NestJS (`apps/backend`) · Next.js (`apps/web`) · PostgreSQL · Prisma · Redis/BullMQ · Clerk · Lemon Squeezy · Cloudflare R2 · OpenAI (text) · Google Gemini (images)
 
 ---
 
@@ -24,7 +24,7 @@ AI LinkedIn content engine: generate posts → AI Council pipeline → human app
          ┌──────────────────────────┼──────────────────────────┐
          ▼                          ▼                          ▼
    PostgreSQL                  Redis/BullMQ              External APIs
-   (Prisma)                    (async jobs)              Clerk, XPay,
+   (Prisma)                    (async jobs)              Clerk, Lemon Squeezy,
                                                          LinkedIn, OpenAI,
                                                          Google Image, R2
 ```
@@ -51,7 +51,7 @@ AI LinkedIn content engine: generate posts → AI Council pipeline → human app
 | scheduling | Schedule/unschedule/reschedule |
 | linkedin | Per-workspace connection bind, profile sync, **user-initiated profile import** (extension DOM capture → LLM extract + paste fallback), publish now, scheduled publish worker |
 | credits | Ledger with billing-aligned credit period |
-| billing | XPay checkout, cancel, webhooks |
+| billing | Lemon Squeezy checkout, cancel, webhooks |
 | generation | Quick draft (sync) |
 | job-queue | BullMQ worker for async jobs |
 | council | Multi-agent orchestration + timeline |
@@ -67,7 +67,7 @@ AI LinkedIn content engine: generate posts → AI Council pipeline → human app
 
 ```
 User
- ├── Subscription (XPay)
+ ├── Subscription (Lemon Squeezy)
  ├── CreditTransaction[] (user-level ledger, optional generationJobId FK)
  ├── Document[] (R2 uploads — profile only)
  ├── profileDocument (1:1 optional)
@@ -109,7 +109,7 @@ BillingWebhookEvent (idempotency)
 | Model | Purpose |
 |-------|---------|
 | User | Clerk identity, plan, settings, LinkedIn profile JSON |
-| Subscription | XPay customer/subscription mirror |
+| Subscription | Lemon Squeezy customer/subscription mirror |
 | BillingWebhookEvent | Webhook idempotency |
 | Document | R2 file metadata (profile uploads) |
 | Workspace | Personal or client workspace |
@@ -132,7 +132,7 @@ BillingWebhookEvent (idempotency)
 | DocumentStatus | pending, attached | |
 | DocumentPurpose | profile | Profile images only |
 | WorkspaceMemberRole | owner, editor, viewer | Only `owner` used today |
-| UserPlan | free, starter, pro, agency | Denormalized on User, synced from XPay |
+| UserPlan | free, starter, pro, agency | Denormalized on User, synced from Lemon Squeezy |
 | WorkspaceType | personal, client | |
 | ContentGoal | build_authority, generate_leads, grow_audience | |
 | PostPackageStatus | draft, text_generating, … | No `brief_created` |
@@ -144,7 +144,7 @@ BillingWebhookEvent (idempotency)
 | PostMediaType | quote_card | Single value only |
 | CouncilAgentRole | writer, reviewer, editor, media_creator, media_reviewer | |
 | CouncilEventStatus | running, completed, failed | No `skipped` |
-| SubscriptionStatus | active, trialing, past_due, canceled, incomplete, unpaid | Mapped from XPay |
+| SubscriptionStatus | active, trialing, past_due, canceled, incomplete, unpaid | Mapped from Lemon Squeezy |
 | BillingWebhookEventStatus | pending, processed, failed | Webhook idempotency |
 
 ---
@@ -215,7 +215,7 @@ Council agent pipeline: writer → reviewer → editor → media_creator → med
 | Council | `GET .../posts/:postId/council` |
 | Credits | `GET /v1/credits` |
 | Notifications | `GET /v1/notifications`, unread count, mark read, device tokens |
-| Billing | `GET /v1/billing`, checkout, cancel, XPay webhook |
+| Billing | `GET /v1/billing`, checkout, cancel, credit quote/checkout, transactions, Lemon webhook |
 | Scheduling | schedule/unschedule/reschedule on posts |
 | LinkedIn | Per-workspace direct OAuth (`GET .../linkedin/oauth/start` + callback); tokens on `Workspace`; publish uses workspace token; Clerk OAuth retained for sign-in only (one LinkedIn per user) |
 | Media templates | CRUD + preview `/v1/workspaces/:workspaceId/media-templates`; layout JSON editor (v2 carousel pages); system presets `system:identity-card`, `system:carousel-identity`; AI draft from text and/or image/PDF reference (`POST .../ai-draft`); template or freestyle carousel generation |
@@ -238,7 +238,7 @@ Council agent pipeline: writer → reviewer → editor → media_creator → med
 | Service | Usage |
 |---------|-------|
 | Clerk | App auth (email, Google); optional single LinkedIn sign-in — not used for per-workspace publish |
-| XPay | Subscriptions; plan synced to `User.plan` |
+| Lemon Squeezy | Subscriptions; plan synced to `User.plan` |
 | R2 | Profile images, post media (AI feed images) |
 | OpenAI | Text generation (GPT-5.4 default) |
 | Google Gemini | Feed images (Nano Banana 2) |
@@ -297,7 +297,7 @@ Backend deep-dives in `apps/backend/`: `GENERATION.md`, `COUNCIL.md`, `PUBLISHIN
 
 ## Frontend status
 
-Marketing site and app UI shells exist under `apps/web`. **FE-SLICE-01** through **FE-SLICE-18** are wired to the API (workspace context, settings, content profile, credits shell, dashboard stats, posts CRUD, pipeline kanban, approvals queue, calendar views, LinkedIn connection, schedule/publish, quick draft generate, council jobs + polling, bulk calendar generation, autopilot config + planned posts, billing + XPay checkout/cancel, agency client workspaces, approval share links + public `/approve/[token]` page).
+Marketing site and app UI shells exist under `apps/web`. **FE-SLICE-01** through **FE-SLICE-18** are wired to the API (workspace context, settings, content profile, credits shell, dashboard stats, posts CRUD, pipeline kanban, approvals queue, calendar views, LinkedIn connection, schedule/publish, quick draft generate, council jobs + polling, bulk calendar generation, autopilot config + planned posts, billing + Lemon Squeezy checkout/cancel, agency client workspaces, approval share links + public `/approve/[token]` page).
 
 ---
 

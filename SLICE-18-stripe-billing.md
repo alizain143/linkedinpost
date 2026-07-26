@@ -1,11 +1,11 @@
-# Slice 18 — XPay subscriptions (backend)
+# Slice 18 — Lemon Squeezy subscriptions (backend)
 
-**Status:** Complete (migrated from Stripe to XPay)  
+**Status:** Complete (migrated from Stripe → XPay → Lemon Squeezy)  
 **Phase:** Phase 6 — Business
 
 ## One outcome
 
-Paid users can start XPay subscription checkout, cancel via API, and have `User.plan` kept in sync via webhooks — unlocking the correct credit limit and Pro-only features (autopilot, 30-day calendar).
+Paid users can start Lemon Squeezy subscription checkout, cancel at period end via API, and have `User.plan` kept in sync via webhooks — unlocking the correct credit limit and Pro-only features (autopilot, 30-day calendar).
 
 Frontend Billing screen: [FE-SLICE-16](FE-SLICE-16-billing.md).
 
@@ -19,28 +19,23 @@ Frontend Billing screen: [FE-SLICE-16](FE-SLICE-16-billing.md).
 ## Prisma
 
 - `SubscriptionStatus` enum
-- `Subscription` model (`userId`, XPay IDs, `plan`, status, period fields)
-- `User.phone` (E.164, written on checkout)
+- `Subscription` model (`userId`, Lemon IDs, `plan`, status, period fields)
 - `BillingWebhookEvent` for webhook idempotency
-- Migrations: `20250703100000_add_stripe_subscription`, `20250707110000_qa_stripe_webhook_status`, `20250711100000_replace_stripe_with_xpay`
+- Migrations: `…_add_stripe_subscription`, `…_replace_stripe_with_xpay`, `20260726120000_replace_xpay_with_lemonsqueezy`
 
 ## Config
 
 ```env
-XPAY_PUBLIC_KEY=
-XPAY_PRIVATE_KEY=
-XPAY_WEBHOOK_SECRET=
-XPAY_CURRENCY=USD
-XPAY_AMOUNT_STARTER=999
-XPAY_AMOUNT_PRO=1999
-XPAY_AMOUNT_AGENCY=6999
-XPAY_SUBSCRIPTION_CYCLE_COUNT=120
+LEMONSQUEEZY_API_KEY=
+LEMONSQUEEZY_STORE_ID=
+LEMONSQUEEZY_WEBHOOK_SECRET=
+LEMONSQUEEZY_VARIANT_STARTER=
+LEMONSQUEEZY_VARIANT_PRO=
+LEMONSQUEEZY_VARIANT_AGENCY=
 FRONTEND_URL=http://localhost:3000
 ```
 
-Amounts are in the lowest currency unit (cents for USD). Plan is stored in subscription `metadata.plan` and mirrored on `Subscription.plan`.
-
-XPay requires a finite `cycleCount`; default `120` months approximates an ongoing subscription. Users cancel via `POST /billing/cancel`.
+Plan prices live in Lemon Squeezy product variants. Checkout passes `custom.user_id` + `custom.plan`; webhooks also map `variant_id` → plan.
 
 ## API
 
@@ -49,15 +44,13 @@ XPay requires a finite `cycleCount`; default `120` months approximates an ongoin
 | `GET` | `/v1/billing` | Clerk |
 | `POST` | `/v1/billing/checkout` | Clerk |
 | `POST` | `/v1/billing/cancel` | Clerk |
-| `POST` | `/v1/billing/webhooks/xpay` | XPay signature |
+| `POST` | `/v1/billing/webhooks/lemonsqueezy` | Lemon `X-Signature` |
 
 ### Checkout body
 
 ```json
-{ "plan": "starter" | "pro" | "agency", "phone": "+923001234567" }
+{ "plan": "starter" | "pro" | "agency" }
 ```
-
-Phone must be E.164. Persisted on `User.phone`.
 
 ### GET response
 
@@ -66,82 +59,39 @@ Phone must be E.164. Persisted on `User.phone`.
   "plan": "pro",
   "subscriptionStatus": "active",
   "cancelAtPeriodEnd": false,
-  "currentPeriodEnd": "2026-07-27T00:00:00.000Z",
-  "xpayCustomerId": null,
+  "currentPeriodEnd": "2026-08-26T00:00:00.000Z",
+  "lemonCustomerId": "123",
   "hasBillingAccount": true
 }
 ```
 
-## Webhooks (v1)
+## Webhooks
 
 | Event | Action |
 |-------|--------|
-| `subscription.created` / `subscription.checkout_opened` | Track incomplete subscription only |
-| `subscription.active` / `subscription.trialing` | Upsert `Subscription`, set `User.plan` from metadata |
-| `subscription.cycle_charged` | Refresh period end from `nextPaymentDate` |
-| `subscription.unpaid` | Status `unpaid`, keep paid plan |
-| `subscription.paused` | Status `past_due`, keep paid plan |
-| `subscription.cancelled` / `subscription.ended` | `User.plan = free`, clear subscription id |
+| `subscription_created` / `subscription_updated` / `subscription_payment_success` / `subscription_resumed` / `subscription_unpaused` | Upsert `Subscription`, set `User.plan` from custom data or variant |
+| `subscription_cancelled` | Set `cancelAtPeriodEnd=true`; keep paid plan until expiry |
+| `subscription_paused` / `subscription_payment_failed` | `past_due` (plan kept) |
+| `subscription_expired` | Clear subscription, set `User.plan=free` |
 
-Idempotency: `BillingWebhookEvent.id` = XPay `eventId`, inserted before processing.
+Idempotency: `BillingWebhookEvent.id` = hash of event name + subscription id + updated_at + status.
 
-Signature: HMAC-SHA512 of raw body with `XPAY_WEBHOOK_SECRET`, header `xpay-signature` (Base64).
+Signature: HMAC-SHA256 hex of raw body with `LEMONSQUEEZY_WEBHOOK_SECRET`, header `X-Signature`.
 
-## Plan sync rules
+## Cancel
 
-| XPay status (mapped) | `User.plan` |
-|----------------------|-------------|
-| `active`, `trialing` | Map from `metadata.plan` / `Subscription.plan` |
-| `past_due`, `unpaid` | Keep paid plan |
-| `canceled` / ended | `free` |
-
-Credit period remains UTC calendar month; only the **limit** changes when plan changes mid-month.
-
-## Plan feature guards
-
-| Feature | Allowed plans |
-|---------|---------------|
-| `autopilot` | Pro, Agency |
-| `calendar_30_day` | Pro, Agency |
-
-- `AutopilotService.upsertConfig` — when `enabled: true`, assert workspace **owner** plan
-- `CalendarJobService.enqueueCalendar` — when `durationDays === 30`, assert user plan
-- `AutopilotDispatchService` — skip dispatch if owner downgraded (log warn)
-
-Error code: `403 PLAN_UPGRADE_REQUIRED`
-
-## Error codes
-
-| Code | When |
-|------|------|
-| `BILLING_UNAVAILABLE` | XPay not configured |
-| `ALREADY_SUBSCRIBED` | Active subscription on same plan |
-| `BILLING_ACCOUNT_REQUIRED` | Cancel without subscription |
-| `NO_ACTIVE_SUBSCRIPTION` | Cancel when not active |
-| `WEBHOOK_INVALID` | Bad/missing XPay signature |
-| `PLAN_UPGRADE_REQUIRED` | Feature blocked by plan |
+`POST /billing/cancel` calls Lemon `PATCH /v1/subscriptions/:id` with `cancelled: true` (cancel at period end). Local row sets `cancelAtPeriodEnd=true`; access remains until `subscription_expired`.
 
 ## Manual test
 
-1. Create XPay sandbox account; set amounts for Starter, Pro, Agency
-2. Set env keys; register webhook URL to `/v1/billing/webhooks/xpay`
-3. `POST /billing/checkout` with `{ "plan": "pro", "phone": "+923001234567" }` → complete checkout
-4. Verify webhook → `GET /billing` shows `plan: pro`, `GET /credits` shows limit 200
-5. Enable autopilot on Pro — succeeds; after cancel — `403`
-6. `POST /generate/calendar` with `durationDays: 30` — Pro ok, Starter `403`
+1. Create Lemon products/variants for Starter, Pro, Agency; copy variant IDs
+2. Set env keys; register webhook to `/v1/billing/webhooks/lemonsqueezy`
+3. Checkout → redirect → webhook → `User.plan` updates
+4. Cancel → `cancelAtPeriodEnd` true; expire → free
 
-## Progress
+## Done when
 
-- [x] Prisma `Subscription` + `BillingWebhookEvent` + XPay migration
-- [x] `xpay.config.ts` + `XpayClientService` + `BillingModule`
-- [x] Checkout + Cancel + GET billing status
-- [x] Webhook verify + `BillingSyncService` plan sync
-- [x] `PlanFeatureService` + autopilot + 30-day calendar guards
-- [x] Tests + docs
-- [x] Migrated from Stripe to XPay
-
-## Out of scope
-
-- Payment-method update UI (no hosted portal)
-- Mid-cycle plan upgrades (cancel + new checkout)
-- Metered billing / usage-based credits
+- [x] Prisma `Subscription` + Lemon migration
+- [x] Checkout / cancel / webhook sync
+- [x] Plan feature gates unchanged
+- [x] Frontend phone field removed

@@ -17,7 +17,14 @@ describe('CreditsService', () => {
       ...buildUser({ plan: UserPlan.pro }),
       subscription: null,
     });
-    prisma.creditTransaction.aggregate.mockResolvedValue({ _sum: { amount: 0 } });
+    prisma.creditTransaction.aggregate.mockImplementation(
+      async (args: { where?: { amount?: { lt?: number; gt?: number } } }) => {
+        if (args?.where?.amount?.gt != null) {
+          return { _sum: { amount: 0 } };
+        }
+        return { _sum: { amount: 0 } };
+      },
+    );
     prisma.creditTransaction.create.mockResolvedValue({});
     prisma.creditTransaction.findFirst.mockResolvedValue(null);
     prisma.$executeRaw.mockResolvedValue(0);
@@ -40,14 +47,20 @@ describe('CreditsService', () => {
       expect(result.used).toBe(0);
       expect(result.limit).toBe(200);
       expect(result.remaining).toBe(200);
+      expect(result.purchased).toBe(0);
       expect(result.percentUsed).toBe(0);
       expect(result.periodStart.toISOString()).toBe('2026-06-01T00:00:00.000Z');
     });
 
     it('sums negative transactions in the current UTC month', async () => {
-      prisma.creditTransaction.aggregate.mockResolvedValue({
-        _sum: { amount: -7 },
-      });
+      prisma.creditTransaction.aggregate.mockImplementation(
+        async (args: { where?: { amount?: { lt?: number; gt?: number } } }) => {
+          if (args?.where?.amount?.gt != null) {
+            return { _sum: { amount: 0 } };
+          }
+          return { _sum: { amount: -7 } };
+        },
+      );
 
       const result = await service.getBalance(userId, now);
 
@@ -55,13 +68,36 @@ describe('CreditsService', () => {
       expect(result.remaining).toBe(193);
       expect(result.percentUsed).toBe(4);
     });
+
+    it('adds purchased credits to the effective limit', async () => {
+      prisma.creditTransaction.aggregate.mockImplementation(
+        async (args: { where?: { amount?: { lt?: number; gt?: number } } }) => {
+          if (args?.where?.amount?.gt != null) {
+            return { _sum: { amount: 100 } };
+          }
+          return { _sum: { amount: -10 } };
+        },
+      );
+
+      const result = await service.getBalance(userId, now);
+
+      expect(result.purchased).toBe(100);
+      expect(result.limit).toBe(300);
+      expect(result.used).toBe(10);
+      expect(result.remaining).toBe(290);
+    });
   });
 
   describe('assertHasCredits', () => {
     it('throws CREDITS_EXHAUSTED when remaining is insufficient', async () => {
-      prisma.creditTransaction.aggregate.mockResolvedValue({
-        _sum: { amount: -200 },
-      });
+      prisma.creditTransaction.aggregate.mockImplementation(
+        async (args: { where?: { amount?: { lt?: number; gt?: number } } }) => {
+          if (args?.where?.amount?.gt != null) {
+            return { _sum: { amount: 0 } };
+          }
+          return { _sum: { amount: -200 } };
+        },
+      );
 
       await expect(service.assertHasCredits(userId, 1)).rejects.toMatchObject({
         status: HttpStatus.PAYMENT_REQUIRED,
@@ -78,9 +114,14 @@ describe('CreditsService', () => {
         }
         return Promise.all(arg as Promise<unknown>[]);
       });
-      prisma.creditTransaction.aggregate.mockResolvedValue({
-        _sum: { amount: -2 },
-      });
+      prisma.creditTransaction.aggregate.mockImplementation(
+        async (args: { where?: { amount?: { lt?: number; gt?: number } } }) => {
+          if (args?.where?.amount?.gt != null) {
+            return { _sum: { amount: 0 } };
+          }
+          return { _sum: { amount: -2 } };
+        },
+      );
 
       const result = await service.consume(
         userId,
@@ -113,9 +154,14 @@ describe('CreditsService', () => {
         id: 'existing',
         amount: -3,
       });
-      prisma.creditTransaction.aggregate.mockResolvedValue({
-        _sum: { amount: -3 },
-      });
+      prisma.creditTransaction.aggregate.mockImplementation(
+        async (args: { where?: { amount?: { lt?: number; gt?: number } } }) => {
+          if (args?.where?.amount?.gt != null) {
+            return { _sum: { amount: 0 } };
+          }
+          return { _sum: { amount: -3 } };
+        },
+      );
 
       const result = await service.consume(
         userId,

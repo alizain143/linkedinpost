@@ -2,7 +2,7 @@
 
 > **Source of truth:** `apps/backend/prisma/schema.prisma`  
 > **Companion docs:** [CURRENT_ARCHITECTURE.md](CURRENT_ARCHITECTURE.md) · [PRODUCT_OVERVIEW.md](PRODUCT_OVERVIEW.md)  
-> **Last synced:** July 2026 (drop setup wizard columns; keep product tours)
+> **Last synced:** July 2026 (credit top-ups + billing_transactions)
 
 Developer reference for every PostgreSQL table, field, enum, and relationship. Read this before writing Prisma queries, migrations, or API mappers.
 
@@ -60,11 +60,11 @@ User
 | Value | Credits/mo | Notes |
 |-------|------------|-------|
 | `free` | 5 | Default on signup |
-| `starter` | 50 | XPay-paid |
+| `starter` | 50 | Lemon Squeezy–paid |
 | `pro` | 200 | Autopilot, 30-day calendar |
 | `agency` | 1000 | Client workspaces, approval share links |
 
-Denormalized on `User.plan`, synced from XPay via `BillingSyncService`. Feature gates in `plan-features.constants.ts`.
+Denormalized on `User.plan`, synced from Lemon Squeezy via `BillingSyncService`. Feature gates in `plan-features.constants.ts`.
 
 ### `WorkspaceType`
 
@@ -147,6 +147,7 @@ LLM / UI taxonomy for post format.
 | `media` | Yes | Media regen during council (5 credits per regen) |
 | `content_profile` | Yes | AI content profile save via approve-suggestions (1 credit each) |
 | `adjustment` | Yes | Admin grants / billing corrections via `CreditsService.grant()` |
+| `purchase` | Yes | Lemon Squeezy credit top-up grant (positive amount) |
 
 Ledger: negative `amount` = consumption. Balance = sum of negative amounts in current credit period vs plan limit.
 
@@ -227,16 +228,16 @@ Council jobs use this status exclusively (no separate run status).
 
 ### `SubscriptionStatus`
 
-Mirrors XPay subscription status. Synced in `BillingSyncService`.
+Mirrors Lemon Squeezy subscription status. Synced in `BillingSyncService`.
 
 | Value | Typical effect |
 |-------|----------------|
 | `active` | Paid plan applied |
 | `trialing` | Paid plan during trial |
-| `past_due` | Grace period — still treated as paid for credits (also maps XPay `PAUSED`) |
+| `past_due` | Grace period — still treated as paid for credits (also maps Lemon `paused`) |
 | `canceled` | Reverts toward `free` |
 | `incomplete` | Checkout started, not completed (default) |
-| `unpaid` | XPay unpaid state — plan kept until cancelled/ended |
+| `unpaid` | Lemon unpaid state — plan kept until expired |
 
 ### `BillingWebhookEventStatus`
 
@@ -244,7 +245,7 @@ Mirrors XPay subscription status. Synced in `BillingSyncService`.
 |-------|---------|
 | `pending` | Inserted, handler not yet finished |
 | `processed` | Handler succeeded |
-| `failed` | Handler failed; XPay replay will retry dispatch |
+| `failed` | Handler failed; Lemon replay will retry dispatch |
 
 ### `NotificationType`
 
@@ -286,7 +287,7 @@ Account identity. Synced from Clerk on sign-in/webhook.
 | `email` | String | No | — | **Unique.** From Clerk |
 | `firstName` | String | Yes | — | Display name |
 | `lastName` | String | Yes | — | Display name |
-| `phone` | String | Yes | — | E.164 phone for XPay checkout. Written on `POST /billing/checkout` |
+| `phone` | String | Yes | — | Optional contact phone (no longer required for checkout) |
 | `profileDocumentId` | UUID | Yes | — | **Unique.** FK → `documents.id`. Avatar from R2 |
 | `profileImageUrl` | String | Yes | — | Public URL (may duplicate document URL) |
 | `timezone` | String | No | `America/New_York` | Used for scheduling/autopilot. `PATCH /auth/me` |
@@ -295,7 +296,7 @@ Account identity. Synced from Clerk on sign-in/webhook.
 | `emailProductUpdates` | Boolean | No | `false` | Email pref for product broadcasts |
 | `emailPublishAlerts` | Boolean | No | `true` | Email pref for publish success/failure |
 | `pushEnabled` | Boolean | No | `true` | Master web push toggle (`PATCH /auth/me`) |
-| `plan` | UserPlan | No | `free` | **Denormalized** from XPay subscription webhooks. Credit limit source |
+| `plan` | UserPlan | No | `free` | **Denormalized** from Lemon Squeezy subscription webhooks. Credit limit source |
 | `toursSeen` | JSON | Yes | — | Map of tour id → ISO timestamp (e.g. `product-core-v1`). Updated via `markTourSeen` |
 | `lastAcknowledgedPlan` | UserPlan | Yes | — | Last plan the user dismissed unlock UI for. Compared to `plan` for Pro/Agency feature unlocks |
 | `linkedInMemberId` | String | Yes | — | LinkedIn member URN/id for publish API |
@@ -313,17 +314,17 @@ Account identity. Synced from Clerk on sign-in/webhook.
 
 ### `subscriptions` → `Subscription`
 
-One row per user (1:1). XPay billing mirror.
+One row per user (1:1). Lemon Squeezy billing mirror.
 
 | Field | Type | Null | Default | Description |
 |-------|------|------|---------|-------------|
 | `id` | UUID | No | uuid() | |
 | `userId` | UUID | No | — | **Unique.** FK → `users.id` CASCADE |
-| `xpayCustomerId` | String | Yes | — | **Unique.** XPay customer id when created |
-| `xpaySubscriptionId` | String | Yes | — | **Unique.** Active/pending XPay subscription id |
+| `lemonCustomerId` | String | Yes | — | **Unique.** Lemon Squeezy customer id |
+| `lemonSubscriptionId` | String | Yes | — | **Unique.** Active/pending Lemon subscription id |
 | `plan` | UserPlan | Yes | — | Intended/active paid plan from checkout metadata |
-| `status` | SubscriptionStatus | No | `incomplete` | Mapped from XPay status |
-| `cancelAtPeriodEnd` | Boolean | No | `false` | Reserved; XPay cancel is immediate via API |
+| `status` | SubscriptionStatus | No | `incomplete` | Mapped from Lemon status |
+| `cancelAtPeriodEnd` | Boolean | No | `false` | True after cancel; access until `subscription_expired` |
 | `currentPeriodStart` | Timestamptz | Yes | — | Billing period start — drives credit period for paid users |
 | `currentPeriodEnd` | Timestamptz | Yes | — | Billing period end (`nextPaymentDate` from webhooks) |
 | `createdAt` | Timestamptz | No | now() | |
@@ -335,17 +336,17 @@ One row per user (1:1). XPay billing mirror.
 
 ### `billing_webhook_events` → `BillingWebhookEvent`
 
-Idempotency log for XPay webhooks.
+Idempotency log for Lemon Squeezy webhooks.
 
 | Field | Type | Null | Default | Description |
 |-------|------|------|---------|-------------|
-| `id` | String | No | — | XPay `eventId` (not UUID) |
+| `id` | String | No | — | Hash of Lemon event identity (not UUID) |
 | `type` | String | No | — | Event type e.g. `subscription.active` |
 | `status` | BillingWebhookEventStatus | No | `pending` | `pending` → dispatch → `processed` or `failed` |
 | `errorMessage` | String | Yes | — | Last handler error when `status=failed` |
 | `processedAt` | Timestamptz | No | now() | When row was last updated |
 
-No relations. Prevents double-processing; failed rows are retried on XPay replay.
+No relations. Prevents double-processing; failed rows are retried on Lemon replay.
 
 ---
 
@@ -599,15 +600,44 @@ Append-only ledger. Negative amounts = spend.
 | `amount` | Int | No | — | Negative for consumption (e.g. `-3`) |
 | `type` | CreditTransactionType | No | — | Category for usage breakdown |
 | `reason` | String | Yes | — | Optional human note |
+| `providerRef` | String | Yes | — | **Unique.** Idempotency key e.g. `lemon_order:{id}` for purchases |
 | `createdAt` | Timestamptz | No | now() | Used for credit period filter |
 
-**Indexes:** `(userId, createdAt)`, `generationJobId`, partial unique `(generationJobId, type) WHERE generationJobId IS NOT NULL`
+**Indexes:** `(userId, createdAt)`, `generationJobId`, unique `providerRef`, partial unique `(generationJobId, type) WHERE generationJobId IS NOT NULL`
 
 **Idempotency:** `CreditsService.consume()` uses `SELECT … FOR UPDATE` on the user row and no-ops when a row already exists for the same `(generationJobId, type)`.
 
-**Balance:** `CreditsService` sums negative amounts in the current credit period. Paid users (`active`, `trialing`, `past_due`) use `Subscription.currentPeriodStart/End`; free users use UTC calendar month.
+**Balance:** `limit = planLimit + purchased` where `purchased` is the sum of positive `purchase` amounts in the current period. `used` is the absolute sum of negative amounts. Paid users (`active`, `trialing`, `past_due`) use `Subscription.currentPeriodStart/End`; free users use UTC calendar month.
 
 **Module:** `credits`
+
+---
+
+### `billing_transactions` → `BillingTransaction`
+
+Local mirror of Lemon Squeezy charges for the Billing history UI.
+
+| Field | Type | Null | Default | Description |
+|-------|------|------|---------|-------------|
+| `id` | UUID | No | uuid() | |
+| `userId` | UUID | No | — | FK → `users.id` CASCADE |
+| `type` | BillingTransactionType | No | — | `subscription_payment` \| `credit_purchase` \| `refund` |
+| `status` | BillingTransactionStatus | No | `paid` | `paid` \| `refunded` \| `failed` |
+| `amountCents` | Int | No | — | Charge amount in cents |
+| `currency` | String | No | `USD` | |
+| `description` | String | Yes | — | Display label |
+| `creditsGranted` | Int | Yes | — | For credit purchases |
+| `plan` | UserPlan | Yes | — | For subscription charges |
+| `provider` | String | No | `lemonsqueezy` | |
+| `providerEventId` | String | Yes | — | **Unique.** Webhook idempotency |
+| `providerOrderId` | String | Yes | — | Lemon order id |
+| `providerInvoiceId` | String | Yes | — | Lemon invoice id |
+| `occurredAt` | Timestamptz | No | — | Event time |
+| `createdAt` | Timestamptz | No | now() | |
+
+**Indexes:** `(userId, occurredAt)`, unique `providerEventId`
+
+**Module:** `billing`
 
 ---
 

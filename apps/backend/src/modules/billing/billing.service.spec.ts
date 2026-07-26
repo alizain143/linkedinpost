@@ -8,22 +8,20 @@ import { createMockPrismaService } from '../../test/prisma.mock';
 import { userId } from '../../test/fixtures';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BillingService } from './billing.service';
-import { XpayClientService } from './xpay-client.service';
+import { LemonsqueezyClientService } from './lemonsqueezy-client.service';
 
 describe('BillingService', () => {
   let service: BillingService;
   const prisma = createMockPrismaService();
-  const xpayClient = {
+  const lemonClient = {
     isCheckoutConfigured: jest.fn().mockReturnValue(true),
-    getAmountConfig: jest.fn().mockReturnValue({
-      amountStarter: 999,
-      amountPro: 1999,
-      amountAgency: 6999,
+    getVariantConfig: jest.fn().mockReturnValue({
+      variantStarter: '111',
+      variantPro: '222',
+      variantAgency: '333',
     }),
-    getCurrency: jest.fn().mockReturnValue('USD'),
-    getCycleCount: jest.fn().mockReturnValue(120),
     getFrontendUrl: jest.fn().mockReturnValue('http://localhost:3000'),
-    createSubscription: jest.fn(),
+    createCheckout: jest.fn(),
     cancelSubscription: jest.fn(),
   };
 
@@ -37,71 +35,58 @@ describe('BillingService', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
-    xpayClient.isCheckoutConfigured.mockReturnValue(true);
-    xpayClient.createSubscription.mockResolvedValue({
-      subscriptionId: 'sub_xpay_1',
-      fwdUrl: 'https://pay.xpaycheckout.com/?subscription_id=sub_xpay_1',
+    lemonClient.isCheckoutConfigured.mockReturnValue(true);
+    lemonClient.createCheckout.mockResolvedValue({
+      checkoutId: 'chk_1',
+      url: 'https://linkedinpost.lemonsqueezy.com/checkout/custom/abc',
     });
     prisma.subscription.findUnique.mockResolvedValue(null);
-    prisma.user.update.mockResolvedValue({ ...user, phone: '+923001234567' });
     prisma.subscription.upsert.mockResolvedValue({});
+    prisma.subscription.update.mockResolvedValue({});
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         BillingService,
         { provide: PrismaService, useValue: prisma },
-        { provide: XpayClientService, useValue: xpayClient },
+        { provide: LemonsqueezyClientService, useValue: lemonClient },
       ],
     }).compile();
 
     service = module.get(BillingService);
   });
 
-  it('creates checkout session with expected XPay args', async () => {
+  it('creates checkout session with expected Lemon Squeezy args', async () => {
     const result = await service.createCheckoutSession(user as never, {
       plan: UserPlan.pro,
-      phone: '+923001234567',
     });
 
-    expect(prisma.user.update).toHaveBeenCalledWith({
-      where: { id: userId },
-      data: { phone: '+923001234567' },
-    });
-    expect(xpayClient.createSubscription).toHaveBeenCalledWith(
+    expect(lemonClient.createCheckout).toHaveBeenCalledWith(
       expect.objectContaining({
-        amount: 1999,
-        currency: 'USD',
-        interval: 'MONTH',
-        intervalCount: 1,
-        cycleCount: 120,
-        customerDetails: expect.objectContaining({
-          email: user.email,
-          contactNumber: '+923001234567',
-        }),
-        metadata: { userId, plan: UserPlan.pro },
+        variantId: '222',
+        email: user.email,
+        custom: { user_id: userId, plan: UserPlan.pro },
+        redirectUrl: 'http://localhost:3000/app/billing?checkout=success',
       }),
     );
     expect(prisma.subscription.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         create: expect.objectContaining({
-          xpaySubscriptionId: 'sub_xpay_1',
           plan: UserPlan.pro,
           status: SubscriptionStatus.incomplete,
         }),
       }),
     );
     expect(result.url).toBe(
-      'https://pay.xpaycheckout.com/?subscription_id=sub_xpay_1',
+      'https://linkedinpost.lemonsqueezy.com/checkout/custom/abc',
     );
   });
 
   it('rejects checkout when billing is unavailable', async () => {
-    xpayClient.isCheckoutConfigured.mockReturnValue(false);
+    lemonClient.isCheckoutConfigured.mockReturnValue(false);
 
     await expect(
       service.createCheckoutSession(user as never, {
         plan: UserPlan.pro,
-        phone: '+923001234567',
       }),
     ).rejects.toThrow(ServiceUnavailableException);
   });
@@ -109,34 +94,30 @@ describe('BillingService', () => {
   it('rejects checkout when already subscribed to the same plan', async () => {
     prisma.subscription.findUnique.mockResolvedValue({
       status: SubscriptionStatus.active,
+      cancelAtPeriodEnd: false,
     });
 
     await expect(
       service.createCheckoutSession(
         { ...user, plan: UserPlan.pro } as never,
-        { plan: UserPlan.pro, phone: '+923001234567' },
+        { plan: UserPlan.pro },
       ),
     ).rejects.toThrow(ConflictException);
   });
 
-  it('cancels an active subscription', async () => {
+  it('cancels an active subscription at period end', async () => {
     prisma.subscription.findUnique.mockResolvedValue({
-      xpaySubscriptionId: 'sub_xpay_1',
+      lemonSubscriptionId: 'sub_lemon_1',
       status: SubscriptionStatus.active,
-    });
-    prisma.$transaction.mockImplementation(async (ops: unknown) => {
-      if (Array.isArray(ops)) {
-        return Promise.all(ops);
-      }
-      return ops;
+      cancelAtPeriodEnd: false,
     });
 
     const result = await service.cancelSubscription(userId);
 
-    expect(xpayClient.cancelSubscription).toHaveBeenCalledWith('sub_xpay_1');
-    expect(prisma.user.update).toHaveBeenCalledWith({
-      where: { id: userId },
-      data: { plan: UserPlan.free },
+    expect(lemonClient.cancelSubscription).toHaveBeenCalledWith('sub_lemon_1');
+    expect(prisma.subscription.update).toHaveBeenCalledWith({
+      where: { userId },
+      data: { cancelAtPeriodEnd: true },
     });
     expect(result).toEqual({ cancelled: true });
   });

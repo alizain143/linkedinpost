@@ -10,6 +10,7 @@ export interface CreditsBalance {
   periodEnd: Date;
   used: number;
   limit: number;
+  purchased: number;
   remaining: number;
   percentUsed: number;
 }
@@ -17,6 +18,11 @@ export interface CreditsBalance {
 export interface ConsumeCreditsOptions {
   generationJobId?: string;
   reason?: string;
+}
+
+export interface GrantCreditsOptions {
+  reason?: string;
+  providerRef?: string;
 }
 
 type TransactionClient = Pick<
@@ -39,7 +45,13 @@ export class CreditsService {
       now,
     );
     const used = await this.getUsedCredits(userId, periodStart, periodEnd);
-    const limit = getCreditLimitForPlan(user.plan);
+    const purchased = await this.getPurchasedCredits(
+      userId,
+      periodStart,
+      periodEnd,
+    );
+    const planLimit = getCreditLimitForPlan(user.plan);
+    const limit = planLimit + purchased;
     const remaining = Math.max(0, limit - used);
     const percentUsed = limit > 0 ? Math.round((used / limit) * 100) : 0;
 
@@ -49,6 +61,7 @@ export class CreditsService {
       periodEnd,
       used,
       limit,
+      purchased,
       remaining,
       percentUsed,
     };
@@ -124,7 +137,14 @@ export class CreditsService {
         periodEnd,
         tx,
       );
-      const limit = getCreditLimitForPlan(user.plan);
+      const purchased = await this.getPurchasedCredits(
+        userId,
+        periodStart,
+        periodEnd,
+        tx,
+      );
+      const planLimit = getCreditLimitForPlan(user.plan);
+      const limit = planLimit + purchased;
       const remaining = Math.max(0, limit - used);
 
       if (remaining < cost) {
@@ -157,6 +177,7 @@ export class CreditsService {
         periodEnd,
         used: nextUsed,
         limit,
+        purchased,
         remaining: nextRemaining,
         percentUsed: limit > 0 ? Math.round((nextUsed / limit) * 100) : 0,
       };
@@ -167,8 +188,11 @@ export class CreditsService {
     userId: string,
     amount: number,
     type: CreditTransactionType = CreditTransactionType.adjustment,
-    reason?: string,
+    options?: GrantCreditsOptions | string,
   ): Promise<CreditsBalance> {
+    const normalized: GrantCreditsOptions =
+      typeof options === 'string' ? { reason: options } : (options ?? {});
+
     if (amount <= 0) {
       throw new HttpException(
         {
@@ -179,14 +203,38 @@ export class CreditsService {
       );
     }
 
-    await this.prisma.creditTransaction.create({
-      data: {
-        userId,
-        amount,
-        type,
-        reason: reason ?? null,
-      },
-    });
+    if (normalized.providerRef) {
+      const existing = await this.prisma.creditTransaction.findUnique({
+        where: { providerRef: normalized.providerRef },
+      });
+      if (existing) {
+        return this.getBalance(userId);
+      }
+    }
+
+    try {
+      await this.prisma.creditTransaction.create({
+        data: {
+          userId,
+          amount,
+          type,
+          reason: normalized.reason ?? null,
+          providerRef: normalized.providerRef ?? null,
+        },
+      });
+    } catch (error) {
+      // Unique providerRef race — treat as idempotent success
+      if (
+        normalized.providerRef &&
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        (error as { code?: string }).code === 'P2002'
+      ) {
+        return this.getBalance(userId);
+      }
+      throw error;
+    }
 
     return this.getBalance(userId);
   }
@@ -212,7 +260,14 @@ export class CreditsService {
       now,
     );
     const used = await this.getUsedCredits(userId, periodStart, periodEnd, tx);
-    const limit = getCreditLimitForPlan(user.plan);
+    const purchased = await this.getPurchasedCredits(
+      userId,
+      periodStart,
+      periodEnd,
+      tx,
+    );
+    const planLimit = getCreditLimitForPlan(user.plan);
+    const limit = planLimit + purchased;
     const remaining = Math.max(0, limit - used);
 
     return {
@@ -221,6 +276,7 @@ export class CreditsService {
       periodEnd,
       used,
       limit,
+      purchased,
       remaining,
       percentUsed: limit > 0 ? Math.round((used / limit) * 100) : 0,
     };
@@ -242,5 +298,24 @@ export class CreditsService {
     });
 
     return Math.abs(aggregate._sum.amount ?? 0);
+  }
+
+  private async getPurchasedCredits(
+    userId: string,
+    periodStart: Date,
+    periodEnd: Date,
+    prisma: Pick<PrismaService, 'creditTransaction'> = this.prisma,
+  ): Promise<number> {
+    const aggregate = await prisma.creditTransaction.aggregate({
+      where: {
+        userId,
+        type: CreditTransactionType.purchase,
+        amount: { gt: 0 },
+        createdAt: { gte: periodStart, lt: periodEnd },
+      },
+      _sum: { amount: true },
+    });
+
+    return aggregate._sum.amount ?? 0;
   }
 }

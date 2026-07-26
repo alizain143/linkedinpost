@@ -58,6 +58,8 @@ export const queryKeys = {
   },
   billing: {
     status: ["billing", "status"] as const,
+    transactions: (cursor?: string | null) =>
+      ["billing", "transactions", cursor ?? null] as const,
   },
   approvalShare: {
     status: (workspaceId: string, postId: string) =>

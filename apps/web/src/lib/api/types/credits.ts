@@ -6,6 +6,7 @@ export type ApiCreditsBalance = {
   periodEnd: string;
   used: number;
   limit: number;
+  purchased: number;
   remaining: number;
   percentUsed: number;
 };

@@ -22,7 +22,7 @@ export function getApiErrorMessage(
       case "UPLOAD_EXPIRED":
         return "The upload window expired. Please try again.";
       case "CREDITS_EXHAUSTED":
-        return "You're out of credits for this billing period. Upgrade your plan to keep generating.";
+        return "You're out of credits for this billing period. Buy more credits or upgrade your plan.";
       case "PLAN_UPGRADE_REQUIRED":
         return (
           error.message ||

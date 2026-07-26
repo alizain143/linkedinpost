@@ -8,22 +8,26 @@ import {
 } from '@nestjs/common';
 import { ApiHeader, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
-import { XpayWebhookService } from './xpay-webhook.service';
+import { LemonsqueezyWebhookService } from './lemonsqueezy-webhook.service';
 
 type RawBodyRequest = Request & { rawBody?: Buffer };
 
 @ApiTags('billing')
 @Controller('billing/webhooks')
-export class XpayWebhookController {
-  constructor(private readonly xpayWebhookService: XpayWebhookService) {}
+export class LemonsqueezyWebhookController {
+  constructor(
+    private readonly lemonsqueezyWebhookService: LemonsqueezyWebhookService,
+  ) {}
 
-  @Post('xpay')
+  @Post('lemonsqueezy')
   @HttpCode(200)
-  @ApiOperation({ summary: 'XPay webhook receiver (signature-verified)' })
-  @ApiHeader({ name: 'xpay-signature', required: true })
-  async handleXpayWebhook(
+  @ApiOperation({
+    summary: 'Lemon Squeezy webhook receiver (signature-verified)',
+  })
+  @ApiHeader({ name: 'x-signature', required: true })
+  async handleLemonsqueezyWebhook(
     @Req() req: RawBodyRequest,
-    @Headers('xpay-signature') signature: string,
+    @Headers('x-signature') signature: string,
   ) {
     const rawBody = req.rawBody;
 
@@ -34,6 +38,6 @@ export class XpayWebhookController {
       });
     }
 
-    return this.xpayWebhookService.handleWebhook(rawBody, signature);
+    return this.lemonsqueezyWebhookService.handleWebhook(rawBody, signature);
   }
 }

@@ -89,6 +89,7 @@ enum CreditTransactionType {
   autopilot
   content_profile
   adjustment
+  purchase
 }
 
 enum GenerationJobStatus {
@@ -213,6 +214,7 @@ model User {
   ownedWorkspaces      Workspace[]       @relation("WorkspaceOwner")
   workspaceMemberships WorkspaceMember[]
   creditTransactions   CreditTransaction[]
+  billingTransactions  BillingTransaction[]
   generationJobs       GenerationJob[]
   subscription         Subscription?
   createdApprovalTokens ApprovalToken[] @relation("ApprovalTokenCreator")
@@ -223,17 +225,17 @@ model User {
 }
 
 model Subscription {
-  id                 String             @id @default(uuid()) @db.Uuid
-  userId             String             @unique @db.Uuid
-  xpayCustomerId     String?            @unique
-  xpaySubscriptionId String?            @unique
-  plan               UserPlan?
-  status             SubscriptionStatus @default(incomplete)
-  cancelAtPeriodEnd  Boolean            @default(false)
-  currentPeriodStart DateTime?          @db.Timestamptz(6)
-  currentPeriodEnd   DateTime?          @db.Timestamptz(6)
-  createdAt          DateTime           @default(now()) @db.Timestamptz(6)
-  updatedAt          DateTime           @updatedAt @db.Timestamptz(6)
+  id                  String             @id @default(uuid()) @db.Uuid
+  userId              String             @unique @db.Uuid
+  lemonCustomerId     String?            @unique
+  lemonSubscriptionId String?            @unique
+  plan                UserPlan?
+  status              SubscriptionStatus @default(incomplete)
+  cancelAtPeriodEnd   Boolean            @default(false)
+  currentPeriodStart  DateTime?          @db.Timestamptz(6)
+  currentPeriodEnd    DateTime?          @db.Timestamptz(6)
+  createdAt           DateTime           @default(now()) @db.Timestamptz(6)
+  updatedAt           DateTime           @updatedAt @db.Timestamptz(6)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -254,6 +256,41 @@ model BillingWebhookEvent {
   processedAt  DateTime                  @default(now()) @db.Timestamptz(6)
 
   @@map("billing_webhook_events")
+}
+
+enum BillingTransactionType {
+  subscription_payment
+  credit_purchase
+  refund
+}
+
+enum BillingTransactionStatus {
+  paid
+  refunded
+  failed
+}
+
+model BillingTransaction {
+  id                String                   @id @default(uuid()) @db.Uuid
+  userId            String                   @db.Uuid
+  type              BillingTransactionType
+  status            BillingTransactionStatus @default(paid)
+  amountCents       Int
+  currency          String                   @default("USD")
+  description       String?
+  creditsGranted    Int?
+  plan              UserPlan?
+  provider          String                   @default("lemonsqueezy")
+  providerEventId   String?                  @unique
+  providerOrderId   String?
+  providerInvoiceId String?
+  occurredAt        DateTime                 @db.Timestamptz(6)
+  createdAt         DateTime                 @default(now()) @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, occurredAt])
+  @@map("billing_transactions")
 }
 
 model Document {
@@ -513,6 +550,7 @@ model CreditTransaction {
   amount          Int
   type            CreditTransactionType
   reason          String?
+  providerRef     String?               @unique
   createdAt       DateTime              @default(now()) @db.Timestamptz(6)
 
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
