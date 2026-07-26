@@ -1,16 +1,27 @@
 import { UserPlan } from '@prisma/client';
+import {
+  NEW_CHECKOUT_PLANS,
+  type NewCheckoutPlan,
+} from './checkout-plans';
 
 export interface LemonVariantConfig {
-  variantStarter?: string;
   variantPro?: string;
   variantAgency?: string;
 }
 
-const PAID_PLANS = [UserPlan.starter, UserPlan.pro, UserPlan.agency] as const;
+/** All paid plans including legacy Starter (DB / webhook sync). */
+export const PAID_PLANS = [
+  UserPlan.starter,
+  UserPlan.pro,
+  UserPlan.agency,
+] as const;
 
-export type CheckoutPlan = (typeof PAID_PLANS)[number];
+export type PaidPlan = (typeof PAID_PLANS)[number];
 
-export function isCheckoutPlan(plan: UserPlan): plan is CheckoutPlan {
+/** @deprecated Use NewCheckoutPlan / NEW_CHECKOUT_PLANS for new checkouts. */
+export type CheckoutPlan = PaidPlan;
+
+export function isCheckoutPlan(plan: UserPlan): plan is PaidPlan {
   return (PAID_PLANS as readonly UserPlan[]).includes(plan);
 }
 
@@ -19,8 +30,6 @@ export function getLemonVariantForPlan(
   variants: LemonVariantConfig,
 ): string | null {
   switch (plan) {
-    case UserPlan.starter:
-      return variants.variantStarter ?? null;
     case UserPlan.pro:
       return variants.variantPro ?? null;
     case UserPlan.agency:
@@ -33,16 +42,13 @@ export function getLemonVariantForPlan(
 export function getPlanForLemonVariant(
   variantId: string | number | null | undefined,
   variants: LemonVariantConfig,
-): CheckoutPlan | null {
+): NewCheckoutPlan | null {
   if (variantId == null) {
     return null;
   }
 
   const id = String(variantId);
 
-  if (variants.variantStarter && id === String(variants.variantStarter)) {
-    return UserPlan.starter;
-  }
   if (variants.variantPro && id === String(variants.variantPro)) {
     return UserPlan.pro;
   }
@@ -55,7 +61,7 @@ export function getPlanForLemonVariant(
 
 export function parsePlanFromMetadata(
   plan: string | undefined | null,
-): CheckoutPlan | null {
+): PaidPlan | null {
   if (!plan) {
     return null;
   }
@@ -71,7 +77,7 @@ export function parsePlanFromMetadata(
   return null;
 }
 
-export function getPlanLabel(plan: CheckoutPlan): string {
+export function getPlanLabel(plan: PaidPlan | NewCheckoutPlan): string {
   switch (plan) {
     case UserPlan.starter:
       return 'Starter';
@@ -81,3 +87,6 @@ export function getPlanLabel(plan: CheckoutPlan): string {
       return 'Agency';
   }
 }
+
+export { NEW_CHECKOUT_PLANS };
+export type { NewCheckoutPlan };

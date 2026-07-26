@@ -150,7 +150,7 @@ Core promise: generate authentic LinkedIn posts, plan a content calendar, run an
 | Pro | $19.99 | 200 | Weekly LinkedIn channel + bonuses + 7-day voice guarantee |
 | Agency | $69.99 | 1,000 | Multi-client ops: up to 5 workspaces + share links + agency bonuses |
 
-**Monetization model:** Public ladder is Free / Pro / Agency. Free vs Pro is capacity + offer stack; Agency unlocks multi-account client workspaces (+ approval share links). Starter remains a legacy plan for existing subscribers only.
+**Monetization model:** Public ladder is Free / Pro / Agency. Free vs Pro is capacity + offer stack; Agency unlocks multi-account client workspaces (+ approval share links). Starter remains only as a legacy DB enum; the Lemon product was removed.
 
 **Credit costs (from design):** Quick Draft 1 · AI Council 3 · Post+Media 10 · Regenerate Media 5 · Revision 1–2 · 7-day Calendar 10 · 30-day Calendar 30 · Autopilot package 10
 

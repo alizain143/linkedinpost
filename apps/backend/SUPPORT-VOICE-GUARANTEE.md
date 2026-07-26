@@ -21,5 +21,4 @@ Manual fulfillment for the first Pro or Agency subscription charge.
 ## Notes
 
 - Do not auto-refund from the app in v1.
-- Starter is legacy-only; new checkouts are Pro / Agency only.
-- Ops: keep Lemon Starter variant for renewals; do not link it on pricing.
+- Starter Lemon product has been removed. Users still on `starter` in the DB should upgrade to Pro; no new Starter checkouts or renewals.
