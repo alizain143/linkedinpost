@@ -5,20 +5,22 @@ import { useAuth } from "@clerk/nextjs";
 import { useSignIn } from "@clerk/nextjs/legacy";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { RESET_EMAIL_KEY } from "@/components/auth/forgot-password-form";
 import {
   AuthError,
   AuthField,
   AuthHeading,
 } from "@/components/auth/auth-ui";
+import {
+  OTP_LENGTH,
+  OtpDigitInputs,
+} from "@/components/auth/otp-digit-inputs";
 import { Button } from "@/components/ui/button";
 import { MsIcon } from "@/components/ui/ms-icon";
 import { clerkErrorMessage } from "@/lib/auth/clerk";
 import { syncCurrentUser } from "@/lib/auth/finish-session";
 import { DASHBOARD_ROUTE } from "@/lib/auth/routes";
-
-const OTP_LENGTH = 6;
 
 export function ResetPasswordForm() {
   const { getToken } = useAuth();
@@ -31,7 +33,6 @@ export function ResetPasswordForm() {
   const [digits, setDigits] = useState<string[]>(Array(OTP_LENGTH).fill(""));
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
     const stored = sessionStorage.getItem(RESET_EMAIL_KEY);
@@ -41,25 +42,6 @@ export function ResetPasswordForm() {
     }
     setEmail(stored);
   }, [router]);
-
-  const updateDigit = (index: number, value: string) => {
-    const digit = value.replace(/\D/g, "").slice(-1);
-    const next = [...digits];
-    next[index] = digit;
-    setDigits(next);
-    if (digit && index < OTP_LENGTH - 1) {
-      inputsRef.current[index + 1]?.focus();
-    }
-  };
-
-  const handleKeyDown = (
-    index: number,
-    e: React.KeyboardEvent<HTMLInputElement>,
-  ) => {
-    if (e.key === "Backspace" && !digits[index] && index > 0) {
-      inputsRef.current[index - 1]?.focus();
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -143,23 +125,12 @@ export function ResetPasswordForm() {
           <label className="mb-2 block text-[12.5px] font-semibold text-[#475569]">
             Reset code
           </label>
-          <div className="flex justify-center gap-2">
-            {digits.map((digit, i) => (
-              <input
-                key={i}
-                ref={(el) => {
-                  inputsRef.current[i] = el;
-                }}
-                type="text"
-                inputMode="numeric"
-                maxLength={1}
-                value={digit}
-                onChange={(e) => updateDigit(i, e.target.value)}
-                onKeyDown={(e) => handleKeyDown(i, e)}
-                className="h-[52px] w-[46px] rounded-xl border border-[#e7e9f2] bg-[#f8f9fc] text-center font-display text-[20px] font-bold text-[#1e293b] outline-none focus:border-[#4f46e5] focus:bg-white"
-              />
-            ))}
-          </div>
+          <OtpDigitInputs
+            digits={digits}
+            onChange={setDigits}
+            disabled={loading || !isLoaded}
+            className="mb-0"
+          />
         </div>
 
         <AuthField

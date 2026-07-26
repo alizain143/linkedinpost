@@ -5,7 +5,7 @@ import { useAuth } from "@clerk/nextjs";
 import { useSignIn } from "@clerk/nextjs/legacy";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { AuthSocialButtons } from "@/components/auth/auth-social-buttons";
 import {
   AuthDivider,
@@ -14,6 +14,10 @@ import {
   AuthFooterLink,
   AuthHeading,
 } from "@/components/auth/auth-ui";
+import {
+  OTP_LENGTH,
+  OtpDigitInputs,
+} from "@/components/auth/otp-digit-inputs";
 import { Button } from "@/components/ui/button";
 import { InputField } from "@/components/ui/input";
 import { MsIcon } from "@/components/ui/ms-icon";
@@ -23,8 +27,6 @@ import {
 } from "@/lib/auth/clerk";
 import { syncCurrentUser } from "@/lib/auth/finish-session";
 import { DASHBOARD_ROUTE } from "@/lib/auth/routes";
-
-const OTP_LENGTH = 6;
 
 export function SignInForm() {
   const { getToken } = useAuth();
@@ -39,7 +41,6 @@ export function SignInForm() {
   const [pendingVerification, setPendingVerification] = useState(false);
   const [verifyEmail, setVerifyEmail] = useState("");
   const [digits, setDigits] = useState<string[]>(Array(OTP_LENGTH).fill(""));
-  const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
 
   const finishLogin = async (sessionId: string | null) => {
     if (!sessionId || !setActive) return false;
@@ -80,25 +81,6 @@ export function SignInForm() {
     setDigits(Array(OTP_LENGTH).fill(""));
     setPendingVerification(true);
     return true;
-  };
-
-  const updateDigit = (index: number, value: string) => {
-    const digit = value.replace(/\D/g, "").slice(-1);
-    const next = [...digits];
-    next[index] = digit;
-    setDigits(next);
-    if (digit && index < OTP_LENGTH - 1) {
-      inputsRef.current[index + 1]?.focus();
-    }
-  };
-
-  const handleKeyDown = (
-    index: number,
-    e: React.KeyboardEvent<HTMLInputElement>,
-  ) => {
-    if (e.key === "Backspace" && !digits[index] && index > 0) {
-      inputsRef.current[index - 1]?.focus();
-    }
   };
 
   const handleVerify = async () => {
@@ -176,23 +158,11 @@ export function SignInForm() {
 
         <AuthError message={error} />
 
-        <div className="mb-6 flex justify-center gap-2">
-          {digits.map((digit, i) => (
-            <input
-              key={i}
-              ref={(el) => {
-                inputsRef.current[i] = el;
-              }}
-              type="text"
-              inputMode="numeric"
-              maxLength={1}
-              value={digit}
-              onChange={(e) => updateDigit(i, e.target.value)}
-              onKeyDown={(e) => handleKeyDown(i, e)}
-              className="h-[58px] w-[50px] rounded-xl border border-[#e7e9f2] bg-[#f8f9fc] text-center font-display text-[22px] font-bold text-[#1e293b] outline-none focus:border-[#4f46e5] focus:bg-white"
-            />
-          ))}
-        </div>
+        <OtpDigitInputs
+          digits={digits}
+          onChange={setDigits}
+          disabled={loading || !isLoaded}
+        />
 
         <Button
           type="button"
