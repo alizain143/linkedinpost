@@ -164,11 +164,11 @@ export default async function GuidePage({ params }: Props) {
 
         <div className="mt-12 rounded-[18px] bg-gradient-to-br from-[#1e1b4b] to-[#4338ca] p-8 text-white">
           <h3 className="font-display text-[22px] font-extrabold tracking-tight">
-            Put these ideas on autopilot
+            Want drafts that still sound like you?
           </h3>
           <p className="mt-3 max-w-[52ch] text-[15px] leading-relaxed text-white/75">
-            linkedinpost.ai turns your voice profile into a month of LinkedIn
-            drafts, reviewed by an AI Council before you publish.
+            linkedinpost.ai builds from your voice profile and gives you a month
+            of drafts to edit, not a pile of generic posts to copy-paste.
           </p>
           <Link
             href="/sign-up"

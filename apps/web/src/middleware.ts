@@ -41,6 +41,11 @@ const isPublicRoute = createRouteMatcher([
   "/sign-in(.*)",
   "/sign-up(.*)",
   "/approve(.*)",
+  // Next.js Metadata file conventions (no file extension → not skipped by matcher)
+  "/opengraph-image",
+  "/(.*)/opengraph-image",
+  "/twitter-image",
+  "/(.*)/twitter-image",
 ]);
 
 export default clerkMiddleware(async (auth, request) => {

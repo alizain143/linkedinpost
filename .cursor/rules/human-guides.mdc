@@ -1,0 +1,48 @@
+---
+description: Write marketing guides in a clear, human mid-tone (not slangy, not stiff)
+globs:
+  - apps/web/src/lib/guides/**
+  - apps/web/src/app/guides/**
+alwaysApply: false
+---
+
+# Human guide writing (linkedinpost.ai)
+
+When creating or editing **guides** (`GUIDE_ARTICLES`, guide pages, hub copy, FAQs), write like a thoughtful person talking to a peer on LinkedIn: clear and direct, not slangy, not corporate essay.
+
+## Voice (middle ground)
+
+- Talk **to** the reader (`you`). Prefer direct address over abstract advice.
+- Warm and plain-spoken, but still professional. Think peer advice, not buddy banter and not whitepaper.
+- Short-to-medium paragraphs. Uneven rhythm is fine; choppy one-liners and slang are not the goal.
+- Specific opinions and examples beat neat frameworks.
+- FAQs: helpful and human, not knowledge-base stiff and not overly casual.
+
+### Tone targets
+
+| Too casual (avoid) | Too stiff (avoid) | Aim for |
+|--------------------|-------------------|---------|
+| "Hey.", "Yeah.", "try-hard", "cooked" | "It is important to note", "leverage", "frameworks for success" | Clear, direct, calm confidence |
+| DM / meme energy | Textbook / SEO article | Peer explaining something over coffee |
+
+## Hard bans (AI tells)
+
+- **No em dashes (`—`) or en dashes (`–`).** Use commas, periods, colons, parentheses, or a plain hyphen in ranges (`3-5`, `8-10am`, `Tue-Thu`).
+- No essay throat-clearing ("In this guide we will explore…", "It is important to note…").
+- No fake-smart filler: delve, landscape, game-changer, leverage, synergy, "in today's fast-paced world", "it's not X, it's Y" as a default move.
+- No perfectly parallel "framework" sections that all end with the same tidy takeaway.
+- No brochure CTAs inside body copy ("unlock", "elevate", "supercharge").
+
+## Structure
+
+- Keep the existing `Guide` shape (`title`, `description`, `answerCapsule`, `sections`, `faqs`).
+- Headings: clear and human, not academic and not jokey.
+- `answerCapsule`: a plain spoken summary to the reader, not a featured-snippet formula and not a slangy opener.
+- Prefer concrete details (numbers, mistakes, real examples) over generic inspiration.
+- Product mentions (linkedinpost.ai) only when natural; never shoehorn.
+
+## Quick check before shipping
+
+1. Read a section out loud. If it sounds like a blog essay or like a meme account, rewrite toward the middle.
+2. Search the draft for `—` and `–`. Remove them.
+3. If a paragraph could sit under a competitor's name unchanged, rewrite until it can't.

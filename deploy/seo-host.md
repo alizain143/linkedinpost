@@ -4,11 +4,19 @@ Canonical URLs, sitemap, and `NEXT_PUBLIC_SITE_URL` all use the **apex** host:
 
 `https://linkedinpost.ai`
 
-PageSpeed’s “Avoid multiple page redirects” fires when the edge does a **two-hop** chain, e.g.:
+GSC property: `https://linkedinpost.ai/` (URL-prefix). Sitemap submits apex URLs only.
+
+## Critical: do not redirect apex → www
+
+If the edge sends `https://linkedinpost.ai/*` → `https://www.linkedinpost.ai/*`, Google will:
+
+1. Choose **www** as the Google-selected canonical (seen in URL Inspection)
+2. Treat apex sitemap URLs as redirected away from the property’s preferred host
+3. Leave coverage at **0 indexed** even when HTML already has `index, follow`
+
+PageSpeed’s “Avoid multiple page redirects” also fires on a **two-hop** chain, e.g.:
 
 `http://linkedinpost.ai` → `https://linkedinpost.ai` → `https://www.linkedinpost.ai`
-
-That also conflicts with the sitemap (apex) if `www` is the final host.
 
 ## Preferred Cloudflare setup
 
@@ -21,9 +29,26 @@ In Cloudflare → **Rules** → **Redirect Rules**, use **one** rule that lands 
 
 Also:
 
-1. Vercel project → Domains: set **linkedinpost.ai** as the primary domain (not `www`).
-2. Remove any older Page Rule / Bulk Redirect that sends apex → `www` (that causes the second hop and fights the sitemap).
+1. Vercel project → Domains: set **linkedinpost.ai** as the primary domain (not `www`). The production 301 currently includes `x-vercel-id`, so Vercel is issuing apex → `www` — flip primary so **www redirects to apex**, not the reverse.
+2. Remove any older Cloudflare Page Rule / Bulk Redirect that sends apex → `www` (that causes the second hop and fights the sitemap).
 3. Keep “Always Use HTTPS” only if it does **not** create an extra hop before the rule above; prefer folding HTTP→HTTPS into the same redirect rule.
+
+Do **not** add an app middleware www→apex redirect while apex→www still exists at the edge — that creates a redirect loop.
+
+### Verify after changing redirects
+
+```bash
+curl -sI https://linkedinpost.ai/ | rg -i 'HTTP/|location'
+# expect: 200 (or single hop http→https only) — NOT location: https://www…
+
+curl -sI https://www.linkedinpost.ai/ | rg -i 'HTTP/|location'
+# expect: 301 location: https://linkedinpost.ai/
+
+curl -sI https://linkedinpost.ai/opengraph-image | rg -i 'HTTP/|content-type'
+# expect: 200 image/png (not 404 / sign-in)
+```
+
+Then in GSC → URL Inspection → **Request indexing** for `/`, `/pricing`, `/how-it-works`, and **Validate fix** on the “Excluded by noindex” coverage report.
 
 ## Analytics (Vercel / web env)
 

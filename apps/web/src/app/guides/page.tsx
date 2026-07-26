@@ -8,7 +8,7 @@ import { pageMetadata } from "@/lib/seo/metadata";
 export const metadata: Metadata = pageMetadata({
   title: "LinkedIn Content Guides",
   description:
-    "Practical guides on LinkedIn posting frequency, content calendars, hooks, and writing posts that don't sound like AI.",
+    "Clear LinkedIn advice for founders: posting cadence, calendars, hooks, and keeping AI drafts from sounding generic.",
   path: "/guides",
 });
 
@@ -62,11 +62,11 @@ export default function GuidesHubPage() {
             Guides
           </div>
           <h1 className="pp-hero-h1 font-display text-[48px] font-extrabold leading-[1.08] tracking-[-0.03em] text-[#0d1326]">
-            LinkedIn content, explained clearly.
+            LinkedIn content advice, said clearly.
           </h1>
           <p className="mx-auto mt-5 max-w-[600px] text-lg leading-[1.55] text-[#5a667a]">
-            Practical playbooks on posting frequency, calendars, hooks, and
-            keeping AI drafts authentic so you publish with confidence.
+            How often to post, how to plan a month, what hooks earn the click,
+            and how to keep AI drafts from sounding like everyone else.
           </p>
         </div>
       </section>
