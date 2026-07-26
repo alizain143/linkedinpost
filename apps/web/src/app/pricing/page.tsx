@@ -15,7 +15,7 @@ import { pageMetadata } from "@/lib/seo/metadata";
 export const metadata: Metadata = pageMetadata({
   title: "Pricing: Free LinkedIn AI Post Generator from $0",
   description:
-    "Plans scale by monthly AI credits. Start free; upgrade for more volume. Agency adds client workspaces and approval share links.",
+    "Same LinkedIn workflow on every plan. Free, Starter, and Pro differ by monthly AI credits. Agency adds client workspaces and approval share links.",
   path: "/pricing",
   openGraphImage: "/pricing/opengraph-image",
   openGraphImageAlt: "linkedinpost.ai pricing plans from free to agency",
@@ -41,11 +41,12 @@ export default async function PricingPage() {
               Pricing
             </div>
             <h1 className="pp-hero-h1 font-display text-[48px] font-extrabold leading-[1.08] tracking-[-0.03em] text-[#0d1326]">
-              Simple plans that scale with your output.
+              Same product. Bigger credit packs.
             </h1>
-            <p className="mx-auto mt-5 max-w-[520px] text-lg leading-[1.55] text-[#5a667a]">
-              Start free. Upgrade when you&apos;re ready for more volume and the
-              content calendar.
+            <p className="mx-auto mt-5 max-w-[560px] text-lg leading-[1.55] text-[#5a667a]">
+              Free, Starter, and Pro unlock the full workflow. They mainly
+              differ by monthly credits. Agency is for running multiple client
+              LinkedIn accounts.
             </p>
           </div>
         </section>
@@ -61,8 +62,12 @@ export default async function PricingPage() {
 
         <section className="mx-auto max-w-[1100px] px-7 py-10">
           <h2 className="mb-7 text-center font-display text-[26px] font-extrabold tracking-[-0.02em]">
-            Compare every plan
+            What actually changes between plans
           </h2>
+          <p className="mx-auto mb-7 max-w-[540px] text-center text-[15px] leading-[1.55] text-[#5a667a]">
+            Solo plans differ by credit volume. Agency adds multi-client
+            workspaces, not a different generator.
+          </p>
           <CompareTable />
         </section>
 

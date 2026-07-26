@@ -156,40 +156,40 @@ export const PLANS: PlanTier[] = [
   {
     name: "Free",
     monthlyUsd: 0,
-    blurb: "Try the full workflow with a small monthly credit budget.",
+    blurb: "Prove the workflow on your voice. No card required.",
     cta: "Start Free",
     features: [
       "5 AI credits / month",
-      "Drafts, AI Council & media",
-      "7-day & 30-day calendars",
+      "Full product: drafts, Council, media, calendars, Autopilot",
       "Schedule & publish to LinkedIn",
+      "Buy extra credits anytime",
     ],
     style: { ...basePlanStyle },
   },
   {
     name: "Starter",
     monthlyUsd: STARTER_MONTHLY_USD,
-    blurb: "More credits for a consistent weekly posting rhythm.",
+    blurb: "A prepaid credit pack for a steady weekly posting habit.",
     cta: "Start Starter",
     features: [
-      "50 AI credits / month",
-      "Everything on Free",
-      "Room for weekly drafting",
-      "Buy extra credits anytime",
+      "50 AI credits / month (10× Free)",
+      "Same features as Free, more volume",
+      "Enough for a weekly draft rhythm",
+      "Top up if you spike mid-month",
     ],
     style: { ...basePlanStyle },
   },
   {
     name: "Pro",
     monthlyUsd: PRO_MONTHLY_USD,
-    blurb: "High volume for creators who ship LinkedIn content every week.",
+    blurb: "Best prepaid rate for solo creators who ship every week.",
     cta: "Start Pro",
     popular: true,
     features: [
-      "200 AI credits / month",
-      "Everything on Starter",
-      "Autopilot & month calendars (use credits)",
-      "Best solo creator value",
+      "200 AI credits / month (4× Starter)",
+      "Same features as Starter, highest solo volume",
+      "Built for Council + media + Autopilot weeks",
+      "Cheaper per credit than staying on Starter + top-ups",
     ],
     style: {
       cardBg: "linear-gradient(170deg,#1e1b4b,#312e81 60%,#4338ca)",
@@ -208,13 +208,13 @@ export const PLANS: PlanTier[] = [
   {
     name: "Agency",
     monthlyUsd: AGENCY_MONTHLY_USD,
-    blurb: "Run multiple LinkedIn brands — each with its own account and workspace.",
+    blurb: "Not more features for one brand. An ops layer for many.",
     cta: "Start Agency",
     features: [
       "1,000 AI credits / month",
-      "Up to 5 client workspaces",
-      "Separate LinkedIn per client",
-      "Client approval share links",
+      "Up to 5 client workspaces (Agency-only)",
+      "Separate LinkedIn + voice per client",
+      "Client approval share links (Agency-only)",
     ],
     style: {
       ...basePlanStyle,
@@ -299,7 +299,7 @@ export const FAQS = [
   },
   {
     q: "Can I use it for multiple brands or clients?",
-    a: "Each workspace connects one LinkedIn account. For multiple brands, the Agency plan adds up to 5 client workspaces — each with its own LinkedIn, profile, calendar, and approval share links.",
+    a: "Each workspace connects one LinkedIn account. For multiple brands, the Agency plan adds up to 5 client workspaces, each with its own LinkedIn, profile, calendar, and approval share links.",
   },
   {
     q: "Do I need a credit card to start?",
@@ -349,9 +349,14 @@ export const PRICING_FAQS = [
   },
   {
     q: "Are features locked by plan?",
-    a: "Generation, calendars, autopilot, and scheduling are available whenever you have credits. Agency uniquely unlocks client workspaces and client approval share links.",
+    a: "No for solo creators: generation, calendars, Autopilot, and scheduling work on any plan when you have credits. Free → Starter → Pro is mainly a bigger monthly credit budget. Agency uniquely unlocks client workspaces and approval share links.",
+  },
+  {
+    q: "Why upgrade instead of only buying top-ups?",
+    a: "Plans are prepaid credit packs at a better habit price: you get a monthly budget without topping up every spike. Stay on Free + top-ups if your usage is occasional. Move to Starter or Pro when you want a predictable weekly or high-volume rhythm. Choose Agency only when you need multiple client LinkedIn accounts.",
   },
 ] as const;
+
 
 export const ABOUT_STORY = [
   {
@@ -369,16 +374,57 @@ export const ABOUT_STORY = [
 ] as const;
 
 export const COMPARE_ROWS = [
-  { label: "AI credits / month", free: "5", starter: "50", pro: "200", agency: "1,000" },
-  { label: "Quick draft & AI Council", free: true, starter: true, pro: true, agency: true },
-  { label: "Media generation", free: true, starter: true, pro: true, agency: true },
-  { label: "7-day & 30-day calendars", free: true, starter: true, pro: true, agency: true },
-  { label: "Autopilot", free: true, starter: true, pro: true, agency: true },
-  { label: "Schedule & publish", free: true, starter: true, pro: true, agency: true },
-  { label: "Buy extra credits", free: true, starter: true, pro: true, agency: true },
-  { label: "Client workspaces", free: false, starter: false, pro: false, agency: "Up to 5" },
-  { label: "Client approval share links", free: false, starter: false, pro: false, agency: true },
+  {
+    label: "Best for",
+    free: "Try the product",
+    starter: "Weekly rhythm",
+    pro: "High solo volume",
+    agency: "Client teams",
+  },
+  {
+    label: "AI credits / month",
+    free: "5",
+    starter: "50",
+    pro: "200",
+    agency: "1,000",
+  },
+  {
+    label: "Rough monthly room",
+    free: "A few drafts",
+    starter: "~weekly posts",
+    pro: "Heavy weekly + media",
+    agency: "Multi-brand volume",
+  },
+  {
+    label: "Full product (drafts, Council, media, calendars, Autopilot, publish)",
+    free: "Included · uses credits",
+    starter: "Included · uses credits",
+    pro: "Included · uses credits",
+    agency: "Included · uses credits",
+  },
+  {
+    label: "Buy extra credits",
+    free: "Anytime",
+    starter: "Anytime",
+    pro: "Anytime",
+    agency: "Anytime",
+  },
+  {
+    label: "Client workspaces",
+    free: false,
+    starter: false,
+    pro: false,
+    agency: "Up to 5",
+  },
+  {
+    label: "Client approval share links",
+    free: false,
+    starter: false,
+    pro: false,
+    agency: "Included",
+  },
 ] as const;
+
 
 export const PRIVACY_SECTIONS = [
   {

@@ -154,10 +154,11 @@ export function PricingSection() {
             Pricing
           </div>
           <h2 className="font-display text-[38px] font-extrabold leading-[1.12] tracking-[-0.025em]">
-            Simple plans that scale with your output.
+            Same product. Bigger credit packs.
           </h2>
-          <p className="mx-auto mt-[15px] max-w-[520px] text-[17px] leading-[1.55] text-[#5a667a]">
-            Start free, upgrade when you&apos;re ready. No credit card to begin.
+          <p className="mx-auto mt-[15px] max-w-[560px] text-[17px] leading-[1.55] text-[#5a667a]">
+            Upgrade for more monthly credits, or Agency when you manage client
+            LinkedIn accounts. No card to start Free.
           </p>
         </div>
         <div className="pp-grid4 items-stretch pt-3">
