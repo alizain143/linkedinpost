@@ -1,16 +1,18 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { MarketingLayout } from "@/components/layout/marketing-layout";
 import { BreadcrumbJsonLd } from "@/components/seo/json-ld";
 import { MsIcon } from "@/components/ui/ms-icon";
-import { VALUES } from "@/lib/marketing-data";
+import { ABOUT_STORY, VALUES } from "@/lib/marketing-data";
 import { pageMetadata } from "@/lib/seo/metadata";
-import Link from "next/link";
 
 export const metadata: Metadata = pageMetadata({
   title: "About",
   description:
-    "We're fixing the blank page for a million professionals. linkedinpost.ai helps founders and creators post consistently without sounding like generic AI.",
+    "Why linkedinpost.ai exists: help founders and creators post consistently on LinkedIn without sounding like generic AI.",
   path: "/about",
+  openGraphImage: "/about/opengraph-image",
+  openGraphImageAlt: "About linkedinpost.ai",
 });
 
 export default function AboutPage() {
@@ -28,34 +30,49 @@ export default function AboutPage() {
             Our story
           </div>
           <h1 className="pp-hero-h1 font-display text-[48px] font-extrabold leading-[1.08] tracking-[-0.03em] text-[#0d1326]">
-            We&apos;re fixing the blank page for a million professionals.
+            We&apos;re fixing the blank page for professionals who actually have
+            something to say.
           </h1>
           <p className="mx-auto mt-[22px] max-w-[640px] text-lg leading-[1.6] text-[#5a667a]">
-            linkedinpost.ai started with a simple frustration: the people with the
-            most valuable things to say post the least, because writing
-            consistently is hard, and generic AI makes it worse. We built the tool
-            we wished existed.
+            linkedinpost.ai started with a simple frustration: the people with
+            the most useful insights post the least, because writing
+            consistently is hard, and generic AI makes it worse. We built the
+            system we wished existed.
           </p>
         </div>
       </section>
 
       <section className="mx-auto max-w-[900px] px-7 py-[46px]">
-        <div className="rounded-[20px] border border-[#eceef4] bg-white p-10">
-          <h2 className="font-display text-[26px] font-extrabold tracking-[-0.02em] text-[#0d1326]">
-            Why we exist
-          </h2>
-          <p className="mt-4 text-[15.5px] leading-[1.7] text-[#475569]">
-            Your reputation compounds when you show up. But most professionals get
-            stuck between two bad options: post nothing, or post bland AI filler
-            that quietly erodes trust. Neither builds a brand.
-          </p>
-          <p className="mt-3.5 text-[15.5px] leading-[1.7] text-[#475569]">
-            We believe the answer isn&apos;t more automation. It&apos;s better
-            leverage. Capture your voice once, and let software handle the
-            structure, the planning, and the blank-page friction. You stay the
-            author; we handle the system.
-          </p>
+        <div className="flex flex-col gap-5">
+          {ABOUT_STORY.map((block) => (
+            <div
+              key={block.heading}
+              className="rounded-[20px] border border-[#eceef4] bg-white p-10"
+            >
+              <h2 className="font-display text-[24px] font-extrabold tracking-[-0.02em] text-[#0d1326]">
+                {block.heading}
+              </h2>
+              <p className="mt-4 text-[15.5px] leading-[1.7] text-[#475569]">
+                {block.body}
+              </p>
+            </div>
+          ))}
         </div>
+        <p className="mt-6 text-center text-[14.5px] text-[#64748b]">
+          See{" "}
+          <Link href="/how-it-works" className="font-semibold text-[#4f46e5] hover:underline">
+            how it works
+          </Link>
+          , read the{" "}
+          <Link href="/guides" className="font-semibold text-[#4f46e5] hover:underline">
+            guides
+          </Link>
+          , or{" "}
+          <Link href="/contact" className="font-semibold text-[#4f46e5] hover:underline">
+            get in touch
+          </Link>
+          .
+        </p>
       </section>
 
       <section className="mx-auto max-w-[1100px] px-7 pb-16 pt-9">

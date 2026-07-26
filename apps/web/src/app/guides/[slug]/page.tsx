@@ -59,6 +59,7 @@ export default async function GuidePage({ params }: Props) {
         title={guide.title}
         description={guide.description}
         path={`/guides/${guide.slug}`}
+        publishedAt={guide.publishedAt}
         updatedAt={guide.updatedAt}
       />
       <BreadcrumbJsonLd

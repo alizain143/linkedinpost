@@ -8,6 +8,23 @@ export const MARKETING_PAGES = [
   { path: "/faq", changeFrequency: "monthly" as const, priority: 0.75 },
   { path: "/about", changeFrequency: "monthly" as const, priority: 0.7 },
   { path: "/contact", changeFrequency: "monthly" as const, priority: 0.6 },
+  { path: "/compare", changeFrequency: "monthly" as const, priority: 0.8 },
+  { path: "/compare/taplio", changeFrequency: "monthly" as const, priority: 0.75 },
+  { path: "/compare/buffer", changeFrequency: "monthly" as const, priority: 0.75 },
+  { path: "/compare/authoredup", changeFrequency: "monthly" as const, priority: 0.75 },
+  { path: "/for-founders", changeFrequency: "monthly" as const, priority: 0.8 },
+  { path: "/for-agencies", changeFrequency: "monthly" as const, priority: 0.8 },
+  { path: "/case-studies", changeFrequency: "monthly" as const, priority: 0.75 },
+  {
+    path: "/case-studies/founder-weekly-rhythm",
+    changeFrequency: "monthly" as const,
+    priority: 0.7,
+  },
+  {
+    path: "/case-studies/agency-three-clients",
+    changeFrequency: "monthly" as const,
+    priority: 0.7,
+  },
   { path: "/privacy", changeFrequency: "yearly" as const, priority: 0.3 },
   { path: "/terms", changeFrequency: "yearly" as const, priority: 0.3 },
 ] as const;

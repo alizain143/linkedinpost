@@ -37,6 +37,17 @@ export function ProblemSection() {
           </div>
         ))}
       </div>
+      <p className="mt-8 text-center text-[14.5px] text-[#64748b]">
+        Prefer a playbook?{" "}
+        <Link href="/guides" className="font-semibold text-[#4f46e5] hover:text-[#4338ca]">
+          Read the LinkedIn guides
+        </Link>{" "}
+        or see{" "}
+        <Link href="/for-founders" className="font-semibold text-[#4f46e5] hover:text-[#4338ca]">
+          how founders use linkedinpost.ai
+        </Link>
+        .
+      </p>
     </section>
   );
 }
@@ -54,7 +65,11 @@ export function HowItWorksSection() {
           </h2>
           <p className="mx-auto mt-4 max-w-[560px] text-[17px] leading-[1.55] text-[#9aa6be]">
             Four steps to a repeatable LinkedIn workflow that actually sounds like
-            you.
+            you.{" "}
+            <Link href="/how-it-works" className="font-semibold text-[#c7d2fe] underline-offset-2 hover:underline">
+              See the full walkthrough
+            </Link>
+            .
           </p>
         </div>
         <div className="pp-grid4">
@@ -114,6 +129,14 @@ export function FeaturesSection() {
             <p className="text-[13.5px] leading-[1.55] text-[#64748b]">{f.body}</p>
           </div>
         ))}
+      </div>
+      <div className="mt-10 text-center">
+        <Link
+          href="/features"
+          className="inline-flex items-center gap-2 text-[15px] font-semibold text-[#4f46e5] hover:text-[#4338ca]"
+        >
+          Explore all features <MsIcon name="arrow_forward" size={18} />
+        </Link>
       </div>
     </section>
   );
@@ -177,6 +200,21 @@ export function FaqSection() {
               </p>
             </div>
           ))}
+        </div>
+        <div className="mt-8 text-center">
+          <Link
+            href="/faq"
+            className="inline-flex items-center gap-2 text-[15px] font-semibold text-[#4f46e5] hover:text-[#4338ca]"
+          >
+            Read the full FAQ <MsIcon name="arrow_forward" size={18} />
+          </Link>
+          {" · "}
+          <Link
+            href="/guides"
+            className="inline-flex items-center gap-2 text-[15px] font-semibold text-[#4f46e5] hover:text-[#4338ca]"
+          >
+            Browse guides
+          </Link>
         </div>
       </div>
     </section>

@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { MarketingLayout } from "@/components/layout/marketing-layout";
 import { PricingLocaleProvider } from "@/components/pricing/pricing-locale-provider";
-import { FaqPageJsonLd } from "@/components/seo/json-ld";
 import { HeroSection } from "@/components/sections/landing/hero-section";
 import {
   FaqSection,
@@ -28,7 +27,6 @@ export default async function HomePage() {
   return (
     <PricingLocaleProvider value={pricingLocale}>
       <MarketingLayout>
-        <FaqPageJsonLd />
         <HeroSection />
         <ProblemSection />
         <HowItWorksSection />

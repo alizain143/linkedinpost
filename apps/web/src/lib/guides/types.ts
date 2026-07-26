@@ -2,7 +2,11 @@ export type GuideSlug =
   | "linkedin-posts-dont-sound-like-ai"
   | "linkedin-content-calendar-template"
   | "linkedin-posting-frequency-founders"
-  | "linkedin-hooks-that-get-engagement";
+  | "linkedin-hooks-that-get-engagement"
+  | "linkedin-algorithm-what-actually-matters"
+  | "linkedin-carousels-that-get-saved"
+  | "linkedin-personal-brand-for-founders"
+  | "linkedin-content-workflow-for-agencies";
 
 export type Guide = {
   slug: GuideSlug;
@@ -11,6 +15,7 @@ export type Guide = {
   description: string;
   seoDescription?: string;
   answerCapsule: string;
+  publishedAt: string;
   updatedAt: string;
   relatedGuides: GuideSlug[];
   sections: { heading: string; body: string }[];

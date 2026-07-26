@@ -89,6 +89,22 @@
             slug: "linkedin-hooks-that-get-engagement",
             path: "/guides/linkedin-hooks-that-get-engagement",
           },
+          {
+            slug: "linkedin-algorithm-what-actually-matters",
+            path: "/guides/linkedin-algorithm-what-actually-matters",
+          },
+          {
+            slug: "linkedin-carousels-that-get-saved",
+            path: "/guides/linkedin-carousels-that-get-saved",
+          },
+          {
+            slug: "linkedin-personal-brand-for-founders",
+            path: "/guides/linkedin-personal-brand-for-founders",
+          },
+          {
+            slug: "linkedin-content-workflow-for-agencies",
+            path: "/guides/linkedin-content-workflow-for-agencies",
+          },
         ];
       },
     },

@@ -4,8 +4,11 @@ import { pageMetadata } from "@/lib/seo/metadata";
 
 export const metadata: Metadata = pageMetadata({
   title: "Contact",
-  description: "Contact linkedinpost.ai for support, partnerships, or agency inquiries.",
+  description:
+    "Contact linkedinpost.ai for product support, partnerships, agency onboarding, or press. We reply within one business day.",
   path: "/contact",
+  openGraphImage: "/contact/opengraph-image",
+  openGraphImageAlt: "Contact linkedinpost.ai",
 });
 
 export default function ContactLayout({

@@ -180,7 +180,7 @@ export default function ContactPage() {
               </div>
             </div>
             <p className="text-[13.5px] leading-[1.5] text-[#64748b]">
-              Within 1 business day, Mon–Fri.
+              Within 1 business day, Mon-Fri.
             </p>
           </div>
 
@@ -189,10 +189,10 @@ export default function ContactPage() {
               Prefer to self-serve?
             </div>
             <p className="mb-3.5 text-[13px] leading-[1.5] text-white/82">
-              Most answers live in our FAQ on the pricing page.
+              Most answers live in our FAQ.
             </p>
             <Link
-              href="/pricing"
+              href="/faq"
               className="inline-block rounded-[10px] bg-white px-[15px] py-[9px] text-[13px] font-semibold text-[#4338ca] transition-colors hover:bg-[#f1f1ff]"
             >
               View FAQ

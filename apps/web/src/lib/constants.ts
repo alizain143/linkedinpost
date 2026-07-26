@@ -10,12 +10,16 @@ export const FOOTER_PRODUCT = [
   { label: "How it works", href: "/how-it-works" },
   { label: "All features", href: "/features" },
   { label: "Guides", href: "/guides" },
+  { label: "Compare", href: "/compare" },
   { label: "Plans & pricing", href: "/pricing" },
   { label: "Start free", href: "/sign-up" },
 ];
 
 export const FOOTER_COMPANY = [
   { label: "About", href: "/about" },
+  { label: "For founders", href: "/for-founders" },
+  { label: "For agencies", href: "/for-agencies" },
+  { label: "Case studies", href: "/case-studies" },
   { label: "FAQ", href: "/faq" },
   { label: "Contact", href: "/contact" },
 ];

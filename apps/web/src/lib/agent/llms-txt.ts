@@ -37,6 +37,10 @@ ${SITE_DESCRIPTION}
 - [Features](${url("/features")}): AI Council, content calendar, media generator, autopilot
 - [How it works](${url("/how-it-works")}): Voice profile → AI Council → media → publish
 - [Pricing](${url("/pricing")}): Free + paid plans (${planSummary})
+- [For founders](${url("/for-founders")}): Weekly LinkedIn system for founders
+- [For agencies](${url("/for-agencies")}): Client workspaces and approvals
+- [Compare](${url("/compare")}): vs Taplio, Buffer, AuthoredUp
+- [Case studies](${url("/case-studies")}): Illustrative workflow examples
 - [FAQ](${url("/faq")}): Credits, voice, plans, and scheduling
 - [About](${url("/about")}): Mission and team
 - [Sign up free](${url("/sign-up")}): 5 AI credits/month, no credit card

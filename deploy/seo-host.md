@@ -35,6 +35,14 @@ Also:
 
 Do **not** add an app middleware www→apex redirect while apex→www still exists at the edge — that creates a redirect loop.
 
+## Still required (ops, not code)
+
+As of the Jul 2026 SEO fix batch, **app code cannot flip production host redirects**. Until Vercel primary is apex:
+
+1. Google Search Console will keep preferring `www` and apex URL-prefix property coverage can stay near **0 indexed**.
+2. After flipping primary: Request indexing for `/`, `/pricing`, `/features`, `/guides`, and new `/compare/*`, `/for-founders`, `/for-agencies`, `/case-studies` URLs.
+3. Run **Validate fix** on the Excluded by noindex coverage report.
+
 ### Verify after changing redirects
 
 ```bash

@@ -22,24 +22,32 @@ export const STEPS = [
     icon: "badge",
     title: "Define your voice",
     body: "Set your role, audience, tone, content pillars, and goals once. Your whole team of agents works from it.",
+    detail:
+      "Paste a short writing sample, name who you write for, and list phrases you never want in a draft. That profile becomes the constraint every generation runs against, so you are not re-explaining yourself each week.",
   },
   {
     num: "02",
     icon: "groups",
     title: "AI Council writes & reviews",
     body: "A writer agent drafts the post, a reviewer agent scores it, and an editor agent improves it until it's sharp.",
+    detail:
+      "You get options, not one fragile draft. The reviewer flags weak hooks and generic lines. The editor tightens structure before anything lands in your approval queue.",
   },
   {
     num: "03",
     icon: "image",
     title: "Media is generated & checked",
     body: "The system creates image or carousel media, then reviews it for readability and brand fit.",
+    detail:
+      "Visuals are optional but useful in a crowded feed. Media review catches unreadable text and off-brand layouts so you are not shipping a pretty image that fails on mobile.",
   },
   {
     num: "04",
     icon: "task_alt",
     title: "Approve, schedule, or publish",
-    body: "You approve the final post package, then schedule it or publish automatically to LinkedIn.",
+    body: "You approve the final post package, then schedule it or publish to LinkedIn when you are ready.",
+    detail:
+      "Nothing goes live without your say. Connect LinkedIn, approve the package, then schedule for later or publish now. You stay in control of timing and the final edit.",
   },
 ] as const;
 
@@ -81,8 +89,8 @@ export const FEATURES = [
   },
   {
     icon: "send",
-    title: "Auto Publishing",
-    body: "Approved posts can be scheduled or published automatically to LinkedIn.",
+    title: "Schedule & publish",
+    body: "After you approve a post, schedule it for later or publish to LinkedIn from the app.",
     tint: "#eef2ff",
     color: "#4f46e5",
   },
@@ -284,7 +292,7 @@ export const FAQS = [
   },
   {
     q: "Does linkedinpost.ai post to LinkedIn automatically?",
-    a: "We focus on a manual, in-control workflow. You plan and schedule inside the app, then copy polished posts straight to LinkedIn when you're ready. This keeps you fully compliant with LinkedIn's terms.",
+    a: "After you connect LinkedIn and approve a post, you can schedule it or publish it from the app. Nothing posts without your approval. You can still copy a draft to LinkedIn manually if you prefer.",
   },
   {
     q: "What is an AI credit?",
@@ -322,6 +330,41 @@ export const VALUES = [
   },
 ] as const;
 
+/** Pricing-page FAQs only (kept distinct from global FAQS to avoid duplicate FAQ schema). */
+export const PRICING_FAQS = [
+  {
+    q: "Do I need a credit card to start?",
+    a: "No. The Free plan includes 5 credits a month with no card required. Upgrade when you want more volume or the content calendar.",
+  },
+  {
+    q: "What is an AI credit?",
+    a: "One credit generates one batch of three post options. Paid plans range from 50 to 1,000 credits depending on your tier.",
+  },
+  {
+    q: "Can I cancel anytime?",
+    a: "Yes. Cancel from billing in one click. You keep paid features until the end of the billing period, then move to Free.",
+  },
+  {
+    q: "Which plan is right for agencies?",
+    a: "Agency adds client workspaces and higher credit limits. If you manage more than one brand voice, start there. Solo founders usually begin on Starter or Pro.",
+  },
+] as const;
+
+export const ABOUT_STORY = [
+  {
+    heading: "The problem we kept seeing",
+    body: "Founders and operators with the sharpest insights were posting the least. Not because they had nothing to say, but because a good LinkedIn post competed with the rest of the job. When they tried generic AI, the drafts sounded like everyone else. Trust went down. Consistency still did not go up.",
+  },
+  {
+    heading: "What we built instead",
+    body: "linkedinpost.ai is a content system, not a one-shot chatbot. You capture voice once. Agents draft, review, and tighten. You approve. Then you schedule or publish. The goal is a month of posts that still sound like you wrote them on a focused afternoon.",
+  },
+  {
+    heading: "Who it is for",
+    body: "Solo founders who need a weekly rhythm. Creators who want better drafts without losing their tone. Agencies that juggle multiple client voices and need separate workspaces. If LinkedIn matters to your pipeline and you refuse to sound generic, you are who we built for.",
+  },
+] as const;
+
 export const COMPARE_ROWS = [
   { label: "AI credits / month", free: "5", starter: "50", pro: "200", agency: "1,000" },
   { label: "Manual post generation", free: "Limited", starter: true, pro: true, agency: true },
@@ -330,7 +373,7 @@ export const COMPARE_ROWS = [
   { label: "7-day calendar", free: false, starter: true, pro: true, agency: true },
   { label: "30-day calendar", free: false, starter: false, pro: true, agency: true },
   { label: "Autopilot", free: false, starter: false, pro: true, agency: true },
-  { label: "Auto-publishing", free: false, starter: "Limited", pro: true, agency: true },
+  { label: "Schedule & publish", free: false, starter: "Limited", pro: true, agency: true },
   { label: "Client approval", free: false, starter: false, pro: "Limited", agency: true },
   { label: "Client workspaces", free: false, starter: false, pro: false, agency: "5" },
 ] as const;

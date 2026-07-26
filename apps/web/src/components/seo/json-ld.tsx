@@ -175,11 +175,13 @@ export function ArticleJsonLd({
   title,
   description,
   path,
+  publishedAt,
   updatedAt,
 }: {
   title: string;
   description: string;
   path: string;
+  publishedAt: string;
   updatedAt: string;
 }) {
   const base = getSiteUrl().origin;
@@ -191,8 +193,8 @@ export function ArticleJsonLd({
         "@type": "Article",
         headline: title,
         description,
+        datePublished: publishedAt,
         dateModified: updatedAt,
-        datePublished: updatedAt,
         image: `${base}${path}/opengraph-image`,
         author: {
           "@type": "Organization",
@@ -212,6 +214,65 @@ export function ArticleJsonLd({
           "@id": `${base}${path}`,
         },
         isAccessibleForFree: true,
+      }}
+    />
+  );
+}
+
+export function HowToJsonLd({
+  name,
+  description,
+  steps,
+}: {
+  name: string;
+  description: string;
+  steps: { name: string; text: string }[];
+}) {
+  return (
+    <JsonLd
+      data={{
+        "@context": "https://schema.org",
+        "@type": "HowTo",
+        name,
+        description,
+        step: steps.map((step, index) => ({
+          "@type": "HowToStep",
+          position: index + 1,
+          name: step.name,
+          text: step.text,
+        })),
+      }}
+    />
+  );
+}
+
+export function ItemListJsonLd({
+  name,
+  description,
+  items,
+}: {
+  name: string;
+  description: string;
+  items: { name: string; path: string; description: string }[];
+}) {
+  const base = getSiteUrl().origin;
+  return (
+    <JsonLd
+      data={{
+        "@context": "https://schema.org",
+        "@type": "CollectionPage",
+        name,
+        description,
+        mainEntity: {
+          "@type": "ItemList",
+          itemListElement: items.map((item, index) => ({
+            "@type": "ListItem",
+            position: index + 1,
+            name: item.name,
+            url: `${base}${item.path}`,
+            description: item.description,
+          })),
+        },
       }}
     />
   );

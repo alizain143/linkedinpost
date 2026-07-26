@@ -12,8 +12,10 @@ import { pageMetadata } from "@/lib/seo/metadata";
 export const metadata: Metadata = pageMetadata({
   title: "FAQ",
   description:
-    "Answers to common questions about linkedinpost.ai — AI LinkedIn posts, credits, plans, scheduling, and agency workspaces.",
+    "Answers to common questions about linkedinpost.ai: AI LinkedIn posts, credits, plans, scheduling, and agency workspaces.",
   path: "/faq",
+  openGraphImage: "/faq/opengraph-image",
+  openGraphImageAlt: "linkedinpost.ai FAQ",
 });
 
 export default function FaqPage() {
@@ -69,7 +71,7 @@ export default function FaqPage() {
               Still have a question?
             </h2>
             <p className="mx-auto mt-3.5 max-w-[480px] text-[16px] leading-[1.55] text-white/[0.86]">
-              See plans, or message us — we usually reply within one business day.
+              See plans, or message us. We usually reply within one business day.
             </p>
             <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
               <Link

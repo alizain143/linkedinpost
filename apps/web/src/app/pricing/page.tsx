@@ -4,11 +4,11 @@ import { PricingCurrencyNote } from "@/components/pricing/plan-price";
 import { PricingLocaleProvider } from "@/components/pricing/pricing-locale-provider";
 import {
   BreadcrumbJsonLd,
-  FaqPageJsonLd,
+  FaqPageJsonLdFromItems,
   PricingOfferCatalogJsonLd,
 } from "@/components/seo/json-ld";
 import { CompareTable, PlanCard } from "@/components/sections/marketing/shared";
-import { FAQS, PLANS } from "@/lib/marketing-data";
+import { PLANS, PRICING_FAQS } from "@/lib/marketing-data";
 import { getPricingLocale } from "@/lib/currency/server";
 import { pageMetadata } from "@/lib/seo/metadata";
 
@@ -34,7 +34,7 @@ export default async function PricingPage() {
           ]}
         />
         <PricingOfferCatalogJsonLd />
-        <FaqPageJsonLd />
+        <FaqPageJsonLdFromItems items={[...PRICING_FAQS]} />
         <section className="bg-[radial-gradient(120%_100%_at_50%_-10%,#eef0ff_0%,#f6f7f9_52%)]">
           <div className="mx-auto max-w-[920px] px-7 pb-10 pt-[66px] text-center">
             <div className="mb-3.5 text-[13px] font-bold uppercase tracking-[0.06em] text-[#6366f1]">
@@ -71,7 +71,7 @@ export default async function PricingPage() {
             Pricing questions
           </h2>
           <div className="flex flex-col gap-3">
-            {FAQS.map((f) => (
+            {PRICING_FAQS.map((f) => (
               <div
                 key={f.q}
                 className="rounded-[14px] border border-[#eceef4] bg-white px-[22px] py-5"
