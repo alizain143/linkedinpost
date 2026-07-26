@@ -3,12 +3,12 @@ import { BreadcrumbJsonLd } from "@/components/seo/json-ld";
 import { pageMetadata } from "@/lib/seo/metadata";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Contact",
+  title: "Contact linkedinpost.ai: Support and Partnerships",
   description:
     "Contact linkedinpost.ai for product support, partnerships, agency onboarding, or press. We reply within one business day.",
   path: "/contact",
   openGraphImage: "/contact/opengraph-image",
-  openGraphImageAlt: "Contact linkedinpost.ai",
+  openGraphImageAlt: "Contact linkedinpost.ai support and partnerships",
 });
 
 export default function ContactLayout({

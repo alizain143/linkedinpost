@@ -13,12 +13,12 @@ import { getPricingLocale } from "@/lib/currency/server";
 import { pageMetadata } from "@/lib/seo/metadata";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Pricing",
+  title: "Pricing: Free LinkedIn AI Post Generator from $0",
   description:
     "Simple plans that scale with your output. Start free, upgrade when you're ready for more volume and the content calendar.",
   path: "/pricing",
   openGraphImage: "/pricing/opengraph-image",
-  openGraphImageAlt: "linkedinpost.ai pricing plans",
+  openGraphImageAlt: "linkedinpost.ai pricing plans from free to agency",
 });
 
 export default async function PricingPage() {

@@ -18,7 +18,7 @@ export function Footer() {
         <div className="pp-foot">
           <div>
             <Link href="/" className="mb-3.5 flex items-center gap-2.5">
-              <LogoMark size={32} className="rounded-[9px]" />
+              <LogoMark size={32} className="rounded-[9px]" alt="" />
               <span className="font-newsreader text-[19px] font-semibold tracking-tight text-white">
                 linkedinpost<span className="text-[#c9b8ff]">.ai</span>
               </span>

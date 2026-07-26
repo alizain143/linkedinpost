@@ -1,191 +1,10 @@
 /** Comparison and persona marketing copy for SEO landing pages. */
 
-export type ComparisonPage = {
-  slug: "taplio" | "buffer" | "authoredup";
-  competitorName: string;
-  title: string;
-  seoTitle: string;
-  description: string;
-  answerCapsule: string;
-  whoWinsWhen: { when: string; pick: string }[];
-  differences: { label: string; us: string; them: string }[];
-  faqs: { q: string; a: string }[];
-};
-
-export const COMPARISON_PAGES: ComparisonPage[] = [
-  {
-    slug: "taplio",
-    competitorName: "Taplio",
-    title: "linkedinpost.ai vs Taplio",
-    seoTitle: "linkedinpost.ai vs Taplio",
-    description:
-      "Compare linkedinpost.ai and Taplio for LinkedIn content: voice-first drafts, AI Council review, calendars, and approval before publish.",
-    answerCapsule:
-      "Taplio is strong for LinkedIn growth tooling. linkedinpost.ai is built around sounding like you: voice profiles, multi-agent review, calendars, and approval before anything goes live.",
-    whoWinsWhen: [
-      {
-        when: "You want drafts that match your voice and get reviewed before you see them",
-        pick: "linkedinpost.ai",
-      },
-      {
-        when: "You mainly want engagement tooling and inspiration from top posts",
-        pick: "Taplio",
-      },
-      {
-        when: "You manage client brands and need separate workspaces",
-        pick: "linkedinpost.ai (Agency)",
-      },
-    ],
-    differences: [
-      {
-        label: "Core focus",
-        us: "Voice-first generation + review council + calendar",
-        them: "LinkedIn growth suite with inspiration and engagement features",
-      },
-      {
-        label: "Draft quality control",
-        us: "Writer, reviewer, and editor agents before approval",
-        them: "AI assist depends on your prompts and edits",
-      },
-      {
-        label: "Publishing control",
-        us: "Approve first, then schedule or publish",
-        them: "Scheduling and engagement workflows vary by plan",
-      },
-      {
-        label: "Agencies",
-        us: "Client workspaces on Agency plan",
-        them: "Team features available on higher tiers",
-      },
-    ],
-    faqs: [
-      {
-        q: "Is linkedinpost.ai a Taplio alternative?",
-        a: "Yes, if your main pain is writing posts that still sound like you. If you primarily need Taplio's engagement and inspiration features, stay there or use both for different jobs.",
-      },
-      {
-        q: "Can I switch from Taplio?",
-        a: "Most people start by recreating their voice profile and generating a week of drafts in linkedinpost.ai, then decide whether to move scheduling over.",
-      },
-    ],
-  },
-  {
-    slug: "buffer",
-    competitorName: "Buffer",
-    title: "linkedinpost.ai vs Buffer",
-    seoTitle: "linkedinpost.ai vs Buffer",
-    description:
-      "Buffer is a multi-network scheduler. linkedinpost.ai is a LinkedIn content engine with voice profiles, AI review, and calendars built for founders.",
-    answerCapsule:
-      "Use Buffer when you need one scheduler across many networks. Use linkedinpost.ai when LinkedIn writing quality and consistency are the bottleneck.",
-    whoWinsWhen: [
-      {
-        when: "LinkedIn drafting and sounding like yourself is the hard part",
-        pick: "linkedinpost.ai",
-      },
-      {
-        when: "You post to LinkedIn, Instagram, X, and more from one queue",
-        pick: "Buffer",
-      },
-      {
-        when: "You want AI drafts reviewed before you approve",
-        pick: "linkedinpost.ai",
-      },
-    ],
-    differences: [
-      {
-        label: "Primary job",
-        us: "Create LinkedIn posts in your voice, then schedule or publish",
-        them: "Schedule and analyze posts across social networks",
-      },
-      {
-        label: "AI writing",
-        us: "Council pipeline trained on your profile and avoid-list",
-        them: "AI features exist; depth varies by product area",
-      },
-      {
-        label: "LinkedIn depth",
-        us: "Built specifically for LinkedIn content systems",
-        them: "LinkedIn is one channel among many",
-      },
-      {
-        label: "Best together",
-        us: "Generate and refine in linkedinpost.ai",
-        them: "Some teams still push final posts through a multi-network tool",
-      },
-    ],
-    faqs: [
-      {
-        q: "Should I replace Buffer with linkedinpost.ai?",
-        a: "Only if LinkedIn is your main channel and writing is the pain. If you need cross-network scheduling, keep Buffer and use linkedinpost.ai for LinkedIn drafts.",
-      },
-      {
-        q: "Does linkedinpost.ai schedule posts?",
-        a: "Yes. After you approve a post, you can schedule it or publish to LinkedIn from the app.",
-      },
-    ],
-  },
-  {
-    slug: "authoredup",
-    competitorName: "AuthoredUp",
-    title: "linkedinpost.ai vs AuthoredUp",
-    seoTitle: "linkedinpost.ai vs AuthoredUp",
-    description:
-      "AuthoredUp helps craft and format LinkedIn posts. linkedinpost.ai adds voice profiles, multi-agent review, calendars, and approval workflows.",
-    answerCapsule:
-      "AuthoredUp is excellent for formatting and post craft. linkedinpost.ai is for generating a month of on-brand drafts with review and calendar structure.",
-    whoWinsWhen: [
-      {
-        when: "You already write well and need formatting / preview polish",
-        pick: "AuthoredUp",
-      },
-      {
-        when: "You need volume without losing voice, plus a content calendar",
-        pick: "linkedinpost.ai",
-      },
-      {
-        when: "You want an AI council to challenge weak drafts",
-        pick: "linkedinpost.ai",
-      },
-    ],
-    differences: [
-      {
-        label: "Strength",
-        us: "Generation + review + calendar system",
-        them: "Editor, formatting, and LinkedIn-native craft tools",
-      },
-      {
-        label: "Blank-page help",
-        us: "Strong: starts from your voice profile and pillars",
-        them: "Strong if you already have the idea; lighter on full-month systems",
-      },
-      {
-        label: "Team / clients",
-        us: "Agency workspaces",
-        them: "Collaboration depends on plan",
-      },
-      {
-        label: "Media",
-        us: "Image and carousel generation with review",
-        them: "Focus is often on text craft and formatting",
-      },
-    ],
-    faqs: [
-      {
-        q: "Can I use both?",
-        a: "Some writers draft in linkedinpost.ai, then polish formatting elsewhere. Most people pick one home for the weekly workflow.",
-      },
-      {
-        q: "Which is better for agencies?",
-        a: "If you need isolated client voices and calendars, linkedinpost.ai Agency is built for that. Compare collaboration features on AuthoredUp if formatting is your main deliverable.",
-      },
-    ],
-  },
-];
-
-export function getComparisonBySlug(slug: string): ComparisonPage | undefined {
-  return COMPARISON_PAGES.find((page) => page.slug === slug);
-}
+export {
+  COMPARISON_PAGES,
+  getComparisonBySlug,
+  type ComparisonPage,
+} from "@/lib/seo/comparisons";
 
 export type PersonaPage = {
   slug: "founders" | "agencies";
@@ -203,7 +22,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
   {
     slug: "founders",
     title: "LinkedIn content for founders",
-    seoTitle: "LinkedIn Content System for Founders",
+    seoTitle: "LinkedIn Content System for Founders (30-Min Week)",
     description:
       "Build a weekly LinkedIn rhythm as a founder: voice profile, reviewed drafts, calendar planning, and approve-before-publish control.",
     answerCapsule:
@@ -245,7 +64,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
     faqs: [
       {
         q: "How often should founders post?",
-        a: "Most do well at two to three times a week. Consistency beats daily volume you cannot sustain. See our posting frequency guide for detail.",
+        a: "Most do well at two to three times a week. Consistency beats daily volume you cannot sustain. See our posting frequency guide for more detail.",
       },
       {
         q: "Will this sound like me?",
@@ -256,7 +75,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
   {
     slug: "agencies",
     title: "LinkedIn content for agencies",
-    seoTitle: "LinkedIn Content Workflow for Agencies",
+    seoTitle: "LinkedIn Content Tool for Agencies: Client Workspaces",
     description:
       "Run LinkedIn content for multiple clients: isolated workspaces, voice profiles per brand, approvals, and calendars in one place.",
     answerCapsule:
@@ -310,76 +129,4 @@ export const PERSONA_PAGES: PersonaPage[] = [
 
 export function getPersonaBySlug(slug: string): PersonaPage | undefined {
   return PERSONA_PAGES.find((page) => page.slug === slug);
-}
-
-export type CaseStudy = {
-  slug: string;
-  title: string;
-  seoTitle: string;
-  description: string;
-  role: string;
-  timeframe: string;
-  summary: string;
-  situation: string;
-  approach: string[];
-  results: string[];
-  note: string;
-};
-
-/** Illustrative workflows (not named customer endorsements). */
-export const CASE_STUDIES: CaseStudy[] = [
-  {
-    slug: "founder-weekly-rhythm",
-    title: "How a B2B founder rebuilt a weekly LinkedIn rhythm",
-    seoTitle: "Founder LinkedIn Weekly Rhythm Example",
-    description:
-      "An illustrative walkthrough of how a busy B2B founder moved from sporadic posts to three reviewed drafts a week.",
-    role: "B2B SaaS founder (illustrative)",
-    timeframe: "First 6 weeks",
-    summary:
-      "The bottleneck was not ideas. It was finishing posts that still sounded human while shipping product.",
-    situation:
-      "Posting happened in bursts after events, then silence for two weeks. Generic AI drafts felt off-brand, so they got abandoned mid-edit.",
-    approach: [
-      "Built a voice profile from five real posts and a short avoid-list",
-      "Set pillars: product lessons, customer stories, hiring notes, industry takes",
-      "Generated a week ahead every Monday; approved Tuesday and Thursday",
-      "Left two calendar slots empty for reactive posts",
-    ],
-    results: [
-      "Stable 3 posts per week for six weeks without weekend catch-up writing",
-      "Edit time per post dropped because drafts arrived closer to publishable",
-      "Fewer abandoned drafts sitting in notes apps",
-    ],
-    note: "Composite example based on common founder workflows. Not a named customer testimonial.",
-  },
-  {
-    slug: "agency-three-clients",
-    title: "How a small agency separated three client voices",
-    seoTitle: "Agency LinkedIn Client Workflow Example",
-    description:
-      "An illustrative agency workflow using separate workspaces, approvals, and calendars for three LinkedIn clients.",
-    role: "3-person content agency (illustrative)",
-    timeframe: "First month on Agency",
-    summary:
-      "The team needed volume without letting Client A sound like Client B after AI drafting.",
-    situation:
-      "Shared prompts and one Notion doc caused tone bleed. Approvals lived in Slack. Status was unclear by Friday.",
-    approach: [
-      "One workspace and profile per client",
-      "Council drafts inside each workspace only",
-      "Client approval before schedule",
-      "Month view per client with pillar balance",
-    ],
-    results: [
-      "Clear ownership of drafts per brand",
-      "Faster approval cycles with fewer wrong-version publishes",
-      "Calendars visible to the team without spreadsheet archaeology",
-    ],
-    note: "Composite example based on common agency workflows. Not a named customer testimonial.",
-  },
-];
-
-export function getCaseStudyBySlug(slug: string): CaseStudy | undefined {
-  return CASE_STUDIES.find((study) => study.slug === slug);
 }

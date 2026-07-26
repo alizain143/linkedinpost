@@ -1,6 +1,12 @@
 import { FAQS, PLANS } from "@/lib/marketing-data";
 import { ICON_PATHS } from "@/lib/icon-paths";
 import {
+  authorSchema,
+  DEFAULT_AUTHOR_ID,
+  getAuthorById,
+  type AuthorId,
+} from "@/lib/authors";
+import {
   getSiteUrl,
   SITE_DESCRIPTION,
   SITE_NAME,
@@ -177,14 +183,17 @@ export function ArticleJsonLd({
   path,
   publishedAt,
   updatedAt,
+  authorId = DEFAULT_AUTHOR_ID,
 }: {
   title: string;
   description: string;
   path: string;
   publishedAt: string;
   updatedAt: string;
+  authorId?: AuthorId;
 }) {
   const base = getSiteUrl().origin;
+  const author = getAuthorById(authorId);
 
   return (
     <JsonLd
@@ -196,11 +205,7 @@ export function ArticleJsonLd({
         datePublished: publishedAt,
         dateModified: updatedAt,
         image: `${base}${path}/opengraph-image`,
-        author: {
-          "@type": "Organization",
-          name: SITE_NAME,
-          url: base,
-        },
+        author: authorSchema(author),
         publisher: {
           "@type": "Organization",
           name: SITE_NAME,
@@ -214,6 +219,22 @@ export function ArticleJsonLd({
           "@id": `${base}${path}`,
         },
         isAccessibleForFree: true,
+      }}
+    />
+  );
+}
+
+export function AuthorProfileJsonLd({ authorId }: { authorId: AuthorId }) {
+  const author = getAuthorById(authorId);
+  const org = authorSchema(author);
+
+  return (
+    <JsonLd
+      data={{
+        "@context": "https://schema.org",
+        "@type": "ProfilePage",
+        mainEntity: org,
+        about: org,
       }}
     />
   );

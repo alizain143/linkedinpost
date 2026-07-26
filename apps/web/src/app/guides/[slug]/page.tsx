@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MarketingLayout } from "@/components/layout/marketing-layout";
+import { GuideByline } from "@/components/seo/guide-byline";
 import {
   ArticleJsonLd,
   BreadcrumbJsonLd,
@@ -47,12 +48,6 @@ export default async function GuidePage({ params }: Props) {
     .map((relatedSlug) => getGuideBySlug(relatedSlug))
     .filter((related) => related !== undefined);
 
-  const updated = new Date(guide.updatedAt).toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
-
   return (
     <MarketingLayout>
       <ArticleJsonLd
@@ -61,6 +56,7 @@ export default async function GuidePage({ params }: Props) {
         path={`/guides/${guide.slug}`}
         publishedAt={guide.publishedAt}
         updatedAt={guide.updatedAt}
+        authorId={guide.authorId}
       />
       <BreadcrumbJsonLd
         items={[
@@ -82,14 +78,17 @@ export default async function GuidePage({ params }: Props) {
           <span className="text-[#334155]">{guide.title}</span>
         </nav>
 
-        <p className="text-xs font-bold uppercase tracking-[0.06em] text-[#6366f1]">
-          Last updated {updated}
-        </p>
-        <h1 className="mt-3 font-display text-[clamp(32px,4.6vw,44px)] font-extrabold leading-[1.08] tracking-[-0.03em] text-[#0d1326]">
+        <h1 className="font-display text-[clamp(32px,4.6vw,44px)] font-extrabold leading-[1.08] tracking-[-0.03em] text-[#0d1326]">
           {guide.title}
         </h1>
 
-        <p className="mt-6 border-l-4 border-[#6366f1] pl-5 text-[17px] leading-relaxed text-[#475569]">
+        <GuideByline
+          authorId={guide.authorId}
+          publishedAt={guide.publishedAt}
+          updatedAt={guide.updatedAt}
+        />
+
+        <p className="mt-8 border-l-4 border-[#6366f1] pl-5 text-[17px] leading-relaxed text-[#475569]">
           {guide.answerCapsule}
         </p>
 
@@ -162,6 +161,58 @@ export default async function GuidePage({ params }: Props) {
             </div>
           </section>
         ) : null}
+
+        <section className="mt-12 rounded-[16px] border border-[#eceef4] bg-[#f8f9fc] p-6">
+          <h2 className="font-display text-[18px] font-extrabold tracking-tight text-[#0d1326]">
+            Keep going
+          </h2>
+          <ul className="mt-3 flex flex-col gap-2 text-[14.5px] leading-[1.55] text-[#475569]">
+            <li>
+              See product{" "}
+              <Link
+                href="/features"
+                className="font-semibold text-[#4f46e5] hover:underline"
+              >
+                features
+              </Link>{" "}
+              for voice profiles, AI Council, and calendars.
+            </li>
+            <li>
+              Comparing tools? Start with{" "}
+              <Link
+                href="/compare/taplio"
+                className="font-semibold text-[#4f46e5] hover:underline"
+              >
+                vs Taplio
+              </Link>
+              ,{" "}
+              <Link
+                href="/alternatives"
+                className="font-semibold text-[#4f46e5] hover:underline"
+              >
+                alternatives
+              </Link>
+              , or the{" "}
+              <Link
+                href="/tools"
+                className="font-semibold text-[#4f46e5] hover:underline"
+              >
+                free LinkedIn tools
+              </Link>
+              .
+            </li>
+            <li>
+              Prefer a founder framing? Read{" "}
+              <Link
+                href="/for-founders"
+                className="font-semibold text-[#4f46e5] hover:underline"
+              >
+                LinkedIn content for founders
+              </Link>
+              .
+            </li>
+          </ul>
+        </section>
 
         <div className="mt-12 rounded-[18px] bg-gradient-to-br from-[#1e1b4b] to-[#4338ca] p-8 text-white">
           <h3 className="font-display text-[22px] font-extrabold tracking-tight">

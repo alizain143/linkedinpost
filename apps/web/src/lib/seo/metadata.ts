@@ -12,6 +12,7 @@ import {
   SITE_KEYWORDS,
   SITE_NAME,
   SITE_TITLE_DEFAULT,
+  SITE_TITLE_ROOT,
   THEME_COLOR,
   TWITTER_HANDLE,
 } from "@/lib/site";
@@ -74,11 +75,12 @@ function defaultTwitter(
 }
 
 type PageMetaInput = {
+  /** Full document title (50–60 chars). Do not rely on a brand suffix. */
   title: string;
   description?: string;
   path: string;
   noIndex?: boolean;
-  /** Skip root `"%s | linkedinpost.ai"` template (e.g. home title). */
+  /** Force exact title even if a parent layout template exists. */
   absolute?: boolean;
   openGraphImage?: string;
   openGraphImageAlt?: string;
@@ -96,7 +98,6 @@ export function pageMetadata({
   const shouldIndex = isIndexingAllowed() && !noIndex;
   const ogImage = openGraphImage ?? "/opengraph-image";
   const ogAlt = openGraphImageAlt ?? title;
-  const displayTitle = absolute ? title : `${title} | ${SITE_NAME}`;
 
   return {
     title: absolute ? { absolute: title } : title,
@@ -104,10 +105,10 @@ export function pageMetadata({
     keywords: SITE_KEYWORDS,
     alternates: { canonical: path },
     openGraph: {
-      ...defaultOpenGraph(displayTitle, description, ogImage, ogAlt),
+      ...defaultOpenGraph(title, description, ogImage, ogAlt),
       url: path,
     },
-    twitter: defaultTwitter(displayTitle, description, ogImage, ogAlt),
+    twitter: defaultTwitter(title, description, ogImage, ogAlt),
     robots: shouldIndex ? INDEX_ROBOTS : NOINDEX_ROBOTS,
   };
 }
@@ -118,12 +119,18 @@ export function rootMetadata(): Metadata {
   return {
     metadataBase: getSiteUrl(),
     title: {
-      default: SITE_TITLE_DEFAULT,
-      template: "%s | linkedinpost.ai",
+      default: SITE_TITLE_ROOT,
+      // Pages set full titles; do not auto-append the brand.
+      template: "%s",
     },
     description: SITE_DESCRIPTION,
     keywords: SITE_KEYWORDS,
-    authors: [{ name: SITE_NAME }],
+    authors: [
+      {
+        name: "LinkedInPost AI Content Team",
+        url: "/authors/linkedinpost-ai-content-team",
+      },
+    ],
     applicationName: SITE_NAME,
     alternates: { canonical: "/" },
     icons: {

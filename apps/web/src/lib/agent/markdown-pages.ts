@@ -25,16 +25,19 @@ const MARKETING_MARKDOWN_PATHS = new Set([
   "/terms",
   "/guides",
   "/compare",
+  "/alternatives",
+  "/tools",
   "/for-founders",
   "/for-agencies",
-  "/case-studies",
 ]);
 
 export function isMarketingMarkdownPath(pathname: string): boolean {
   if (MARKETING_MARKDOWN_PATHS.has(pathname)) return true;
   if (pathname.startsWith("/guides/")) return true;
   if (pathname.startsWith("/compare/")) return true;
-  if (pathname.startsWith("/case-studies/")) return true;
+  if (pathname.startsWith("/alternatives/")) return true;
+  if (pathname.startsWith("/tools/")) return true;
+  if (pathname.startsWith("/authors/")) return true;
   return false;
 }
 
@@ -154,12 +157,20 @@ export function buildPageMarkdown(pathname: string): string | null {
     return `# Comparison | ${SITE_NAME}\n\nSee ${abs(pathname)} for the full comparison.\n`;
   }
 
-  if (pathname === "/case-studies") {
-    return `# Case studies | ${SITE_NAME}\n\nIllustrative LinkedIn workflow examples for founders and agencies.\n\n[Browse](${abs("/case-studies")})\n`;
+  if (pathname === "/alternatives") {
+    return `# Alternatives | ${SITE_NAME}\n\n- [Taplio alternative](${abs("/alternatives/taplio")})\n- [Buffer alternative](${abs("/alternatives/buffer")})\n- [AuthoredUp alternative](${abs("/alternatives/authoredup")})\n`;
   }
 
-  if (pathname.startsWith("/case-studies/")) {
-    return `# Case study | ${SITE_NAME}\n\nSee ${abs(pathname)} for the full walkthrough.\n`;
+  if (pathname.startsWith("/alternatives/")) {
+    return `# Alternative | ${SITE_NAME}\n\nSee ${abs(pathname)} for the full alternative guide.\n`;
+  }
+
+  if (pathname === "/tools") {
+    return `# Free LinkedIn tools | ${SITE_NAME}\n\n- [Character counter](${abs("/tools/linkedin-character-counter")})\n- [Text formatter](${abs("/tools/linkedin-text-formatter")})\n`;
+  }
+
+  if (pathname.startsWith("/tools/")) {
+    return `# Free tool | ${SITE_NAME}\n\nSee ${abs(pathname)} for the interactive tool and guide.\n`;
   }
 
   return null;

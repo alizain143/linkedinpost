@@ -7,12 +7,12 @@ import { STEPS } from "@/lib/marketing-data";
 import { pageMetadata } from "@/lib/seo/metadata";
 
 export const metadata: Metadata = pageMetadata({
-  title: "How It Works",
+  title: "How LinkedIn AI Content Works: Voice to Publish",
   description:
     "From blank page to a LinkedIn publishing system in four steps: voice profile, AI Council drafts, media review, then approve and schedule or publish.",
   path: "/how-it-works",
   openGraphImage: "/how-it-works/opengraph-image",
-  openGraphImageAlt: "How linkedinpost.ai works",
+  openGraphImageAlt: "How linkedinpost.ai turns voice profiles into approved LinkedIn posts",
 });
 
 export default function HowItWorksPage() {

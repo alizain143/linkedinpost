@@ -19,7 +19,7 @@ export function HeroDashboardMockup() {
           {/* Sidebar */}
           <div className="flex w-[226px] shrink-0 flex-col gap-[3px] border-r border-[#eef0f5] bg-[#fbfbfd] px-3.5 py-4">
             <div className="flex items-center gap-[9px] px-2 pb-[13px] pt-[5px]">
-              <LogoMark size={28} className="rounded-lg" />
+              <LogoMark size={28} className="rounded-lg" alt="" />
               <span className="font-newsreader text-base font-semibold tracking-[-0.01em] text-[#1b1726]">
                 linkedinpost<span className="text-[#5B3DF5]">.ai</span>
               </span>
