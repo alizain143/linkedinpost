@@ -280,9 +280,8 @@ export default function Billing() {
             <h3 className="mb-4 font-display text-lg font-bold">Plans</h3>
             {billing.plan === "starter" ? (
               <div className="mb-4 rounded-[14px] border border-[#fde68a] bg-[#fffbeb] px-4 py-3 text-sm text-[#92400e]">
-                You are on a legacy Starter plan. New signups choose Pro or
-                Agency. Upgrade to Pro for weekly channel volume, bonuses, and
-                the 7-day voice guarantee.
+                Your Starter plan is no longer sold. Upgrade to Pro for weekly
+                channel volume, bonuses, and the 7-day voice guarantee.
               </div>
             ) : null}
             <div className="pp-grid3">

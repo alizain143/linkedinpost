@@ -6,7 +6,6 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { BillingSyncService } from './billing-sync.service';
 
 const variants = {
-  variantStarter: '111',
   variantPro: '222',
   variantAgency: '333',
 };

@@ -7,7 +7,7 @@ import { SubscriptionStatus, UserPlan } from '@prisma/client';
 import {
   getPlanForLemonVariant,
   parsePlanFromMetadata,
-  type CheckoutPlan,
+  type PaidPlan,
   type LemonVariantConfig,
 } from '../../common/constants/billing-plan.map';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -263,7 +263,7 @@ export class BillingSyncService {
   resolvePlanFromEvent(
     event: LemonSubscriptionEvent,
     variants: LemonVariantConfig,
-  ): CheckoutPlan | null {
+  ): PaidPlan | null {
     const fromMetadata = parsePlanFromMetadata(event.metadata?.plan);
     if (fromMetadata) {
       return fromMetadata;
@@ -336,7 +336,7 @@ export class BillingSyncService {
   }
 }
 
-function isPaidPlan(plan: UserPlan): plan is CheckoutPlan {
+function isPaidPlan(plan: UserPlan): plan is PaidPlan {
   return (
     plan === UserPlan.starter ||
     plan === UserPlan.pro ||

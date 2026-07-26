@@ -29,7 +29,6 @@ Frontend Billing screen: [FE-SLICE-16](FE-SLICE-16-billing.md).
 LEMONSQUEEZY_API_KEY=
 LEMONSQUEEZY_STORE_ID=
 LEMONSQUEEZY_WEBHOOK_SECRET=
-LEMONSQUEEZY_VARIANT_STARTER=
 LEMONSQUEEZY_VARIANT_PRO=
 LEMONSQUEEZY_VARIANT_AGENCY=
 FRONTEND_URL=http://localhost:3000
@@ -49,7 +48,7 @@ Plan prices live in Lemon Squeezy product variants. Checkout passes `custom.user
 ### Checkout body
 
 ```json
-{ "plan": "starter" | "pro" | "agency" }
+{ "plan": "pro" | "agency" }
 ```
 
 ### GET response

@@ -37,7 +37,6 @@ export class LemonsqueezyClientService {
     return Boolean(
       this.config.apiKey &&
         this.config.storeId &&
-        this.config.variantStarter &&
         this.config.variantPro &&
         this.config.variantAgency,
     );
@@ -55,7 +54,6 @@ export class LemonsqueezyClientService {
 
   getVariantConfig(): LemonVariantConfig {
     return {
-      variantStarter: this.config.variantStarter,
       variantPro: this.config.variantPro,
       variantAgency: this.config.variantAgency,
     };

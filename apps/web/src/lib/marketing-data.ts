@@ -136,7 +136,7 @@ export type PlanStyle = {
   btnColor: string;
 };
 
-export const STARTER_MONTHLY_USD = 9.99; // grandfathered; not sold on marketing
+export const STARTER_MONTHLY_USD = 9.99; // legacy DB plan only; product removed
 export const PRO_MONTHLY_USD = 19.99;
 export const AGENCY_MONTHLY_USD = 69.99;
 
@@ -608,7 +608,7 @@ export const TERMS_SECTIONS = [
   {
     h: "5. Plans, credits & billing",
     p: [
-      "Paid plans are billed monthly in advance. AI credits reset each billing cycle and do not roll over. You can upgrade, downgrade, or cancel at any time; cancellations take effect at the end of the current period. Public plans are Free, Pro, and Agency. Legacy Starter subscriptions may continue until cancelled.",
+      "Paid plans are billed monthly in advance. AI credits reset each billing cycle and do not roll over. You can upgrade, downgrade, or cancel at any time; cancellations take effect at the end of the current period. Public plans are Free, Pro, and Agency. The Starter product has been discontinued; accounts still marked Starter should upgrade to Pro.",
     ],
   },
   {

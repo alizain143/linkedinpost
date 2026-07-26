@@ -16,7 +16,6 @@ describe('BillingService', () => {
   const lemonClient = {
     isCheckoutConfigured: jest.fn().mockReturnValue(true),
     getVariantConfig: jest.fn().mockReturnValue({
-      variantStarter: '111',
       variantPro: '222',
       variantAgency: '333',
     }),

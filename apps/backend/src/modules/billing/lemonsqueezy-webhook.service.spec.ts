@@ -26,7 +26,6 @@ describe('LemonsqueezyWebhookService', () => {
     isWebhookConfigured: jest.fn().mockReturnValue(true),
     verifyWebhookSignature: jest.fn().mockReturnValue(true),
     getVariantConfig: jest.fn().mockReturnValue({
-      variantStarter: '111',
       variantPro: '222',
       variantAgency: '333',
     }),
