@@ -15,7 +15,7 @@ import { LemonsqueezyWebhookService } from './lemonsqueezy-webhook.service';
   imports: [
     PrismaModule,
     forwardRef(() => AuthModule),
-    CreditsModule,
+    forwardRef(() => CreditsModule),
   ],
   controllers: [BillingController, LemonsqueezyWebhookController],
   providers: [

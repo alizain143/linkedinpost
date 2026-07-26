@@ -301,11 +301,17 @@ export class LemonsqueezyWebhookService {
       return;
     }
 
+    const planFromMeta = parsePlanFromMetadata(custom.plan);
+    const planFromSub = (
+      await this.prisma.subscription.findUnique({ where: { userId } })
+    )?.plan;
     const plan =
-      parsePlanFromMetadata(custom.plan) ??
-      (await this.prisma.subscription.findUnique({ where: { userId } }))
-        ?.plan ??
-      null;
+      planFromMeta ??
+      (planFromSub === UserPlan.starter ||
+      planFromSub === UserPlan.pro ||
+      planFromSub === UserPlan.agency
+        ? planFromSub
+        : null);
 
     const planLabel = plan ? getPlanLabel(plan) : 'Subscription';
     const status =
@@ -323,7 +329,7 @@ export class LemonsqueezyWebhookService {
         status === BillingTransactionStatus.failed
           ? `${planLabel} plan — payment failed`
           : `${planLabel} plan — monthly`,
-      plan: plan === UserPlan.free ? null : plan,
+      plan,
       providerEventId: eventId,
       providerOrderId: orderId,
       providerInvoiceId: invoiceId,

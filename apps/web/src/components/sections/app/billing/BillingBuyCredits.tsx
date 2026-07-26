@@ -73,14 +73,14 @@ export function BillingBuyCredits() {
         Top up anytime. Larger amounts unlock a lower price per credit.
       </p>
 
-      <div className="mt-4 flex flex-wrap items-end gap-3">
-        <div className="min-w-[160px] flex-1">
-          <label
-            htmlFor="credit-topup-amount"
-            className="text-sm font-semibold text-[#64748b]"
-          >
-            Credits
-          </label>
+      <div className="mt-4">
+        <label
+          htmlFor="credit-topup-amount"
+          className="text-sm font-semibold text-[#64748b]"
+        >
+          Credits
+        </label>
+        <div className="mt-2 flex flex-wrap items-center gap-3">
           <Input
             id="credit-topup-amount"
             type="number"
@@ -89,24 +89,23 @@ export function BillingBuyCredits() {
             step={1}
             value={creditsInput}
             onChange={(event) => setCreditsInput(event.target.value)}
-            className="mt-2"
+            className="min-w-[160px] max-w-sm flex-1"
           />
-          <p className="mt-1 text-xs text-[#94a3b8]">
-            Min {MIN} · Max {MAX}
-          </p>
+          <Button
+            type="button"
+            variant="primary"
+            size="md"
+            className="h-10 shrink-0 rounded-[10px]"
+            disabled={!creditsValid || checkoutMutation.isPending}
+            onClick={handleBuy}
+          >
+            <MsIcon name="credit_card" size={18} />
+            {checkoutMutation.isPending ? "Redirecting…" : "Buy credits"}
+          </Button>
         </div>
-
-        <Button
-          type="button"
-          variant="primary"
-          size="md"
-          className="rounded-[10px]"
-          disabled={!creditsValid || checkoutMutation.isPending}
-          onClick={handleBuy}
-        >
-          <MsIcon name="shopping_cart" size={18} />
-          {checkoutMutation.isPending ? "Redirecting…" : "Buy credits"}
-        </Button>
+        <p className="mt-1 text-xs text-[#94a3b8]">
+          Min {MIN} · Max {MAX}
+        </p>
       </div>
 
       {creditsValid && quoteQuery.data ? (
