@@ -17,8 +17,12 @@ import {
 import { mergeApiSyncPreservingImport } from './profile-import.merge';
 import { buildPostCommentary, LinkedInApiClient } from './linkedin-api.client';
 import {
+  assertCanStartLinkedInConnect,
+  assertLinkedInMemberMatches,
+} from './linkedin-identity-lock';
+import {
   bindWorkspaceLinkedInUpdate,
-  CLEAR_WORKSPACE_LINKEDIN_UPDATE,
+  DISCONNECT_WORKSPACE_LINKEDIN_UPDATE,
   loadWorkspaceLinkedIn,
   syncWorkspaceLinkedInUpdate,
 } from './workspace-linkedin.store';
@@ -38,6 +42,7 @@ export class LinkedInConnectionService {
     private readonly prisma: PrismaService,
     private readonly clerkOAuthService: ClerkOAuthService,
     private readonly linkedInOAuthService: LinkedInOAuthService,
+    private readonly linkedInApiClient: LinkedInApiClient,
     private readonly workspacesService: WorkspacesService,
   ) {}
 
@@ -149,6 +154,18 @@ export class LinkedInConnectionService {
       );
     }
 
+    // Soft-disconnected but identity-locked: do not fall through to Clerk.
+    if (workspace.linkedInMemberId) {
+      return {
+        connected: false,
+        publishReady: false,
+        profileName: workspace.linkedInProfileName,
+        approvedScopes: [],
+        linkedInMemberId: workspace.linkedInMemberId,
+        clerkExternalAccountId: null,
+      };
+    }
+
     if (workspace.type === WorkspaceType.personal) {
       const verifiedAccounts =
         await this.clerkOAuthService.listVerifiedLinkedInExternalAccounts(
@@ -177,6 +194,8 @@ export class LinkedInConnectionService {
     await this.workspacesService.assertMember(userId, workspaceId);
 
     const workspace = await loadWorkspaceLinkedIn(this.prisma, workspaceId);
+    assertCanStartLinkedInConnect(workspace);
+
     const owner = await this.prisma.user.findUniqueOrThrow({
       where: { id: workspace.ownerId },
     });
@@ -192,6 +211,18 @@ export class LinkedInConnectionService {
       });
     }
 
+    const accessToken = await this.clerkOAuthService.getLinkedInAccessToken(
+      owner.clerkId,
+      account.id,
+    );
+    const userinfo = await this.linkedInApiClient.fetchUserInfo(accessToken);
+    const incomingMemberId = String(userinfo.sub ?? '');
+    assertLinkedInMemberMatches({
+      lockedMemberId: workspace.linkedInMemberId,
+      incomingMemberId,
+      lockedProfileName: workspace.linkedInProfileName,
+    });
+
     const profileName =
       [account.firstName, account.lastName].filter(Boolean).join(' ').trim() ||
       account.username ||
@@ -200,7 +231,12 @@ export class LinkedInConnectionService {
 
     await this.prisma.workspace.update({
       where: { id: workspaceId },
-      data: bindWorkspaceLinkedInUpdate(account.id, profileName),
+      data: {
+        ...bindWorkspaceLinkedInUpdate(account.id, profileName),
+        ...(workspace.linkedInMemberId
+          ? {}
+          : { linkedInMemberId: incomingMemberId || null }),
+      },
     });
 
     return this.getWorkspaceConnection(workspaceId, userId);
@@ -212,9 +248,29 @@ export class LinkedInConnectionService {
   ): Promise<LinkedInConnectionStatus> {
     await this.workspacesService.assertMember(userId, workspaceId);
 
+    const workspace = await loadWorkspaceLinkedIn(this.prisma, workspaceId);
+    const owner = await this.prisma.user.findUniqueOrThrow({
+      where: { id: workspace.ownerId },
+    });
+
+    const lockedMemberId =
+      workspace.linkedInMemberId ??
+      (workspace.type === WorkspaceType.personal
+        ? owner.linkedInMemberId
+        : null);
+    const lockedProfileName =
+      workspace.linkedInProfileName ??
+      (workspace.linkedInProfile as { fullName?: string | null } | null)
+        ?.fullName ??
+      null;
+
     await this.prisma.workspace.update({
       where: { id: workspaceId },
-      data: CLEAR_WORKSPACE_LINKEDIN_UPDATE,
+      data: {
+        ...DISCONNECT_WORKSPACE_LINKEDIN_UPDATE,
+        ...(lockedMemberId ? { linkedInMemberId: lockedMemberId } : {}),
+        ...(lockedProfileName ? { linkedInProfileName: lockedProfileName } : {}),
+      },
     });
 
     return this.getWorkspaceConnection(workspaceId, userId);

@@ -163,6 +163,7 @@ export class NotificationDispatchService implements OnModuleInit {
         return user.emailProductUpdates;
       case NotificationType.client_approved:
       case NotificationType.client_requested_changes:
+      case NotificationType.autopilot_paused_credits:
         return true;
       default:
         return false;

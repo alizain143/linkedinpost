@@ -51,6 +51,16 @@ export function getApiErrorMessage(
         return "That post could not be found.";
       case "LINKEDIN_NOT_CONNECTED":
         return "Connect LinkedIn with publish permissions to continue.";
+      case "LINKEDIN_ACCOUNT_MISMATCH":
+        return (
+          error.message ||
+          "This workspace is locked to the previously connected LinkedIn account. Sign in to LinkedIn as that account, or use an Agency client workspace for a different brand."
+        );
+      case "LINKEDIN_ALREADY_CONNECTED":
+        return (
+          error.message ||
+          "LinkedIn is already connected to this workspace. Disconnect first to reconnect the same account."
+        );
       case "LINKEDIN_IMPORT_PROFILE_URL_UNKNOWN":
         return (
           error.message ||

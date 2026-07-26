@@ -6,7 +6,8 @@ export type NotificationType =
   | "publish_succeeded"
   | "publish_failed"
   | "weekly_content_reminder"
-  | "product_update";
+  | "product_update"
+  | "autopilot_paused_credits";
 
 export type ApiNotification = {
   id: string;

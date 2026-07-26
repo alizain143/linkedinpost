@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { GenerationJobType, Prisma } from '@prisma/client';
-import { PlanFeatureService } from '../billing/plan-feature.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreditsService } from '../credits/credits.service';
 import { toGenerationJobResponse } from '../generation/generation-job.mapper';
@@ -24,7 +23,6 @@ export class CalendarJobService {
     private readonly workspacesService: WorkspacesService,
     private readonly creditsService: CreditsService,
     private readonly enqueueService: GenerationJobEnqueueService,
-    private readonly planFeatureService: PlanFeatureService,
   ) {}
 
   async enqueueCalendar(
@@ -34,10 +32,6 @@ export class CalendarJobService {
   ) {
     await this.workspacesService.assertMember(userId, workspaceId);
     this.enqueueService.assertRedisAvailable();
-
-    if (dto.durationDays === 30) {
-      await this.planFeatureService.assertAllows(userId, 'calendar_30_day');
-    }
 
     const user = await this.prisma.user.findUniqueOrThrow({
       where: { id: userId },

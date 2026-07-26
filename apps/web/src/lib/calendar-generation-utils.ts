@@ -53,8 +53,8 @@ export function getCalendarPerSlotCreditCost(
   return COUNCIL_CREDIT_COST;
 }
 
-export function canUse30DayCalendar(plan: UserPlan): boolean {
-  return plan === "pro" || plan === "agency";
+export function canUse30DayCalendar(_plan: UserPlan): boolean {
+  return true;
 }
 
 export function tomorrowDateKey(timezone = DEFAULT_TIMEZONE): string {

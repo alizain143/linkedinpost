@@ -227,8 +227,8 @@ Council agent pipeline: writer → reviewer → editor → media_creator → med
 
 ### Product tours (web)
 
-- **Core product tour** (`product-core-v1`) — auto-starts once when unseen; Settings → Replay; show-only coachmarks (app locked during tour); Profile → LinkedIn → Generate → Pipeline → Approvals → Calendar → Billing (conditional Pro/Agency)
-- **Plan unlock** — when `plan` unlocks features vs `lastAcknowledgedPlan`, modal + optional `pro-unlock-v1` / `agency-unlock-v1` tour
+- **Core product tour** (`product-core-v1`) — auto-starts once when unseen; Settings → Replay; show-only coachmarks (app locked during tour); Profile → LinkedIn → Generate → Pipeline → Approvals → Calendar → Billing → Autopilot; Clients step when Agency
+- **Plan unlock** — when Agency unlocks client workspaces / approval share links vs `lastAcknowledgedPlan`, modal + optional `agency-unlock-v1` tour
 - State on `User`: `toursSeen`, `lastAcknowledgedPlan`; updated via `PATCH /v1/auth/me`
 
 ---
@@ -252,10 +252,12 @@ Council agent pipeline: writer → reviewer → editor → media_creator → med
 
 | Plan | Credits/mo | Highlights |
 |------|------------|------------|
-| free | 5 | Basic generator |
-| starter | $9.99 / 50 | Drafts, templates |
-| pro | $19.99 / 200 | Calendar, autopilot, scheduling |
-| agency | $69.99 / 1000 | 5 client workspaces, approval links |
+| free | 5 | Full workflow — limited by credits |
+| starter | $9.99 / 50 | More credits for weekly rhythm |
+| pro | $19.99 / 200 | Highest solo credit budget |
+| agency | $69.99 / 1000 | Up to 5 client workspaces + approval share links |
+
+**Gating model:** Generation features (drafts, council, media, calendars, autopilot, schedule) are **credit-gated**. Enabling Autopilot requires enough credits for one post; if a due Autopilot run cannot afford credits, Autopilot is turned off and the user is emailed (`autopilot_paused_credits`). Plan-gated features are Agency-only: `client_workspaces`, `approval_share_links`. LinkedIn: one account per workspace; reconnect must match the locked member ID.
 
 Credit costs (from product spec): Quick Draft 1 · Council 3 · Post+Media 10 · Regenerate Media 5 · 7-day Calendar 10 · 30-day Calendar 30 · Autopilot 10 · AI Content Profile 1 (on approve)
 

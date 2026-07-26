@@ -15,7 +15,7 @@ import { pageMetadata } from "@/lib/seo/metadata";
 export const metadata: Metadata = pageMetadata({
   title: "Pricing: Free LinkedIn AI Post Generator from $0",
   description:
-    "Simple plans that scale with your output. Start free, upgrade when you're ready for more volume and the content calendar.",
+    "Plans scale by monthly AI credits. Start free; upgrade for more volume. Agency adds client workspaces and approval share links.",
   path: "/pricing",
   openGraphImage: "/pricing/opengraph-image",
   openGraphImageAlt: "linkedinpost.ai pricing plans from free to agency",

@@ -9,6 +9,7 @@ const NOTIFICATION_ICONS: Record<NotificationType, string> = {
   publish_failed: "error",
   weekly_content_reminder: "calendar_month",
   product_update: "mail",
+  autopilot_paused_credits: "pause_circle",
 };
 
 export function getNotificationIcon(type: NotificationType): string {

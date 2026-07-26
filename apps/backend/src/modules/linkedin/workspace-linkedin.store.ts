@@ -29,12 +29,24 @@ export const WORKSPACE_LINKEDIN_SELECT = {
   linkedInTokenExpiresAt: true,
 } as Prisma.WorkspaceSelect;
 
+/** Full wipe — only for admin / workspace delete flows. */
 export const CLEAR_WORKSPACE_LINKEDIN_UPDATE = {
   linkedInClerkExternalAccountId: null,
   linkedInMemberId: null,
   linkedInProfileName: null,
   linkedInProfile: Prisma.DbNull,
   linkedInProfileSyncedAt: null,
+  linkedInAccessToken: null,
+  linkedInRefreshToken: null,
+  linkedInTokenExpiresAt: null,
+} as Prisma.WorkspaceUpdateInput;
+
+/**
+ * Soft disconnect: drop tokens / Clerk binding but keep LinkedIn member identity
+ * so reconnect must use the same account.
+ */
+export const DISCONNECT_WORKSPACE_LINKEDIN_UPDATE = {
+  linkedInClerkExternalAccountId: null,
   linkedInAccessToken: null,
   linkedInRefreshToken: null,
   linkedInTokenExpiresAt: null,

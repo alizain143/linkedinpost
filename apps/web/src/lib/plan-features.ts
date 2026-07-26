@@ -2,8 +2,6 @@ import type { UserPlan } from "@/lib/api/types/enums";
 
 /** Mirrors backend plan-features.constants.ts */
 export const PLAN_FEATURES = {
-  autopilot: ["pro", "agency"],
-  calendar_30_day: ["pro", "agency"],
   client_workspaces: ["agency"],
   approval_share_links: ["agency"],
 } as const;
@@ -35,16 +33,6 @@ export const PLAN_FEATURE_COPY: Record<
   PlanFeature,
   { title: string; description: string; href: string }
 > = {
-  autopilot: {
-    title: "Autopilot",
-    description: "Schedule recurring AI posts that draft and queue for you.",
-    href: "/app/autopilot",
-  },
-  calendar_30_day: {
-    title: "30-day content calendar",
-    description: "Generate a full month of post ideas in one run.",
-    href: "/app/generate/calendar",
-  },
   client_workspaces: {
     title: "Client workspaces",
     description: "Manage LinkedIn accounts for clients in one place.",
@@ -59,6 +47,5 @@ export const PLAN_FEATURE_COPY: Record<
 
 export function unlockTourIdForPlan(plan: UserPlan): string | null {
   if (plan === "agency") return "agency-unlock-v1";
-  if (plan === "pro") return "pro-unlock-v1";
   return null;
 }

@@ -41,9 +41,6 @@ const isDisconnected = (ctx: TourRuntimeContext) =>
 const isPublishReady = (ctx: TourRuntimeContext) =>
   ctx.linkedInState === "publishReady";
 
-const isProOrAgency = (ctx: TourRuntimeContext) =>
-  ctx.plan === "pro" || ctx.plan === "agency";
-
 const isAgency = (ctx: TourRuntimeContext) => ctx.plan === "agency";
 
 /**
@@ -222,11 +219,10 @@ export const PRODUCT_CORE_TOUR: TourDefinition = {
     {
       route: "/app/autopilot",
       element: '[data-tour="autopilot-toggle"]',
-      title: "Autopilot (Pro)",
+      title: "Autopilot",
       description:
-        "Set a cadence and let drafts appear on a schedule.",
+        "Set a cadence and let drafts appear on a schedule (uses credits).",
       side: "bottom",
-      when: isProOrAgency,
     },
     {
       route: "/app/clients",

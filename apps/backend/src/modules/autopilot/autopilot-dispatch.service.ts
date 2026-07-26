@@ -1,7 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AutopilotConfig, PostSource } from '@prisma/client';
 import { NOT_DELETED } from '../../common/constants/soft-delete.constants';
-import { PlanFeatureService } from '../billing/plan-feature.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   DEFAULT_TIMEZONE,
@@ -14,6 +13,7 @@ import {
 import { CouncilJobService } from '../council/council-job.service';
 import { CreditsService } from '../credits/credits.service';
 import { GenerationJobEnqueueService } from '../job-queue/generation-job-enqueue.service';
+import { NotificationEventService } from '../notifications/notification-event.service';
 import {
   readDayProfileOverrides,
   resolveProfileIdForWeekday,
@@ -27,6 +27,7 @@ import {
 export interface AutopilotDispatchResult {
   success: boolean;
   nextPillarIndex?: number;
+  pausedForCredits?: boolean;
 }
 
 @Injectable()
@@ -38,7 +39,7 @@ export class AutopilotDispatchService {
     private readonly creditsService: CreditsService,
     private readonly councilJobService: CouncilJobService,
     private readonly enqueueService: GenerationJobEnqueueService,
-    private readonly planFeatureService: PlanFeatureService,
+    private readonly notificationEvents: NotificationEventService,
   ) {}
 
   async dispatch(
@@ -56,23 +57,19 @@ export class AutopilotDispatchService {
       return { success: false };
     }
 
-    const hasAutopilot = await this.planFeatureService.hasFeature(
-      ownerId,
-      'autopilot',
-    );
-    if (!hasAutopilot) {
-      this.logger.warn(
-        `Skipping autopilot dispatch for workspace ${config.workspaceId}: owner plan no longer includes autopilot`,
-      );
-      return { success: false };
-    }
-
     const balance = await this.creditsService.getBalance(ownerId, now);
     if (balance.remaining < AUTOPILOT_CREDIT_COST) {
       this.logger.warn(
-        `Skipping autopilot dispatch for workspace ${config.workspaceId}: insufficient credits (${balance.remaining}/${AUTOPILOT_CREDIT_COST})`,
+        `Pausing autopilot for workspace ${config.workspaceId}: insufficient credits (${balance.remaining}/${AUTOPILOT_CREDIT_COST})`,
       );
-      return { success: false };
+      await this.pauseForInsufficientCredits(
+        config,
+        ownerId,
+        balance.remaining,
+        timezone,
+        now,
+      );
+      return { success: false, pausedForCredits: true };
     }
 
     const todayKey = getTodayDateKey(timezone || DEFAULT_TIMEZONE, now);
@@ -133,6 +130,40 @@ export class AutopilotDispatchService {
       success: true,
       nextPillarIndex: nextPillarIndex(pillarIndex, pillars.length),
     };
+  }
+
+  private async pauseForInsufficientCredits(
+    config: AutopilotConfig,
+    ownerId: string,
+    remaining: number,
+    timezone: string,
+    now: Date,
+  ) {
+    await this.prisma.autopilotConfig.updateMany({
+      where: { id: config.id, enabled: true, ...NOT_DELETED },
+      data: { enabled: false },
+    });
+
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: config.workspaceId },
+      select: { name: true },
+    });
+    const user = await this.prisma.user.findUnique({
+      where: { id: ownerId },
+      select: { plan: true },
+    });
+
+    const todayKey = getTodayDateKey(timezone || DEFAULT_TIMEZONE, now);
+
+    await this.notificationEvents.emitAutopilotPausedCredits({
+      userId: ownerId,
+      workspaceId: config.workspaceId,
+      workspaceName: workspace?.name,
+      plan: user?.plan ?? 'free',
+      remaining,
+      required: AUTOPILOT_CREDIT_COST,
+      dedupeKey: `autopilot_paused_credits:${config.id}:${todayKey}`,
+    });
   }
 
   private async resolveContentProfile(

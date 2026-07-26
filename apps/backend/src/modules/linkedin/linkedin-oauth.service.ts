@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -15,6 +16,10 @@ import {
   storeWorkspaceLinkedInTokensUpdate,
   syncWorkspaceLinkedInUpdate,
 } from './workspace-linkedin.store';
+import {
+  assertCanStartLinkedInConnect,
+  assertLinkedInMemberMatches,
+} from './linkedin-identity-lock';
 import { Prisma } from '@prisma/client';
 
 const LINKEDIN_AUTH_URL = 'https://www.linkedin.com/oauth/v2/authorization';
@@ -64,6 +69,9 @@ export class LinkedInOAuthService {
     }
 
     await this.workspacesService.assertMember(userId, workspaceId);
+
+    const workspace = await loadWorkspaceLinkedIn(this.prisma, workspaceId);
+    assertCanStartLinkedInConnect(workspace);
 
     const safeReturnPath = this.sanitizeReturnPath(returnPath);
 
@@ -128,6 +136,27 @@ export class LinkedInOAuthService {
       identityMe = null;
     }
     const profile = this.linkedInApiClient.mapProfile(userinfo, identityMe);
+
+    const workspace = await loadWorkspaceLinkedIn(
+      this.prisma,
+      payload.workspaceId,
+    );
+
+    try {
+      assertLinkedInMemberMatches({
+        lockedMemberId: workspace.linkedInMemberId,
+        incomingMemberId: profile.memberId,
+        lockedProfileName: workspace.linkedInProfileName,
+      });
+    } catch (err) {
+      const returnPath =
+        this.sanitizeReturnPath(payload.returnPath) ?? fallbackPath;
+      const message =
+        err instanceof ForbiddenException
+          ? this.httpExceptionMessage(err)
+          : 'This workspace is locked to a different LinkedIn account.';
+      return `${frontendUrl}${returnPath}?linkedin=error&code=LINKEDIN_ACCOUNT_MISMATCH&message=${encodeURIComponent(message)}`;
+    }
 
     await this.prisma.workspace.update({
       where: { id: payload.workspaceId },
@@ -309,5 +338,19 @@ export class LinkedInOAuthService {
       this.configService.get<string>('linkedin.clientSecret') ??
       'linkedin-oauth-state-dev'
     );
+  }
+
+  private httpExceptionMessage(err: ForbiddenException): string {
+    const response = err.getResponse();
+    if (typeof response === 'string') return response;
+    if (
+      response &&
+      typeof response === 'object' &&
+      'error' in response &&
+      typeof (response as { error: unknown }).error === 'string'
+    ) {
+      return (response as { error: string }).error;
+    }
+    return err.message;
   }
 }

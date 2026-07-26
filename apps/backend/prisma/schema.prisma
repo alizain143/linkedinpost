@@ -167,6 +167,7 @@ enum NotificationType {
   publish_failed
   weekly_content_reminder
   product_update
+  autopilot_paused_credits
 }
 
 enum NotificationDeliveryChannel {
