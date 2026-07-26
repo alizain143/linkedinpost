@@ -22,7 +22,11 @@ export function Brand({
 
   const inner = (
     <div className={cn("flex items-center gap-2.5", className)}>
-      <LogoMark size={markSize} className={size === "md" ? "rounded-[10px]" : "rounded-lg"} />
+      <LogoMark
+        size={markSize}
+        className={size === "md" ? "rounded-[10px]" : "rounded-lg"}
+        alt={showWordmark ? "" : "linkedinpost.ai logo mark"}
+      />
       {showWordmark ? (
         <span
           className={cn(

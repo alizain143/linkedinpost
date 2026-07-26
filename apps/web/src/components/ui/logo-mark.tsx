@@ -5,9 +5,18 @@ import { cn } from "@/lib/utils";
 type LogoMarkProps = {
   size?: number;
   className?: string;
+  /**
+   * Accessible label. Use empty string when a visible wordmark sits next to
+   * the mark (decorative). Prefer a short description of the mark otherwise.
+   */
+  alt?: string;
 };
 
-export function LogoMark({ size = 34, className }: LogoMarkProps) {
+export function LogoMark({
+  size = 34,
+  className,
+  alt = "linkedinpost.ai logo mark",
+}: LogoMarkProps) {
   const iconSize = Math.round(size * 0.56);
 
   return (
@@ -21,7 +30,7 @@ export function LogoMark({ size = 34, className }: LogoMarkProps) {
       <SvgIcon
         src={ICON_PATHS.logoMarkSymbol}
         size={iconSize}
-        alt="linkedinpost.ai"
+        alt={alt}
       />
     </div>
   );

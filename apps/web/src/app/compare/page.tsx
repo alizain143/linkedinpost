@@ -7,12 +7,12 @@ import { COMPARISON_PAGES } from "@/lib/seo/acquisition-pages";
 import { pageMetadata } from "@/lib/seo/metadata";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Compare LinkedIn Tools",
+  title: "Compare LinkedIn Tools: Taplio, Buffer, AuthoredUp",
   description:
     "See how linkedinpost.ai compares to Taplio, Buffer, and AuthoredUp for LinkedIn writing, review, and calendars.",
   path: "/compare",
   openGraphImage: "/compare/opengraph-image",
-  openGraphImageAlt: "Compare linkedinpost.ai with other LinkedIn tools",
+  openGraphImageAlt: "Compare linkedinpost.ai with Taplio, Buffer, and AuthoredUp",
 });
 
 export default function CompareHubPage() {
@@ -60,7 +60,7 @@ export default function CompareHubPage() {
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <h2 className="font-display text-[22px] font-extrabold tracking-tight text-[#0f172a]">
-                    {page.title}
+                    {page.h1}
                   </h2>
                   <p className="mt-2 text-[15px] leading-relaxed text-[#64748b]">
                     {page.description}

@@ -12,7 +12,8 @@ export const GUIDE_ARTICLES: Guide[] = [
     answerCapsule:
       "If the post feels generic, it probably is. Don't publish the first AI draft. Add one detail only you would know, cut the fake-smart phrases, and read it once out loud.",
     publishedAt: "2025-03-15",
-    updatedAt: "2026-07-26",
+    updatedAt: "2025-03-15",
+    authorId: "content-team",
     relatedGuides: [
       "linkedin-hooks-that-get-engagement",
       "linkedin-personal-brand-for-founders",
@@ -73,7 +74,8 @@ export const GUIDE_ARTICLES: Guide[] = [
     answerCapsule:
       "Skip the impressive spreadsheet that dies in week two. Pick a few topics you can talk about without research, mix formats so it doesn't get repetitive, and leave blank days for things that come up.",
     publishedAt: "2025-04-02",
-    updatedAt: "2026-07-26",
+    updatedAt: "2025-04-02",
+    authorId: "content-team",
     relatedGuides: [
       "linkedin-posting-frequency-founders",
       "linkedin-carousels-that-get-saved",
@@ -134,7 +136,8 @@ export const GUIDE_ARTICLES: Guide[] = [
     answerCapsule:
       "Three posts a week works well for many founders. Less than once a week and people forget you. Daily only helps if quality holds, and for most people running a company, it doesn't.",
     publishedAt: "2025-04-18",
-    updatedAt: "2026-07-26",
+    updatedAt: "2025-04-18",
+    authorId: "content-team",
     relatedGuides: [
       "linkedin-content-calendar-template",
       "linkedin-algorithm-what-actually-matters",
@@ -195,7 +198,8 @@ export const GUIDE_ARTICLES: Guide[] = [
     answerCapsule:
       "The first line has one job: get the click. Use a number, a mistake, an unexpected result, or a tension your reader already feels. If it sounds like generic personal-brand copy, rewrite it.",
     publishedAt: "2025-05-06",
-    updatedAt: "2026-07-26",
+    updatedAt: "2025-05-06",
+    authorId: "content-team",
     relatedGuides: [
       "linkedin-posts-dont-sound-like-ai",
       "linkedin-algorithm-what-actually-matters",
@@ -256,7 +260,8 @@ export const GUIDE_ARTICLES: Guide[] = [
     answerCapsule:
       "The algorithm isn't a mystery box you hack once. It tests your post with a small slice of your network, watches who stops scrolling and who replies, then decides whether to show it wider. Write for humans who finish reading, not for rumored rules.",
     publishedAt: "2026-05-15",
-    updatedAt: "2026-07-26",
+    updatedAt: "2026-05-15",
+    authorId: "content-team",
     relatedGuides: [
       "linkedin-hooks-that-get-engagement",
       "linkedin-posting-frequency-founders",
@@ -317,7 +322,8 @@ export const GUIDE_ARTICLES: Guide[] = [
     answerCapsule:
       "Carousels get saved when each slide earns the next swipe. One idea per slide, readable on a phone, and a caption that tells people why they should bother. Pretty templates without substance get likes and disappear.",
     publishedAt: "2026-06-01",
-    updatedAt: "2026-07-26",
+    updatedAt: "2026-06-01",
+    authorId: "content-team",
     relatedGuides: [
       "linkedin-content-calendar-template",
       "linkedin-hooks-that-get-engagement",
@@ -378,7 +384,8 @@ export const GUIDE_ARTICLES: Guide[] = [
     answerCapsule:
       "Your personal brand on LinkedIn is what people assume about you after reading ten posts. Make that assumption useful: clear who you help, what you believe, and proof you've done the work. Skip the motivational poster act.",
     publishedAt: "2026-06-18",
-    updatedAt: "2026-07-26",
+    updatedAt: "2026-06-18",
+    authorId: "content-team",
     relatedGuides: [
       "linkedin-posts-dont-sound-like-ai",
       "linkedin-posting-frequency-founders",
@@ -439,7 +446,8 @@ export const GUIDE_ARTICLES: Guide[] = [
     answerCapsule:
       "Agency LinkedIn breaks when every post starts from a blank page. Capture each client's voice up front, batch drafts against a shared calendar, and keep approvals lightweight. Generic posts are a process problem, not a talent problem.",
     publishedAt: "2026-07-10",
-    updatedAt: "2026-07-26",
+    updatedAt: "2026-07-10",
+    authorId: "content-team",
     relatedGuides: [
       "linkedin-content-calendar-template",
       "linkedin-posts-dont-sound-like-ai",

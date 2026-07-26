@@ -8,12 +8,12 @@ import { FEATURE_DETAIL } from "@/lib/marketing-data";
 import { pageMetadata } from "@/lib/seo/metadata";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Features",
+  title: "LinkedIn AI Content Features: Council, Calendar, Media",
   description:
     "Everything you need to post on LinkedIn consistently. AI post generator, content calendar, voice presets, and agency workspaces.",
   path: "/features",
   openGraphImage: "/features/opengraph-image",
-  openGraphImageAlt: "linkedinpost.ai features",
+  openGraphImageAlt: "linkedinpost.ai features overview: AI Council, calendar, and media tools",
 });
 
 export default function FeaturesPage() {

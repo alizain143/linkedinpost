@@ -106,7 +106,7 @@ Update this section as features land. Tell the agent to mark items `[x]` when do
 
 See [FRONTEND_IMPLEMENTATION.md](FRONTEND_IMPLEMENTATION.md) for slice order and dependencies (`FE-SLICE-01`–`20`).
 
-- [x] Marketing pages (static) — expanded SEO surface: 8 guides, compare pages, personas, case studies, HowTo/ItemList schema
+- [x] Marketing pages (static) — expanded SEO surface: 8 guides, long-form compare + alternatives, personas, free tools (character counter, text formatter), content-team author pages, HowTo/ItemList/Organization author schema
 - [x] App shell + sidebar (UI only)
 - [x] Auth pages (Clerk)
 - [x] API foundation + workspace context (FE-SLICE-01)

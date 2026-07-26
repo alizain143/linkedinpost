@@ -40,9 +40,11 @@ ${SITE_DESCRIPTION}
 - [For founders](${url("/for-founders")}): Weekly LinkedIn system for founders
 - [For agencies](${url("/for-agencies")}): Client workspaces and approvals
 - [Compare](${url("/compare")}): vs Taplio, Buffer, AuthoredUp
-- [Case studies](${url("/case-studies")}): Illustrative workflow examples
+- [Alternatives](${url("/alternatives")}): Taplio, Buffer, AuthoredUp alternatives
+- [Free tools](${url("/tools")}): Character counter and text formatter (no signup)
 - [FAQ](${url("/faq")}): Credits, voice, plans, and scheduling
 - [About](${url("/about")}): Mission and team
+- [Authors](${url("/authors/linkedinpost-ai-content-team")}): LinkedInPost AI Content Team
 - [Sign up free](${url("/sign-up")}): 5 AI credits/month, no credit card
 
 ## Guides

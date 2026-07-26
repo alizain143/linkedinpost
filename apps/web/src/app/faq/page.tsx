@@ -10,12 +10,12 @@ import { FAQS } from "@/lib/marketing-data";
 import { pageMetadata } from "@/lib/seo/metadata";
 
 export const metadata: Metadata = pageMetadata({
-  title: "FAQ",
+  title: "FAQ: LinkedIn AI Posts, Credits, Plans, and Agencies",
   description:
     "Answers to common questions about linkedinpost.ai: AI LinkedIn posts, credits, plans, scheduling, and agency workspaces.",
   path: "/faq",
   openGraphImage: "/faq/opengraph-image",
-  openGraphImageAlt: "linkedinpost.ai FAQ",
+  openGraphImageAlt: "Frequently asked questions about linkedinpost.ai",
 });
 
 export default function FaqPage() {

@@ -7,12 +7,12 @@ import { ABOUT_STORY, VALUES } from "@/lib/marketing-data";
 import { pageMetadata } from "@/lib/seo/metadata";
 
 export const metadata: Metadata = pageMetadata({
-  title: "About",
+  title: "About linkedinpost.ai: LinkedIn Content Without Generic AI",
   description:
     "Why linkedinpost.ai exists: help founders and creators post consistently on LinkedIn without sounding like generic AI.",
   path: "/about",
   openGraphImage: "/about/opengraph-image",
-  openGraphImageAlt: "About linkedinpost.ai",
+  openGraphImageAlt: "About linkedinpost.ai and why it exists",
 });
 
 export default function AboutPage() {

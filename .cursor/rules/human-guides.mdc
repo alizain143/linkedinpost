@@ -1,14 +1,32 @@
 ---
-description: Write marketing guides in a clear, human mid-tone (not slangy, not stiff)
+description: Human mid-tone for article-level marketing content (guides, compare, alternatives, tools)
 globs:
   - apps/web/src/lib/guides/**
   - apps/web/src/app/guides/**
+  - apps/web/src/lib/seo/comparisons/**
+  - apps/web/src/lib/seo/alternatives/**
+  - apps/web/src/app/compare/**
+  - apps/web/src/app/alternatives/**
+  - apps/web/src/app/tools/**
 alwaysApply: false
 ---
 
-# Human guide writing (linkedinpost.ai)
+# Human article writing (linkedinpost.ai)
 
-When creating or editing **guides** (`GUIDE_ARTICLES`, guide pages, hub copy, FAQs), write like a thoughtful person talking to a peer on LinkedIn: clear and direct, not slangy, not corporate essay.
+When creating or editing **article-level** marketing content, write like a thoughtful person talking to a peer on LinkedIn: clear and direct, not slangy, not corporate essay.
+
+## Where this applies
+
+Article / long-form content surfaces only:
+
+- Guides (`GUIDE_ARTICLES`, guide pages, guides hub copy, FAQs)
+- Compare pages (comparison data + `/compare/[slug]` copy)
+- Alternatives pages (alternative data + `/alternatives/[slug]` copy)
+- Free tool pages (supporting copy, FAQs under `/tools/*`, not the interactive widget chrome alone)
+
+## Where this does **not** apply
+
+Product marketing shells and utility pages: home, features, pricing, about, contact, FAQ hub, legal, auth, app UI. Keep those on the existing marketing voice. Do not invent fictional case studies or composite customer stories.
 
 ## Voice (middle ground)
 
@@ -17,13 +35,14 @@ When creating or editing **guides** (`GUIDE_ARTICLES`, guide pages, hub copy, FA
 - Short-to-medium paragraphs. Uneven rhythm is fine; choppy one-liners and slang are not the goal.
 - Specific opinions and examples beat neat frameworks.
 - FAQs: helpful and human, not knowledge-base stiff and not overly casual.
+- Comparisons and alternatives: stay honest. Say when the competitor wins. Never write a one-sided hit piece in brochure tone.
 
 ### Tone targets
 
-| Too casual (avoid) | Too stiff (avoid) | Aim for |
-|--------------------|-------------------|---------|
-| "Hey.", "Yeah.", "try-hard", "cooked" | "It is important to note", "leverage", "frameworks for success" | Clear, direct, calm confidence |
-| DM / meme energy | Textbook / SEO article | Peer explaining something over coffee |
+| Too casual (avoid)                    | Too stiff (avoid)                                               | Aim for                               |
+| ------------------------------------- | --------------------------------------------------------------- | ------------------------------------- |
+| "Hey.", "Yeah.", "try-hard", "cooked" | "It is important to note", "leverage", "frameworks for success" | Clear, direct, calm confidence        |
+| DM / meme energy                      | Textbook / SEO article                                          | Peer explaining something over coffee |
 
 ## Hard bans (AI tells)
 
@@ -32,12 +51,15 @@ When creating or editing **guides** (`GUIDE_ARTICLES`, guide pages, hub copy, FA
 - No fake-smart filler: delve, landscape, game-changer, leverage, synergy, "in today's fast-paced world", "it's not X, it's Y" as a default move.
 - No perfectly parallel "framework" sections that all end with the same tidy takeaway.
 - No brochure CTAs inside body copy ("unlock", "elevate", "supercharge").
+- Avoid SEO-speak in body copy ("this buying guide", "for the intent behind the search", "SERP", "keyword"). Say what the reader should do.
 
 ## Structure
 
-- Keep the existing `Guide` shape (`title`, `description`, `answerCapsule`, `sections`, `faqs`).
+- Guides: keep the existing `Guide` shape (`title`, `description`, `answerCapsule`, `sections`, `faqs`).
+- Compare / alternatives: keep existing TypeScript shapes; rewrite string fields only.
+- Tools: keep interactive components; rewrite supporting headings, paragraphs, and FAQs.
 - Headings: clear and human, not academic and not jokey.
-- `answerCapsule`: a plain spoken summary to the reader, not a featured-snippet formula and not a slangy opener.
+- `answerCapsule` / lead answer: a plain spoken summary to the reader, not a featured-snippet formula and not a slangy opener.
 - Prefer concrete details (numbers, mistakes, real examples) over generic inspiration.
 - Product mentions (linkedinpost.ai) only when natural; never shoehorn.
 
@@ -46,3 +68,4 @@ When creating or editing **guides** (`GUIDE_ARTICLES`, guide pages, hub copy, FA
 1. Read a section out loud. If it sounds like a blog essay or like a meme account, rewrite toward the middle.
 2. Search the draft for `—` and `–`. Remove them.
 3. If a paragraph could sit under a competitor's name unchanged, rewrite until it can't.
+4. For compare/alternatives: confirm at least one clear "competitor wins when…" moment.

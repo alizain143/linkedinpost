@@ -1,3 +1,5 @@
+import type { AuthorId } from "@/lib/authors";
+
 export type GuideSlug =
   | "linkedin-posts-dont-sound-like-ai"
   | "linkedin-content-calendar-template"
@@ -16,7 +18,9 @@ export type Guide = {
   seoDescription?: string;
   answerCapsule: string;
   publishedAt: string;
+  /** Only bump when the article body actually changes. */
   updatedAt: string;
+  authorId: AuthorId;
   relatedGuides: GuideSlug[];
   sections: { heading: string; body: string }[];
   faqs?: { q: string; a: string }[];

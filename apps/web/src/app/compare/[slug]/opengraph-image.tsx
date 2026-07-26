@@ -17,7 +17,7 @@ export default async function ComparisonOpenGraphImage({ params }: Props) {
 
   return renderMarketingOgImage({
     eyebrow: "Compare",
-    headline: page?.title ?? "linkedinpost.ai comparisons",
+    headline: page?.h1 ?? page?.title ?? "linkedinpost.ai comparisons",
     subline: page?.description,
   });
 }
