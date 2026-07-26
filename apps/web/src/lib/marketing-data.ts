@@ -1,3 +1,8 @@
+import {
+  bonusLinesForPlan,
+  VOICE_GUARANTEE_COPY,
+} from "@/lib/offer-bonuses";
+
 export const PROBLEMS = [
   {
     icon: "lightbulb",
@@ -58,6 +63,13 @@ export const FEATURES = [
     body: "Writer, reviewer, and editor agents collaborate to improve every post before you see it.",
     tint: "#eef2ff",
     color: "#4f46e5",
+  },
+  {
+    icon: "lightbulb",
+    title: "Topic Suggestions",
+    body: "A free magic button that surfaces post ideas matched to your voice and content pillars.",
+    tint: "#fff7ed",
+    color: "#ea580c",
   },
   {
     icon: "auto_mode",
@@ -124,9 +136,20 @@ export type PlanStyle = {
   btnColor: string;
 };
 
-export const STARTER_MONTHLY_USD = 9.99;
+export const STARTER_MONTHLY_USD = 9.99; // grandfathered; not sold on marketing
 export const PRO_MONTHLY_USD = 19.99;
 export const AGENCY_MONTHLY_USD = 69.99;
+
+/** Prices for all plans including legacy Starter (Billing renewals). */
+export const PLAN_MONTHLY_USD: Record<
+  "free" | "starter" | "pro" | "agency",
+  number
+> = {
+  free: 0,
+  starter: STARTER_MONTHLY_USD,
+  pro: PRO_MONTHLY_USD,
+  agency: AGENCY_MONTHLY_USD,
+};
 
 export type PlanTier = {
   name: string;
@@ -152,14 +175,16 @@ const basePlanStyle: PlanStyle = {
   btnColor: "#1e293b",
 };
 
+/** Public ladder: Free / Pro / Agency (Starter hidden from new sales). */
 export const PLANS: PlanTier[] = [
   {
     name: "Free",
     monthlyUsd: 0,
-    blurb: "Prove the workflow on your voice. No card required.",
+    blurb: "Prove it sounds like you. No card required.",
     cta: "Start Free",
     features: [
-      "5 AI credits / month",
+      "Get your first posts that sound like you",
+      "Includes 15 AI credits / month",
       "Full product: drafts, Council, media, calendars, Autopilot",
       "Schedule & publish to LinkedIn",
       "Buy extra credits anytime",
@@ -167,29 +192,17 @@ export const PLANS: PlanTier[] = [
     style: { ...basePlanStyle },
   },
   {
-    name: "Starter",
-    monthlyUsd: STARTER_MONTHLY_USD,
-    blurb: "A prepaid credit pack for a steady weekly posting habit.",
-    cta: "Start Starter",
-    features: [
-      "50 AI credits / month (10× Free)",
-      "Same features as Free, more volume",
-      "Enough for a weekly draft rhythm",
-      "Top up if you spike mid-month",
-    ],
-    style: { ...basePlanStyle },
-  },
-  {
     name: "Pro",
     monthlyUsd: PRO_MONTHLY_USD,
-    blurb: "Best prepaid rate for solo creators who ship every week.",
+    blurb: "Never miss a LinkedIn week. Built for solo creators who ship.",
     cta: "Start Pro",
     popular: true,
     features: [
-      "200 AI credits / month (4× Starter)",
-      "Same features as Starter, highest solo volume",
-      "Built for Council + media + Autopilot weeks",
-      "Cheaper per credit than staying on Starter + top-ups",
+      "Never miss a LinkedIn week (your voice, approved by you)",
+      "Includes 200 AI credits / month",
+      "Council, media, calendars, Autopilot, schedule & publish",
+      ...bonusLinesForPlan("pro"),
+      VOICE_GUARANTEE_COPY,
     ],
     style: {
       cardBg: "linear-gradient(170deg,#1e1b4b,#312e81 60%,#4338ca)",
@@ -208,13 +221,15 @@ export const PLANS: PlanTier[] = [
   {
     name: "Agency",
     monthlyUsd: AGENCY_MONTHLY_USD,
-    blurb: "Not more features for one brand. An ops layer for many.",
+    blurb: "Run clients without mixing voices. Ops for 2-5 LinkedIn brands.",
     cta: "Start Agency",
     features: [
-      "1,000 AI credits / month",
-      "Up to 5 client workspaces (Agency-only)",
+      "Run up to 5 client LinkedIns without voice bleed",
+      "Includes 1,000 AI credits / month",
       "Separate LinkedIn + voice per client",
-      "Client approval share links (Agency-only)",
+      "Client approval share links",
+      ...bonusLinesForPlan("agency"),
+      VOICE_GUARANTEE_COPY,
     ],
     style: {
       ...basePlanStyle,
@@ -241,13 +256,56 @@ export const FEATURE_DETAIL = [
     img: "AI generator output card",
   },
   {
+    kicker: "TOPIC SUGGESTIONS",
+    title: "Never start from a blank idea again",
+    body: "One click surfaces fresh LinkedIn topics matched to your voice, pillars, and audience: a magic button when you know you should post but do not know what to say.",
+    bullets: [
+      "Free magic button on Generate, no credits charged",
+      "Ideas grounded in your content profile and pillars",
+      "Pick a topic and draft in one flow",
+    ],
+    color: "#ea580c",
+    tint: "#fff7ed",
+    icon: "lightbulb",
+    img: "Topic suggestions picker",
+  },
+  {
+    kicker: "AI CONTENT COUNCIL",
+    title: "Writer, reviewer, and editor on every draft",
+    body: "One fragile draft is not enough. A writer agent drafts, a reviewer scores hooks and generic lines, and an editor tightens structure before anything reaches your queue.",
+    bullets: [
+      "Multi-agent pipeline with scored feedback",
+      "Council timeline on every post package",
+      "Request changes and apply revisions in-app",
+    ],
+    color: "#4f46e5",
+    tint: "#eef2ff",
+    icon: "groups",
+    img: "AI Council review timeline",
+  },
+  {
+    kicker: "MEDIA GENERATOR & REVIEW",
+    title: "Visuals built for the LinkedIn feed",
+    body: "Generate images, text cards, or carousels alongside the post, then run media review for readability and brand fit before you approve.",
+    bullets: [
+      "Images, text cards, and multi-slide carousels",
+      "Template library plus freestyle layouts",
+      "AI media review for readability and brand safety",
+    ],
+    color: "#c026d3",
+    tint: "#fdf4ff",
+    icon: "image",
+    img: "Media generator with review scores",
+  },
+  {
     kicker: "30-DAY CONTENT CALENDAR",
     title: "Never stare at an empty week again",
     body: "Turn scattered ideas into a structured publishing plan. Generate a full month of post themes mapped to your content pillars, then drag, edit, and reschedule in week, month, or list views.",
     bullets: [
-      "Auto-balance pillars across the month",
+      "7-day and 30-day bulk calendar generation",
       "Week, month, and list views",
       "Status tracking from idea to published",
+      "Pipeline kanban by production stage",
     ],
     color: "#0891b2",
     tint: "#ecfeff",
@@ -255,11 +313,41 @@ export const FEATURE_DETAIL = [
     img: "Content calendar month view",
   },
   {
+    kicker: "AUTOPILOT CONTENT ENGINE",
+    title: "Upcoming posts prepared on a schedule",
+    body: "Set frequency and strategy once. Autopilot prepares upcoming post packages from your content profile so your queue stays full without starting from a blank page each week.",
+    bullets: [
+      "Configurable posting frequency and strategy",
+      "Approval mode so nothing goes live unreviewed",
+      "Planned posts you can edit before publish",
+    ],
+    color: "#7c3aed",
+    tint: "#f5f0ff",
+    icon: "auto_mode",
+    img: "Autopilot planned posts",
+  },
+  {
+    kicker: "APPROVE, SCHEDULE & PUBLISH",
+    title: "Nothing posts without your say",
+    body: "Review every package in the approval queue, then schedule for later or publish to LinkedIn from the app. Failed publishes can be retried without starting over.",
+    bullets: [
+      "Approval queue with request-changes flow",
+      "Schedule for later or publish now",
+      "LinkedIn OAuth connection with retry on failure",
+      "Client approval share links on Agency",
+    ],
+    color: "#d97706",
+    tint: "#fff8eb",
+    icon: "task_alt",
+    img: "Approval queue and schedule controls",
+  },
+  {
     kicker: "VOICE & TONE PRESETS",
     title: "One brand voice, infinite posts",
     body: "Define your voice once in a content profile and reuse it everywhere. Switch tone per post (bold, thoughtful, contrarian) without losing the through-line that makes your writing recognizable.",
     bullets: [
       "Reusable content profiles per brand or client",
+      "AI-assisted profile suggestions you approve",
       "Per-post tone and goal controls",
       "Words-to-avoid keeps you on-brand",
     ],
@@ -271,7 +359,7 @@ export const FEATURE_DETAIL = [
   {
     kicker: "AGENCY WORKSPACES",
     title: "Run content for every client in one place",
-    body: "Agencies get separate workspaces per client, each with its own profile, drafts, calendar, and limits. Switch context in a click and keep every brand's voice distinct.",
+    body: "Agencies get separate workspaces per client, each with its own profile, drafts, calendar, and LinkedIn connection. Switch context in a click and keep every brand's voice distinct.",
     bullets: [
       "Up to 5 isolated client workspaces",
       "Per-client LinkedIn, profiles, and calendars",
@@ -295,7 +383,7 @@ export const FAQS = [
   },
   {
     q: "What is an AI credit?",
-    a: "Credits power AI actions: quick drafts, AI Council, media, calendars, and autopilot. Plans differ mainly by monthly credit budget (Free 5 · Starter 50 · Pro 200 · Agency 1,000). You can also buy extra credits anytime.",
+    a: "Credits power AI actions: quick drafts, AI Council, media, calendars, and autopilot. Free includes 15 credits / month, Pro 200, Agency 1,000. You can also buy extra credits anytime.",
   },
   {
     q: "Can I use it for multiple brands or clients?",
@@ -303,7 +391,7 @@ export const FAQS = [
   },
   {
     q: "Do I need a credit card to start?",
-    a: "No. The Free plan includes 5 credits a month with no card required. Upgrade when you need more volume; features are available across plans as long as you have credits.",
+    a: "No. The Free plan includes 15 credits a month with no card required. Upgrade to Pro when LinkedIn is a weekly channel, or Agency when you run multiple clients.",
   },
   {
     q: "Can I cancel anytime?",
@@ -333,11 +421,15 @@ export const VALUES = [
 export const PRICING_FAQS = [
   {
     q: "Do I need a credit card to start?",
-    a: "No. The Free plan includes 5 credits a month with no card required. Upgrade when you want a larger monthly credit budget.",
+    a: "No. Free includes 15 credits a month with no card required. Upgrade when you are ready for a weekly channel (Pro) or client workspaces (Agency).",
   },
   {
     q: "What is an AI credit?",
-    a: "Credits power drafts, AI Council, media, calendars, and autopilot. Free/Starter/Pro/Agency mainly differ by monthly credits (5 / 50 / 200 / 1,000). Extra credits can be purchased anytime.",
+    a: "Credits power drafts, AI Council, media, calendars, and autopilot. Free / Pro / Agency include 15 / 200 / 1,000 credits per month. Extra credits can be purchased anytime.",
+  },
+  {
+    q: "What is the 7-day voice guarantee?",
+    a: "On your first Pro or Agency subscription, if you set a content profile, use the product, and drafts still feel generic within 7 days of the first charge, email support@linkedinpost.ai for a full refund of that charge. Credit top-ups alone are not covered.",
   },
   {
     q: "Can I cancel anytime?",
@@ -345,15 +437,15 @@ export const PRICING_FAQS = [
   },
   {
     q: "Which plan is right for agencies?",
-    a: "Agency is for multi-brand LinkedIn: up to 5 client workspaces, a separate LinkedIn connection per client, and approval share links. Solo creators usually start on Starter or Pro for more credits.",
+    a: "Agency is for multi-brand LinkedIn: up to 5 client workspaces, a separate LinkedIn connection per client, approval share links, and agency bonuses (onboarding checklist + approval SOP). Solo creators usually choose Pro.",
   },
   {
     q: "Are features locked by plan?",
-    a: "No for solo creators: generation, calendars, Autopilot, and scheduling work on any plan when you have credits. Free → Starter → Pro is mainly a bigger monthly credit budget. Agency uniquely unlocks client workspaces and approval share links.",
+    a: "No for solo creators: generation, calendars, Autopilot, and scheduling work on any plan when you have credits. Free vs Pro is capacity and bonuses. Agency uniquely unlocks client workspaces and approval share links.",
   },
   {
     q: "Why upgrade instead of only buying top-ups?",
-    a: "Plans are prepaid credit packs at a better habit price: you get a monthly budget without topping up every spike. Stay on Free + top-ups if your usage is occasional. Move to Starter or Pro when you want a predictable weekly or high-volume rhythm. Choose Agency only when you need multiple client LinkedIn accounts.",
+    a: "Pro is the prepaid pack for a consistent weekly rhythm plus bonuses and the voice guarantee. Stay on Free + top-ups if usage is occasional. Choose Agency when you need multiple client LinkedIn accounts.",
   },
 ] as const;
 
@@ -376,50 +468,67 @@ export const ABOUT_STORY = [
 export const COMPARE_ROWS = [
   {
     label: "Best for",
-    free: "Try the product",
-    starter: "Weekly rhythm",
-    pro: "High solo volume",
-    agency: "Client teams",
+    free: "Prove your voice",
+    pro: "Weekly LinkedIn channel",
+    agency: "2-5 client brands",
+  },
+  {
+    label: "Outcome",
+    free: "First drafts that sound like you",
+    pro: "Never miss a LinkedIn week",
+    agency: "Clients without voice bleed",
   },
   {
     label: "AI credits / month",
-    free: "5",
-    starter: "50",
+    free: "15",
     pro: "200",
     agency: "1,000",
   },
   {
     label: "Rough monthly room",
-    free: "A few drafts",
-    starter: "~weekly posts",
+    free: "Several drafts to prove fit",
     pro: "Heavy weekly + media",
     agency: "Multi-brand volume",
   },
   {
     label: "Full product (drafts, Council, media, calendars, Autopilot, publish)",
     free: "Included · uses credits",
-    starter: "Included · uses credits",
     pro: "Included · uses credits",
     agency: "Included · uses credits",
   },
   {
+    label: "Pro bonuses (calendar template + hooks)",
+    free: false,
+    pro: "Included",
+    agency: "Included",
+  },
+  {
+    label: "Agency bonuses (onboarding + approval SOP)",
+    free: false,
+    pro: false,
+    agency: "Included",
+  },
+  {
+    label: "7-day voice guarantee",
+    free: false,
+    pro: "First paid charge",
+    agency: "First paid charge",
+  },
+  {
     label: "Buy extra credits",
     free: "Anytime",
-    starter: "Anytime",
     pro: "Anytime",
     agency: "Anytime",
   },
   {
     label: "Client workspaces",
     free: false,
-    starter: false,
     pro: false,
     agency: "Up to 5",
   },
   {
     label: "Client approval share links",
     free: false,
-    starter: false,
     pro: false,
     agency: "Included",
   },
@@ -499,23 +608,29 @@ export const TERMS_SECTIONS = [
   {
     h: "5. Plans, credits & billing",
     p: [
-      "Paid plans are billed monthly in advance. AI credits reset each billing cycle and do not roll over. You can upgrade, downgrade, or cancel at any time; cancellations take effect at the end of the current period.",
+      "Paid plans are billed monthly in advance. AI credits reset each billing cycle and do not roll over. You can upgrade, downgrade, or cancel at any time; cancellations take effect at the end of the current period. Public plans are Free, Pro, and Agency. Legacy Starter subscriptions may continue until cancelled.",
     ],
   },
   {
-    h: "6. Intellectual property",
+    h: "6. Voice guarantee",
+    p: [
+      "For your first Pro or Agency subscription charge, if you create a content profile, use the service, and still find drafts generic or unlike your voice within seven (7) days of that charge, email support@linkedinpost.ai to request a full refund of that first charge. The guarantee does not apply to credit top-ups alone, renewals after the first paid period, or accounts we reasonably believe are abusing the policy (including multi-account abuse). Refunds are processed manually; plan access ends when the refund completes.",
+    ],
+  },
+  {
+    h: "7. Intellectual property",
     p: [
       "You own the posts you generate. We own the software, brand, and underlying technology. You grant us a limited license to process your content solely to provide the service.",
     ],
   },
   {
-    h: "7. Disclaimers & liability",
+    h: "8. Disclaimers & liability",
     p: [
       'The service is provided "as is." We are not liable for the performance of any content you publish. Our total liability is limited to the amount you paid in the prior 12 months.',
     ],
   },
   {
-    h: "8. Changes & contact",
+    h: "9. Changes & contact",
     p: [
       "We may update these terms; material changes will be announced in-app. Questions? Email legal@linkedinpost.ai.",
     ],

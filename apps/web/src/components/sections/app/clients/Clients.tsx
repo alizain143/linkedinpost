@@ -153,7 +153,12 @@ export default function Clients() {
             </div>
             <div className="text-[13px] text-[#a16207]">
               Manage up to 5 client workspaces with separate pipelines,
-              calendars, and content profiles.
+              calendars, and content profiles. Agency includes onboarding and
+              approval SOPs under{" "}
+              <a href="/app/resources" className="font-semibold underline">
+                Resources
+              </a>
+              .
             </div>
           </div>
           <Button

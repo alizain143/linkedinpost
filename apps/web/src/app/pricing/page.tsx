@@ -9,13 +9,14 @@ import {
 } from "@/components/seo/json-ld";
 import { CompareTable, PlanCard } from "@/components/sections/marketing/shared";
 import { PLANS, PRICING_FAQS } from "@/lib/marketing-data";
+import { VOICE_GUARANTEE_DETAIL } from "@/lib/offer-bonuses";
 import { getPricingLocale } from "@/lib/currency/server";
 import { pageMetadata } from "@/lib/seo/metadata";
 
 export const metadata: Metadata = pageMetadata({
   title: "Pricing: Free LinkedIn AI Post Generator from $0",
   description:
-    "Same LinkedIn workflow on every plan. Free, Starter, and Pro differ by monthly AI credits. Agency adds client workspaces and approval share links.",
+    "Free proves your voice. Pro ships a weekly LinkedIn channel. Agency runs client brands without voice bleed. 7-day voice guarantee on your first paid plan.",
   path: "/pricing",
   openGraphImage: "/pricing/opengraph-image",
   openGraphImageAlt: "linkedinpost.ai pricing plans from free to agency",
@@ -41,23 +42,26 @@ export default async function PricingPage() {
               Pricing
             </div>
             <h1 className="pp-hero-h1 font-display text-[48px] font-extrabold leading-[1.08] tracking-[-0.03em] text-[#0d1326]">
-              Same product. Bigger credit packs.
+              Posts that sound like you. Plans that match how you ship.
             </h1>
-            <p className="mx-auto mt-5 max-w-[560px] text-lg leading-[1.55] text-[#5a667a]">
-              Free, Starter, and Pro unlock the full workflow. They mainly
-              differ by monthly credits. Agency is for running multiple client
-              LinkedIn accounts.
+            <p className="mx-auto mt-5 max-w-[580px] text-lg leading-[1.55] text-[#5a667a]">
+              Free proves the voice. Pro is for a weekly LinkedIn channel.
+              Agency runs multiple client brands. First paid plan includes a
+              7-day voice guarantee.
             </p>
           </div>
         </section>
 
         <section className="mx-auto max-w-[1180px] px-7 pb-6 pt-2">
-          <div className="pp-grid4 items-stretch pt-3">
+          <div className="pp-grid3 items-stretch pt-3">
             {PLANS.map((plan) => (
               <PlanCard key={plan.name} {...plan} />
             ))}
           </div>
           <PricingCurrencyNote className="mt-5" />
+          <p className="mx-auto mt-4 max-w-[640px] text-center text-sm leading-[1.55] text-[#64748b]">
+            {VOICE_GUARANTEE_DETAIL}
+          </p>
         </section>
 
         <section className="mx-auto max-w-[1100px] px-7 py-10">
@@ -65,8 +69,8 @@ export default async function PricingPage() {
             What actually changes between plans
           </h2>
           <p className="mx-auto mb-7 max-w-[540px] text-center text-[15px] leading-[1.55] text-[#5a667a]">
-            Solo plans differ by credit volume. Agency adds multi-client
-            workspaces, not a different generator.
+            Free and Pro share the full product. Pro adds volume, bonuses, and
+            the guarantee. Agency adds multi-client ops.
           </p>
           <CompareTable />
         </section>

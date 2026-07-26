@@ -17,7 +17,7 @@ export type ApiBillingStatus = {
   hasBillingAccount: boolean;
 };
 
-export type CheckoutPlan = "starter" | "pro" | "agency";
+export type CheckoutPlan = "pro" | "agency";
 
 export type CreateCheckoutBody = {
   plan: CheckoutPlan;

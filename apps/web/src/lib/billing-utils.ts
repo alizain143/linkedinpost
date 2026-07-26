@@ -10,10 +10,17 @@ import {
 } from "@/lib/credit-costs";
 import { formatResetDate } from "@/lib/format-relative-time";
 import { formatUsdPrice } from "@/lib/currency/format";
-import { PLANS } from "@/lib/marketing-data";
+import { PLAN_MONTHLY_USD } from "@/lib/marketing-data";
+import {
+  VOICE_GUARANTEE_DETAIL,
+  bonusesForPlan,
+} from "@/lib/offer-bonuses";
 import { getPlanLabel } from "@/lib/plan-labels";
 
-export const CHECKOUT_PLANS: CheckoutPlan[] = ["starter", "pro", "agency"];
+export const CHECKOUT_PLANS: CheckoutPlan[] = ["pro", "agency"];
+
+/** Legacy + active checkout plans (Starter renewals still exist). */
+export const ALL_PAID_PLANS: UserPlan[] = ["starter", "pro", "agency"];
 
 export const BILLING_CREDIT_COSTS = [
   { action: "Quick draft", cost: `${QUICK_DRAFT_CREDIT_COST} credit` },
@@ -57,10 +64,7 @@ export function planNameToUserPlan(name: string): UserPlan | null {
 }
 
 export function getPlanMonthlyUsd(plan: UserPlan): number | null {
-  const marketingPlan = PLANS.find(
-    (entry) => planNameToUserPlan(entry.name) === plan,
-  );
-  return marketingPlan?.monthlyUsd ?? null;
+  return PLAN_MONTHLY_USD[plan] ?? null;
 }
 
 export function getPlanPriceLabel(
@@ -73,6 +77,14 @@ export function getPlanPriceLabel(
 
 export function isCheckoutPlan(plan: UserPlan): plan is CheckoutPlan {
   return CHECKOUT_PLANS.includes(plan as CheckoutPlan);
+}
+
+export function getPlanBonuses(plan: UserPlan) {
+  return bonusesForPlan(plan);
+}
+
+export function getVoiceGuaranteeDetail() {
+  return VOICE_GUARANTEE_DETAIL;
 }
 
 export function canManageBilling(billing: ApiBillingStatus): boolean {

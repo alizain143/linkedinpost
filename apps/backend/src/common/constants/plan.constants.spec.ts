@@ -15,7 +15,7 @@ describe('plan.constants', () => {
 
   describe('getCreditLimitForPlan', () => {
     it('returns mapped limit', () => {
-      expect(getCreditLimitForPlan(UserPlan.free)).toBe(5);
+      expect(getCreditLimitForPlan(UserPlan.free)).toBe(15);
       expect(getCreditLimitForPlan(UserPlan.pro)).toBe(200);
       expect(getCreditLimitForPlan(UserPlan.agency)).toBe(1000);
     });

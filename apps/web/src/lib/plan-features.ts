@@ -47,5 +47,6 @@ export const PLAN_FEATURE_COPY: Record<
 
 export function unlockTourIdForPlan(plan: UserPlan): string | null {
   if (plan === "agency") return "agency-unlock-v1";
+  if (plan === "pro") return "pro-unlock-v1";
   return null;
 }

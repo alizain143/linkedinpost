@@ -1,7 +1,7 @@
 import { UserPlan } from '@prisma/client';
 
 export const PLAN_CREDIT_LIMITS: Record<UserPlan, number> = {
-  [UserPlan.free]: 5,
+  [UserPlan.free]: 15,
   [UserPlan.starter]: 50,
   [UserPlan.pro]: 200,
   [UserPlan.agency]: 1000,

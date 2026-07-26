@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { QueryState } from "@/components/app/query-state";
@@ -24,6 +25,8 @@ import {
   canManageBilling,
   formatSubscriptionRenewal,
   formatSubscriptionStatusLabel,
+  getPlanBonuses,
+  getVoiceGuaranteeDetail,
 } from "@/lib/billing-utils";
 import { formatResetDate } from "@/lib/format-relative-time";
 import { trackCheckoutStart } from "@/lib/analytics/events";
@@ -43,8 +46,8 @@ function BillingSkeleton() {
         ))}
       </div>
       <div className="h-20 animate-pulse rounded-2xl bg-[#eceef4]" />
-      <div className="pp-grid4">
-        {Array.from({ length: 4 }).map((_, index) => (
+      <div className="pp-grid3">
+        {Array.from({ length: 3 }).map((_, index) => (
           <div
             key={index}
             className="h-80 animate-pulse rounded-[18px] bg-[#eceef4]"
@@ -275,7 +278,14 @@ export default function Billing() {
 
           <div>
             <h3 className="mb-4 font-display text-lg font-bold">Plans</h3>
-            <div className="pp-grid4">
+            {billing.plan === "starter" ? (
+              <div className="mb-4 rounded-[14px] border border-[#fde68a] bg-[#fffbeb] px-4 py-3 text-sm text-[#92400e]">
+                You are on a legacy Starter plan. New signups choose Pro or
+                Agency. Upgrade to Pro for weekly channel volume, bonuses, and
+                the 7-day voice guarantee.
+              </div>
+            ) : null}
+            <div className="pp-grid3">
               {PLANS.map((plan) => (
                 <BillingPlanCard
                   key={plan.name}
@@ -286,6 +296,30 @@ export default function Billing() {
                 />
               ))}
             </div>
+            <p className="mt-4 text-sm leading-[1.55] text-[#64748b]">
+              {getVoiceGuaranteeDetail()}
+            </p>
+            {billing.plan === "pro" || billing.plan === "agency" ? (
+              <div className="mt-5 rounded-2xl border border-[#eceef4] bg-white p-5">
+                <h3 className="mb-3 font-display font-bold">Your plan bonuses</h3>
+                <ul className="space-y-2 text-sm">
+                  {getPlanBonuses(billing.plan).map((bonus) => (
+                    <li key={bonus.id}>
+                      <Link
+                        href={bonus.href}
+                        className="font-semibold text-[#4f46e5] hover:underline"
+                      >
+                        {bonus.title}
+                      </Link>
+                      <span className="text-[#64748b]">
+                        {" "}
+                        · {bonus.description}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
           </div>
 
           <BillingBuyCredits />

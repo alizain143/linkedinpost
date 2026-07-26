@@ -252,10 +252,10 @@ Council agent pipeline: writer → reviewer → editor → media_creator → med
 
 | Plan | Credits/mo | Highlights |
 |------|------------|------------|
-| free | 5 | Full workflow — limited by credits |
-| starter | $9.99 / 50 | More credits for weekly rhythm |
-| pro | $19.99 / 200 | Highest solo credit budget |
-| agency | $69.99 / 1000 | Up to 5 client workspaces + approval share links |
+| free | 15 | Prove voice; full workflow limited by credits |
+| pro | $19.99 / 200 | Weekly channel + bonuses + voice guarantee |
+| agency | $69.99 / 1,000 | Up to 5 client workspaces + share links + agency bonuses |
+| starter (legacy) | $9.99 / 50 | Existing subscribers only; not sold on site |
 
 **Gating model:** Generation features (drafts, council, media, calendars, autopilot, schedule) are **credit-gated**. Enabling Autopilot requires enough credits for one post; if a due Autopilot run cannot afford credits, Autopilot is turned off and the user is emailed (`autopilot_paused_credits`). Plan-gated features are Agency-only: `client_workspaces`, `approval_share_links`. LinkedIn: one account per workspace; reconnect must match the locked member ID.
 

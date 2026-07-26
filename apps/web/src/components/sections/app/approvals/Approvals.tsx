@@ -205,6 +205,17 @@ export default function Approvals() {
             <p className="text-[14px] text-[#64748b]">
               {getApprovalEmptyMessage(activeTab)}
             </p>
+            <p className="mx-auto mt-3 max-w-md text-[13px] text-[#94a3b8]">
+              Agency tip: use share links so clients review without an account.
+              See the{" "}
+              <a
+                href="/app/resources/approval-workflow"
+                className="font-semibold text-[#4f46e5] hover:underline"
+              >
+                approval workflow SOP
+              </a>
+              .
+            </p>
           </div>
         }
         onRetry={() => void refetch()}

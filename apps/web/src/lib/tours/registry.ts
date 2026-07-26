@@ -240,19 +240,26 @@ export const PRO_UNLOCK_TOUR: TourDefinition = {
   id: PRO_UNLOCK_TOUR_ID,
   steps: [
     {
+      route: "/app/billing",
+      title: "Welcome to Pro",
+      description:
+        "You now have 200 credits / month, plan bonuses (calendar template + hook pack), and a 7-day voice guarantee on your first charge. Open Billing anytime for bonus links.",
+      side: "bottom",
+    },
+    {
       route: "/app/autopilot",
       element: '[data-tour="autopilot-toggle"]',
-      title: "Autopilot is unlocked",
+      title: "Ship on a cadence",
       description:
-        "Turn on a posting cadence — drafts queue for approval or auto-schedule when LinkedIn is ready.",
+        "Turn on Autopilot when you want drafts queued for approval. Each run uses credits.",
       side: "bottom",
     },
     {
       route: "/app/generate/calendar",
       element: '[data-tour="calgen-submit"]',
-      title: "30-day calendars",
+      title: "Plan a full month",
       description:
-        "Generate a full month of post ideas in one run from calendar mode.",
+        "Generate a week or month of posts from calendar mode. Bonuses include a pillar calendar template under Resources.",
       side: "top",
     },
   ],
@@ -266,7 +273,7 @@ export const AGENCY_UNLOCK_TOUR: TourDefinition = {
       element: '[data-tour="clients-add"]',
       title: "Client workspaces",
       description:
-        "Add client workspaces and connect each LinkedIn account separately.",
+        "Add up to 5 client workspaces and connect each LinkedIn separately. Use the client onboarding checklist under Resources.",
       side: "bottom",
     },
     {
@@ -274,8 +281,15 @@ export const AGENCY_UNLOCK_TOUR: TourDefinition = {
       element: '[data-tour="approvals-approve"]',
       title: "Client approvals",
       description:
-        "Share review links so clients can approve posts without logging in.",
+        "Share review links so clients approve without logging in. Follow the approval workflow SOP under Resources.",
       side: "top",
+    },
+    {
+      route: "/app/resources",
+      title: "Agency bonuses",
+      description:
+        "Your onboarding checklist and approval SOP live here, plus Pro bonuses (calendar template and hooks).",
+      side: "bottom",
     },
   ],
 };

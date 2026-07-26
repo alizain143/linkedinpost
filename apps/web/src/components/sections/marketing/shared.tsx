@@ -138,15 +138,12 @@ export function CompareTable() {
   return (
     <div className="pp-cmp overflow-hidden rounded-[18px] border border-[#eceef4] bg-white">
       <div className="pp-cmp-inner">
-        <div className="grid grid-cols-[1.6fr_1fr_1fr_1fr_1fr] border-b border-[#f1f3f8] bg-[#fbfbfd] px-[22px] py-4">
+        <div className="grid grid-cols-[1.6fr_1fr_1fr_1fr] border-b border-[#f1f3f8] bg-[#fbfbfd] px-[22px] py-4">
           <div className="text-[12.5px] font-bold text-[#64748b]">
             What you get
           </div>
           <div className="text-center text-[12.5px] font-bold text-[#64748b]">
             Free
-          </div>
-          <div className="text-center text-[12.5px] font-bold text-[#64748b]">
-            Starter
           </div>
           <div className="text-center text-[12.5px] font-bold text-[#4f46e5]">
             Pro
@@ -158,13 +155,13 @@ export function CompareTable() {
         {COMPARE_ROWS.map((row) => (
           <div
             key={row.label}
-            className="grid grid-cols-[1.6fr_1fr_1fr_1fr_1fr] items-center border-b border-[#f6f7fb] px-[22px] py-3.5 last:border-0"
+            className="grid grid-cols-[1.6fr_1fr_1fr_1fr] items-center border-b border-[#f6f7fb] px-[22px] py-3.5 last:border-0"
           >
             <div className="text-[13.5px] font-medium text-[#1e293b]">
               {row.label}
             </div>
-            {(["free", "starter", "pro", "agency"] as const).map((tier) => {
-              const val = row[tier];
+            {(["free", "pro", "agency"] as const).map((tier) => {
+              const val = row[tier] as boolean | string;
               return (
                 <div key={tier} className="text-center">
                   {val === true ? (

@@ -59,8 +59,8 @@ User
 
 | Value | Credits/mo | Notes |
 |-------|------------|-------|
-| `free` | 5 | Default on signup |
-| `starter` | 50 | Lemon Squeezy–paid |
+| `free` | 15 | Default on signup |
+| `starter` | 50 | Legacy Lemon Squeezy–paid (not sold on site) |
 | `pro` | 200 | Autopilot, 30-day calendar |
 | `agency` | 1000 | Client workspaces, approval share links |
 

@@ -45,7 +45,7 @@ ${SITE_DESCRIPTION}
 - [FAQ](${url("/faq")}): Credits, voice, plans, and scheduling
 - [About](${url("/about")}): Mission and team
 - [Authors](${url("/authors/linkedinpost-ai-content-team")}): LinkedInPost AI Content Team
-- [Sign up free](${url("/sign-up")}): 5 AI credits/month, no credit card
+- [Sign up free](${url("/sign-up")}): 15 AI credits/month, no credit card
 
 ## Guides
 
