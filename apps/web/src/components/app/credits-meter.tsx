@@ -51,15 +51,26 @@ export function CreditsMeter() {
         Resets {formatResetDate(balance.periodEnd)}
       </p>
       {showUpgradeCta ? (
-        <Button
-          href="/app/billing"
-          variant="primary"
-          size="xs"
-          fullWidth
-          className="py-2"
-        >
-          Upgrade plan
-        </Button>
+        <div className="space-y-1.5">
+          <Button
+            href="/app/billing#buy-credits"
+            variant="primary"
+            size="xs"
+            fullWidth
+            className="py-2"
+          >
+            Buy credits
+          </Button>
+          <Button
+            href="/app/billing"
+            variant="muted"
+            size="xs"
+            fullWidth
+            className="py-2"
+          >
+            Upgrade plan
+          </Button>
+        </div>
       ) : (
         <Button
           href="/app/billing"

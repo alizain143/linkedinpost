@@ -25,7 +25,9 @@ Per-slice implementation specs live at the repo root:
 - [SLICE-15-autopilot.md](SLICE-15-autopilot.md) — Done
 - [SLICE-16-linkedin-publish-media.md](SLICE-16-linkedin-publish-media.md) — Done
 - [SLICE-17-nano-banana-image-generation.md](SLICE-17-nano-banana-image-generation.md) — Done
-- [SLICE-18-stripe-billing.md](SLICE-18-stripe-billing.md) — Done (XPay; filename historical)
+- [SLICE-18-stripe-billing.md](SLICE-18-stripe-billing.md) — Done (Lemon Squeezy; filename historical)
+- [SLICE-25-credit-topups.md](SLICE-25-credit-topups.md) — Done
+- [FE-SLICE-21-credit-topups.md](FE-SLICE-21-credit-topups.md) — Done
 - [SLICE-19-agency-client-workspaces.md](SLICE-19-agency-client-workspaces.md) — Done
 - [SLICE-20-approval-share-links.md](SLICE-20-approval-share-links.md) — Done
 - [SLICE-22-topic-suggestions.md](SLICE-22-topic-suggestions.md) — Done
@@ -98,7 +100,8 @@ Update this section as features land. Tell the agent to mark items `[x]` when do
 
 ### Phase 6 — Business
 
-- [x] XPay subscriptions + webhooks — [SLICE-18](SLICE-18-stripe-billing.md)
+- [x] Lemon Squeezy subscriptions + webhooks — [SLICE-18](SLICE-18-stripe-billing.md)
+- [x] Credit top-ups + billing transactions — [SLICE-25](SLICE-25-credit-topups.md)
 - [x] Agency client workspaces — [SLICE-19](SLICE-19-agency-client-workspaces.md)
 - [x] Approval share links for clients — [SLICE-20](SLICE-20-approval-share-links.md)
 
@@ -126,6 +129,7 @@ See [FRONTEND_IMPLEMENTATION.md](FRONTEND_IMPLEMENTATION.md) for slice order and
 - [x] Bulk calendar gen (FE-SLICE-14)
 - [x] Clients / agency (FE-SLICE-17)
 - [x] Billing — API wired (FE-SLICE-16)
+- [x] Credit top-ups + history (FE-SLICE-21)
 - [x] Approval share links (FE-SLICE-18)
 - [x] Notifications topbar + push (FE-SLICE-19)
 - [x] Notifications inbox + polish (FE-SLICE-20)
@@ -183,7 +187,7 @@ Core promise: generate authentic LinkedIn posts, plan a content calendar, run an
 | **Approvals** | Review queue: mine / client / changes / approved | Approval workflow |
 | **Post Package** | Full detail: brief, preview, media, AI scores, council timeline, versions | Rich post model + agent run history |
 | **Clients** | Agency client workspaces | Workspace multi-tenancy |
-| **Billing** | Plan, credits, usage breakdown, history | XPay + credit ledger |
+| **Billing** | Plan, credits, usage breakdown, history | Lemon Squeezy + credit ledger |
 | **Settings** | Account, LinkedIn connection, publishing defaults, notifications | OAuth tokens, user prefs |
 | **Notifications** | Full inbox, unread filter, mark read | User-scoped notification API |
 
@@ -260,7 +264,7 @@ Unit that moves through the pipeline.
 | **linkedin** | OAuth connect, publish API, profile sync | Done ([SLICE-12](SLICE-12-linkedin-publish.md)) |
 | **autopilot** | Config + cron generation + approval mode + day profiles | Done ([SLICE-15](SLICE-15-autopilot.md), [SLICE-21](SLICE-21-autopilot-v2.md)) |
 | **credits** | Ledger, deduct, monthly reset | Ledger stub + guard done |
-| **billing** | XPay subscriptions | Complete (Slice 18) |
+| **billing** | Lemon Squeezy subscriptions | Complete (Slice 18) |
 | **notifications** | In-app + email + web push | Done (Slice 21) |
 | **dashboard** | Read-only aggregations | Done |
 | **search** | Full-text search posts/drafts | Not started |
@@ -295,7 +299,7 @@ Unit that moves through the pipeline.
 | Autopilot cron engine | **Hard** | |
 | Bulk calendar generation | **Hard** | |
 | LinkedIn OAuth + publish | **Hard** | |
-| XPay billing + webhooks | **Hard** | |
+| Lemon Squeezy billing + webhooks | **Hard** | |
 | Agency multi-workspace | **Medium–Hard** | |
 | Approval share links | **Medium** | |
 | Real-time generation progress | **Medium–Hard** | |
@@ -356,7 +360,7 @@ Unit that moves through the pipeline.
 ### Business
 
 - `Workspace (multi)` → `Clients screen`
-- `XPay` → `Plan enforcement`, `Billing`
+- `Lemon Squeezy` → `Plan enforcement`, `Billing`
 - `Plan tier` → workspace limits, credit limits, feature flags
 - `Agency plan` → client workspaces (max 5)
 
@@ -400,7 +404,7 @@ flowchart TD
   end
 
   subgraph business [Business]
-    XPay[XPay Billing]
+    LemonSqueezy[Lemon Squeezy Billing]
     Agency[Agency Workspaces]
   end
 
@@ -425,8 +429,8 @@ flowchart TD
   Jobs --> Autopilot
   Council --> BulkCal
   Profile --> BulkCal
-  XPay --> Credits
-  XPay --> Agency
+  LemonSqueezy --> Credits
+  LemonSqueezy --> Agency
   Agency --> WS
 ```
 
@@ -442,7 +446,7 @@ flowchart TD
 | 3 | Quick draft, AI Council, job queue | Medium–Hard |
 | 4 | LinkedIn OAuth, schedule, publish | Hard |
 | 5 | Autopilot, media gen, bulk calendar | Hard |
-| 6 | XPay, agency workspaces, approval links | Hard |
+| 6 | Lemon Squeezy, agency workspaces, approval links | Hard |
 
 We will **not** tackle whole phases at once — pick one small feature per step.
 
@@ -495,7 +499,7 @@ Beyond current `User` / `Document`:
 - `/calendar`, `/approvals`
 - `/autopilot`
 - `/linkedin/connect`, `/callback`, `/disconnect`
-- `/billing`, `/billing/cancel`, `/billing/webhooks/xpay`
+- `/billing`, `/billing/cancel`, `/billing/credits/quote`, `/billing/credits/checkout`, `/billing/transactions`, `/billing/webhooks/lemonsqueezy`
 - `/credits`, `/search`
 
 ---

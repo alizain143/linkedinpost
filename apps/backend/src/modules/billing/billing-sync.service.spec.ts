@@ -5,6 +5,12 @@ import { userId } from '../../test/fixtures';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BillingSyncService } from './billing-sync.service';
 
+const variants = {
+  variantStarter: '111',
+  variantPro: '222',
+  variantAgency: '333',
+};
+
 describe('BillingSyncService', () => {
   let service: BillingSyncService;
   const prisma = createMockPrismaService();
@@ -32,26 +38,29 @@ describe('BillingSyncService', () => {
     const plan = await service.resolvePlanForEvent(
       {
         eventId: 'whe_1',
-        eventType: 'subscription.active',
+        eventType: 'subscription_created',
         subscriptionId: 'sub_1',
-        metadata: { userId, plan: UserPlan.pro },
+        metadata: { user_id: userId, plan: UserPlan.pro },
       },
       SubscriptionStatus.active,
+      variants,
     );
     expect(plan).toBe(UserPlan.pro);
   });
 
-  it('maps unpaid status to free plan resolution only when not paid status', async () => {
+  it('resolves plan from variant id when metadata missing', async () => {
     const plan = await service.resolvePlanForEvent(
       {
         eventId: 'whe_2',
-        eventType: 'subscription.cancelled',
+        eventType: 'subscription_created',
         subscriptionId: 'sub_1',
-        metadata: { userId, plan: UserPlan.pro },
+        variantId: '222',
+        metadata: { user_id: userId },
       },
-      SubscriptionStatus.canceled,
+      SubscriptionStatus.active,
+      variants,
     );
-    expect(plan).toBe(UserPlan.free);
+    expect(plan).toBe(UserPlan.pro);
   });
 
   it('syncs active subscription and updates user plan', async () => {
@@ -59,13 +68,17 @@ describe('BillingSyncService', () => {
     prisma.subscription.upsert.mockResolvedValue({});
     prisma.user.update.mockResolvedValue({});
 
-    await service.syncFromSubscriptionEvent({
-      eventId: 'whe_3',
-      eventType: 'subscription.active',
-      subscriptionId: 'sub_1',
-      nextPaymentDate: 1_702_592_000_000,
-      metadata: { userId, plan: UserPlan.pro },
-    });
+    await service.syncFromSubscriptionEvent(
+      {
+        eventId: 'whe_3',
+        eventType: 'subscription_created',
+        subscriptionId: 'sub_1',
+        status: 'active',
+        renewsAt: '2026-08-26T00:00:00.000000Z',
+        metadata: { user_id: userId, plan: UserPlan.pro },
+      },
+      variants,
+    );
 
     expect(prisma.$transaction).toHaveBeenCalled();
     const upsertCall = prisma.subscription.upsert.mock.calls[0]?.[0];
@@ -75,17 +88,47 @@ describe('BillingSyncService', () => {
     expect(userUpdateCall.data.plan).toBe(UserPlan.pro);
   });
 
-  it('downgrades user to free on subscription cancelled', async () => {
+  it('marks cancel at period end without downgrading plan', async () => {
     prisma.subscription.findUnique.mockResolvedValue({
       userId,
-      xpaySubscriptionId: 'sub_1',
+      lemonSubscriptionId: 'sub_1',
+      plan: UserPlan.pro,
+    });
+    prisma.subscription.upsert.mockResolvedValue({});
+
+    await service.handleCancelAtPeriodEnd(
+      {
+        eventId: 'whe_4',
+        eventType: 'subscription_cancelled',
+        subscriptionId: 'sub_1',
+        endsAt: '2026-08-26T00:00:00.000000Z',
+        metadata: { user_id: userId, plan: UserPlan.pro },
+      },
+      variants,
+    );
+
+    expect(prisma.subscription.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { userId },
+        update: expect.objectContaining({
+          cancelAtPeriodEnd: true,
+        }),
+      }),
+    );
+    expect(prisma.user.update).not.toHaveBeenCalled();
+  });
+
+  it('downgrades user to free on subscription expired', async () => {
+    prisma.subscription.findUnique.mockResolvedValue({
+      userId,
+      lemonSubscriptionId: 'sub_1',
     });
 
     await service.handleSubscriptionEnded({
-      eventId: 'whe_4',
-      eventType: 'subscription.cancelled',
+      eventId: 'whe_5',
+      eventType: 'subscription_expired',
       subscriptionId: 'sub_1',
-      metadata: { userId },
+      metadata: { user_id: userId },
     });
 
     expect(prisma.subscription.update).toHaveBeenCalledWith(
@@ -93,7 +136,7 @@ describe('BillingSyncService', () => {
         where: { userId },
         data: expect.objectContaining({
           status: SubscriptionStatus.canceled,
-          xpaySubscriptionId: null,
+          lemonSubscriptionId: null,
         }),
       }),
     );
@@ -103,16 +146,16 @@ describe('BillingSyncService', () => {
     });
   });
 
-  it('maps event types to subscription statuses', () => {
-    expect(service.mapEventToStatus('subscription.active')).toBe(
+  it('maps Lemon statuses to subscription statuses', () => {
+    expect(service.mapLemonStatus('active', 'subscription_updated')).toBe(
       SubscriptionStatus.active,
     );
-    expect(service.mapEventToStatus('subscription.paused')).toBe(
+    expect(service.mapLemonStatus('paused', 'subscription_paused')).toBe(
       SubscriptionStatus.past_due,
     );
-    expect(service.mapEventToStatus('subscription.unpaid')).toBe(
+    expect(service.mapLemonStatus('unpaid', 'subscription_updated')).toBe(
       SubscriptionStatus.unpaid,
     );
-    expect(service.mapEventToStatus('intent.success')).toBeNull();
+    expect(service.mapLemonStatus(null, 'order_created')).toBeNull();
   });
 });

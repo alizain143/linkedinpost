@@ -3,7 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import googleConfig from './config/google.config';
 import appConfig from './config/app.config';
-import xpayConfig from './config/xpay.config';
+import lemonsqueezyConfig from './config/lemonsqueezy.config';
 import clerkConfig from './config/clerk.config';
 import councilConfig from './config/council.config';
 import openaiConfig from './config/openai.config';
@@ -49,7 +49,7 @@ import { HealthController } from './health.controller';
         openaiConfig,
         googleConfig,
         appConfig,
-        xpayConfig,
+        lemonsqueezyConfig,
         redisConfig,
         councilConfig,
         schedulingConfig,

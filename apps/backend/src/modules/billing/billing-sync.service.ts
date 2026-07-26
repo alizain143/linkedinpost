@@ -5,20 +5,25 @@ import {
 } from '@nestjs/common';
 import { SubscriptionStatus, UserPlan } from '@prisma/client';
 import {
+  getPlanForLemonVariant,
   parsePlanFromMetadata,
   type CheckoutPlan,
-} from '../../common/constants/xpay-plan.map';
+  type LemonVariantConfig,
+} from '../../common/constants/billing-plan.map';
 import { PrismaService } from '../../prisma/prisma.service';
 
-export interface XpaySubscriptionEvent {
+export interface LemonSubscriptionEvent {
   eventId: string;
   eventType: string;
-  eventTime?: number;
   subscriptionId: string;
-  nextPaymentDate?: number | null;
-  remainingCycleCount?: number | null;
+  customerId?: string | null;
+  variantId?: string | number | null;
+  status?: string | null;
+  cancelled?: boolean | null;
+  renewsAt?: string | null;
+  endsAt?: string | null;
+  trialEndsAt?: string | null;
   metadata?: Record<string, string> | null;
-  errorCode?: string;
 }
 
 const PAID_STATUSES = new Set<SubscriptionStatus>([
@@ -34,18 +39,24 @@ export class BillingSyncService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  async syncFromSubscriptionEvent(event: XpaySubscriptionEvent): Promise<void> {
-    const status = this.mapEventToStatus(event.eventType);
-    if (!status) {
-      this.logger.debug(`Unhandled XPay event type: ${event.eventType}`);
+  async syncFromSubscriptionEvent(
+    event: LemonSubscriptionEvent,
+    variants: LemonVariantConfig,
+  ): Promise<void> {
+    if (event.eventType === 'subscription_expired') {
+      await this.handleSubscriptionEnded(event);
       return;
     }
 
-    if (
-      status === SubscriptionStatus.canceled ||
-      event.eventType === 'subscription.ended'
-    ) {
-      await this.handleSubscriptionEnded(event);
+    // Cancelled at period end — keep paid access until expires.
+    if (event.eventType === 'subscription_cancelled' || event.cancelled) {
+      await this.handleCancelAtPeriodEnd(event, variants);
+      return;
+    }
+
+    const status = this.mapLemonStatus(event.status, event.eventType);
+    if (!status) {
+      this.logger.debug(`Unhandled Lemon event: ${event.eventType}`);
       return;
     }
 
@@ -57,26 +68,29 @@ export class BillingSyncService {
       return;
     }
 
-    const periodEnd = this.toDate(event.nextPaymentDate);
+    const periodEnd = this.toDate(event.endsAt ?? event.renewsAt);
     const periodStart =
-      periodEnd && status !== SubscriptionStatus.incomplete
-        ? new Date()
-        : null;
+      status !== SubscriptionStatus.incomplete ? new Date() : null;
 
-    // Incomplete checkout events only track the pending subscription row.
     if (status === SubscriptionStatus.incomplete) {
-      const pendingPlan = parsePlanFromMetadata(event.metadata?.plan);
+      const pendingPlan = this.resolvePlanFromEvent(event, variants);
       await this.prisma.subscription.upsert({
         where: { userId },
         create: {
           userId,
-          xpaySubscriptionId: event.subscriptionId,
+          lemonSubscriptionId: event.subscriptionId,
+          lemonCustomerId: event.customerId
+            ? String(event.customerId)
+            : undefined,
           plan: pendingPlan,
           status,
           cancelAtPeriodEnd: false,
         },
         update: {
-          xpaySubscriptionId: event.subscriptionId,
+          lemonSubscriptionId: event.subscriptionId,
+          lemonCustomerId: event.customerId
+            ? String(event.customerId)
+            : undefined,
           plan: pendingPlan ?? undefined,
           status,
           cancelAtPeriodEnd: false,
@@ -85,14 +99,17 @@ export class BillingSyncService {
       return;
     }
 
-    const plan = await this.resolvePlanForEvent(event, status);
+    const plan = await this.resolvePlanForEvent(event, status, variants);
 
     await this.prisma.$transaction([
       this.prisma.subscription.upsert({
         where: { userId },
         create: {
           userId,
-          xpaySubscriptionId: event.subscriptionId,
+          lemonSubscriptionId: event.subscriptionId,
+          lemonCustomerId: event.customerId
+            ? String(event.customerId)
+            : undefined,
           plan: plan === UserPlan.free ? null : plan,
           status,
           cancelAtPeriodEnd: false,
@@ -100,7 +117,10 @@ export class BillingSyncService {
           currentPeriodEnd: periodEnd,
         },
         update: {
-          xpaySubscriptionId: event.subscriptionId,
+          lemonSubscriptionId: event.subscriptionId,
+          lemonCustomerId: event.customerId
+            ? String(event.customerId)
+            : undefined,
           plan: plan === UserPlan.free ? null : plan,
           status,
           cancelAtPeriodEnd: false,
@@ -119,9 +139,53 @@ export class BillingSyncService {
     ]);
   }
 
-  async handleSubscriptionEnded(event: XpaySubscriptionEvent): Promise<void> {
+  async handleCancelAtPeriodEnd(
+    event: LemonSubscriptionEvent,
+    variants: LemonVariantConfig,
+  ): Promise<void> {
+    const userId = await this.resolveUserId(event);
+    if (!userId) {
+      this.logger.warn(
+        `subscription cancelled for unknown subscription ${event.subscriptionId}`,
+      );
+      return;
+    }
+
+    const periodEnd = this.toDate(event.endsAt ?? event.renewsAt);
+    const plan = await this.resolvePlanForEvent(
+      event,
+      SubscriptionStatus.active,
+      variants,
+    ).catch(() => null);
+
+    await this.prisma.subscription.upsert({
+      where: { userId },
+      create: {
+        userId,
+        lemonSubscriptionId: event.subscriptionId,
+        lemonCustomerId: event.customerId
+          ? String(event.customerId)
+          : undefined,
+        plan: plan && plan !== UserPlan.free ? plan : null,
+        status: SubscriptionStatus.active,
+        cancelAtPeriodEnd: true,
+        currentPeriodEnd: periodEnd,
+      },
+      update: {
+        lemonSubscriptionId: event.subscriptionId,
+        lemonCustomerId: event.customerId
+          ? String(event.customerId)
+          : undefined,
+        cancelAtPeriodEnd: true,
+        ...(periodEnd ? { currentPeriodEnd: periodEnd } : {}),
+        ...(plan && plan !== UserPlan.free ? { plan } : {}),
+      },
+    });
+  }
+
+  async handleSubscriptionEnded(event: LemonSubscriptionEvent): Promise<void> {
     const existing = await this.prisma.subscription.findUnique({
-      where: { xpaySubscriptionId: event.subscriptionId },
+      where: { lemonSubscriptionId: event.subscriptionId },
     });
 
     let userId = existing?.userId ?? null;
@@ -140,7 +204,7 @@ export class BillingSyncService {
       this.prisma.subscription.update({
         where: { userId },
         data: {
-          xpaySubscriptionId: null,
+          lemonSubscriptionId: null,
           plan: null,
           status: SubscriptionStatus.canceled,
           cancelAtPeriodEnd: false,
@@ -156,27 +220,28 @@ export class BillingSyncService {
   }
 
   async resolvePlanForEvent(
-    event: XpaySubscriptionEvent,
+    event: LemonSubscriptionEvent,
     status: SubscriptionStatus,
+    variants: LemonVariantConfig,
   ): Promise<UserPlan> {
     if (!PAID_STATUSES.has(status)) {
       return UserPlan.free;
     }
 
-    const fromMetadata = parsePlanFromMetadata(event.metadata?.plan);
-    if (fromMetadata) {
-      return fromMetadata;
+    const fromEvent = this.resolvePlanFromEvent(event, variants);
+    if (fromEvent) {
+      return fromEvent;
     }
 
     const existing = await this.prisma.subscription.findUnique({
-      where: { xpaySubscriptionId: event.subscriptionId },
+      where: { lemonSubscriptionId: event.subscriptionId },
     });
 
     if (existing?.plan && isPaidPlan(existing.plan)) {
       return existing.plan;
     }
 
-    const userId = event.metadata?.userId ?? existing?.userId;
+    const userId = event.metadata?.user_id ?? existing?.userId;
     if (userId) {
       const byUser = await this.prisma.subscription.findUnique({
         where: { userId },
@@ -195,48 +260,79 @@ export class BillingSyncService {
     });
   }
 
+  resolvePlanFromEvent(
+    event: LemonSubscriptionEvent,
+    variants: LemonVariantConfig,
+  ): CheckoutPlan | null {
+    const fromMetadata = parsePlanFromMetadata(event.metadata?.plan);
+    if (fromMetadata) {
+      return fromMetadata;
+    }
+
+    return getPlanForLemonVariant(event.variantId, variants);
+  }
+
   private async resolveUserId(
-    event: XpaySubscriptionEvent,
+    event: LemonSubscriptionEvent,
   ): Promise<string | null> {
-    const fromMetadata = event.metadata?.userId;
+    const fromMetadata = event.metadata?.user_id;
     if (fromMetadata) {
       return fromMetadata;
     }
 
     const existing = await this.prisma.subscription.findUnique({
-      where: { xpaySubscriptionId: event.subscriptionId },
+      where: { lemonSubscriptionId: event.subscriptionId },
     });
 
     return existing?.userId ?? null;
   }
 
-  mapEventToStatus(eventType: string): SubscriptionStatus | null {
-    switch (eventType) {
-      case 'subscription.active':
-      case 'subscription.cycle_charged':
+  mapLemonStatus(
+    lemonStatus: string | null | undefined,
+    eventType: string,
+  ): SubscriptionStatus | null {
+    switch (lemonStatus) {
+      case 'active':
         return SubscriptionStatus.active;
-      case 'subscription.trialing':
+      case 'on_trial':
         return SubscriptionStatus.trialing;
-      case 'subscription.unpaid':
-        return SubscriptionStatus.unpaid;
-      case 'subscription.paused':
+      case 'past_due':
         return SubscriptionStatus.past_due;
-      case 'subscription.cancelled':
-      case 'subscription.ended':
+      case 'unpaid':
+        return SubscriptionStatus.unpaid;
+      case 'paused':
+        return SubscriptionStatus.past_due;
+      case 'cancelled':
+        return SubscriptionStatus.active;
+      case 'expired':
         return SubscriptionStatus.canceled;
-      case 'subscription.created':
-      case 'subscription.checkout_opened':
+      case 'incomplete':
         return SubscriptionStatus.incomplete;
+      default:
+        break;
+    }
+
+    switch (eventType) {
+      case 'subscription_created':
+      case 'subscription_updated':
+      case 'subscription_resumed':
+      case 'subscription_unpaused':
+      case 'subscription_payment_success':
+        return SubscriptionStatus.active;
+      case 'subscription_paused':
+      case 'subscription_payment_failed':
+        return SubscriptionStatus.past_due;
       default:
         return null;
     }
   }
 
-  private toDate(ms: number | null | undefined): Date | null {
-    if (!ms) {
+  private toDate(value: string | null | undefined): Date | null {
+    if (!value) {
       return null;
     }
-    return new Date(ms);
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
   }
 }
 

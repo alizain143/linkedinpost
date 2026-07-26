@@ -13,7 +13,7 @@ export type ApiBillingStatus = {
   subscriptionStatus: SubscriptionStatus | null;
   cancelAtPeriodEnd: boolean;
   currentPeriodEnd: string | null;
-  xpayCustomerId: string | null;
+  lemonCustomerId: string | null;
   hasBillingAccount: boolean;
 };
 
@@ -21,7 +21,6 @@ export type CheckoutPlan = "starter" | "pro" | "agency";
 
 export type CreateCheckoutBody = {
   plan: CheckoutPlan;
-  phone: string;
 };
 
 export type BillingSessionResponse = {
@@ -30,4 +29,40 @@ export type BillingSessionResponse = {
 
 export type CancelSubscriptionResponse = {
   cancelled: boolean;
+};
+
+export type CreditTopupQuote = {
+  credits: number;
+  unitPriceCents: number;
+  totalCents: number;
+  listTotalCents: number;
+  discountPercent: number;
+};
+
+export type CreateCreditCheckoutBody = {
+  credits: number;
+};
+
+export type BillingTransactionType =
+  | "subscription_payment"
+  | "credit_purchase"
+  | "refund";
+
+export type BillingTransactionStatus = "paid" | "refunded" | "failed";
+
+export type ApiBillingTransaction = {
+  id: string;
+  type: BillingTransactionType;
+  status: BillingTransactionStatus;
+  amountCents: number;
+  currency: string;
+  description: string | null;
+  creditsGranted: number | null;
+  plan: UserPlan | null;
+  occurredAt: string;
+};
+
+export type ApiBillingTransactionsResponse = {
+  items: ApiBillingTransaction[];
+  nextCursor: string | null;
 };

@@ -163,7 +163,8 @@ Mark `[x]` when slice is shipped (API wired, mocks removed for that screen, basi
 ### Business
 
 - [x] **FE-SLICE-15** — Autopilot config + planned posts
-- [x] **FE-SLICE-16** — Billing + XPay checkout/cancel
+- [x] **FE-SLICE-16** — Billing + Lemon Squeezy checkout/cancel
+- [x] **FE-SLICE-21** — Credit top-ups + billing transaction history
 - [x] **FE-SLICE-17** — Agency client workspaces
 - [x] **FE-SLICE-18** — Approval share links
 
@@ -267,7 +268,7 @@ Mark `[x]` when slice is shipped (API wired, mocks removed for that screen, basi
 - Refetch after generation mutations
 - `402 CREDITS_EXHAUSTED` → upgrade CTA linking to billing
 
-**Out of scope:** XPay checkout (FE-SLICE-16)
+**Out of scope:** Lemon Squeezy checkout (FE-SLICE-16)
 
 ---
 
@@ -561,7 +562,7 @@ Mark `[x]` when slice is shipped (API wired, mocks removed for that screen, basi
 
 ### FE-SLICE-16 — Billing
 
-**Goal:** Billing page with plan, usage, XPay checkout/cancel.
+**Goal:** Billing page with plan, usage, Lemon Squeezy checkout/cancel.
 
 **Depends on:** FE-SLICE-04
 
@@ -578,7 +579,7 @@ Mark `[x]` when slice is shipped (API wired, mocks removed for that screen, basi
 
 - Replace mocks in `Billing.tsx`
 - Current plan, renewal date, credit usage summary
-- Upgrade → XPay checkout redirect (phone required); Cancel → `POST /billing/cancel`
+- Upgrade → Lemon Squeezy checkout redirect; Cancel → `POST /billing/cancel` (period end)
 - Return URL handling after checkout
 
 **Out of scope:** Webhooks (backend only)

@@ -17,6 +17,9 @@ export class CreditsBalanceResponseDto {
   @ApiProperty({ example: 200 })
   limit!: number;
 
+  @ApiProperty({ example: 0, description: 'Purchased credits added this period' })
+  purchased!: number;
+
   @ApiProperty({ example: 200 })
   remaining!: number;
 

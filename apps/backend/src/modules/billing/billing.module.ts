@@ -1,22 +1,29 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { AuthModule } from '../auth/auth.module';
+import { CreditsModule } from '../credits/credits.module';
 import { BillingController } from './billing.controller';
 import { BillingService } from './billing.service';
 import { BillingSyncService } from './billing-sync.service';
+import { BillingTransactionService } from './billing-transaction.service';
 import { PlanFeatureService } from './plan-feature.service';
-import { XpayClientService } from './xpay-client.service';
-import { XpayWebhookController } from './xpay-webhook.controller';
-import { XpayWebhookService } from './xpay-webhook.service';
+import { LemonsqueezyClientService } from './lemonsqueezy-client.service';
+import { LemonsqueezyWebhookController } from './lemonsqueezy-webhook.controller';
+import { LemonsqueezyWebhookService } from './lemonsqueezy-webhook.service';
 
 @Module({
-  imports: [PrismaModule, forwardRef(() => AuthModule)],
-  controllers: [BillingController, XpayWebhookController],
+  imports: [
+    PrismaModule,
+    forwardRef(() => AuthModule),
+    forwardRef(() => CreditsModule),
+  ],
+  controllers: [BillingController, LemonsqueezyWebhookController],
   providers: [
-    XpayClientService,
+    LemonsqueezyClientService,
     BillingService,
     BillingSyncService,
-    XpayWebhookService,
+    BillingTransactionService,
+    LemonsqueezyWebhookService,
     PlanFeatureService,
   ],
   exports: [PlanFeatureService, BillingSyncService],
