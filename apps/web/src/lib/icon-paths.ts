@@ -2,7 +2,6 @@
 export const ICON_PATHS = {
   // OAuth / auth
   google: "/icons/google.svg",
-  apple: "/icons/apple.svg",
   linkedin: "/icons/linkedin.svg",
 
   // Brand marks
