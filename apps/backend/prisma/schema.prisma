@@ -201,6 +201,8 @@ model User {
   emailPublishAlerts      Boolean   @default(true)
   pushEnabled             Boolean   @default(true)
   plan                    UserPlan  @default(free)
+  /** Unused one-time credit top-ups; survives plan changes and billing period resets. */
+  purchasedCreditsBalance Int       @default(0)
   toursSeen               Json?
   lastAcknowledgedPlan    UserPlan?
   linkedInMemberId        String?

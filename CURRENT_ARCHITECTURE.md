@@ -193,7 +193,7 @@ Council agent pipeline: writer → reviewer → editor → media_creator → med
 | Paid (`active`, `trialing`, `past_due`) | `Subscription.currentPeriodStart` → `currentPeriodEnd` |
 | Free / no subscription | UTC calendar month |
 
-`CreditTransaction.generationJobId` links consumption to the job that triggered it. Partial unique index on `(generationJobId, type)` prevents double-charge on job retry. `CreditsService.grant()` supports positive `adjustment` transactions.
+`CreditTransaction.generationJobId` links consumption to the job that triggered it. Partial unique index on `(generationJobId, type)` prevents double-charge on job retry. `CreditsService.grant()` supports positive `adjustment` and `purchase` transactions; `purchase` increments `User.purchasedCreditsBalance`, which stacks with the plan allotment and survives period resets / plan upgrades. Spend draws plan credits first, then the purchased wallet.
 
 ---
 

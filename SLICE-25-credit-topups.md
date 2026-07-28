@@ -6,7 +6,7 @@
 
 ## One outcome
 
-Users can buy extra credits (custom quantity + bulk pricing) via Lemon Squeezy one-time checkout; purchases increase the current-period credit allowance. Billing history lists subscription charges and credit purchases from local webhook mirrors.
+Users can buy extra credits (custom quantity + bulk pricing) via Lemon Squeezy one-time checkout; purchases credit a persistent wallet (`User.purchasedCreditsBalance`) that stacks with plan allotment and survives upgrades / period resets. Billing history lists subscription charges and credit purchases from local webhook mirrors.
 
 Frontend: [FE-SLICE-21-credit-topups.md](FE-SLICE-21-credit-topups.md).
 
@@ -23,10 +23,14 @@ Base **$0.20/credit**. Min **25**, max **2000**.
 
 ## Balance
 
-`limit = planLimit + purchased` where `purchased` = sum of positive `purchase` transactions in the current credit period.
+`purchased` = `User.purchasedCreditsBalance` (wallet).  
+`limit = planLimit + purchased`.  
+`remaining = max(0, planLimit - periodUsed) + purchased`.  
+Spend uses plan allotment first, then decrements the wallet. Top-ups therefore remain after Free → Pro/Agency upgrades when the credit period switches to the Lemon subscription window.
 
 ## Prisma
 
+- `User.purchasedCreditsBalance`
 - `CreditTransactionType.purchase`
 - `CreditTransaction.providerRef` (unique, `lemon_order:{id}`)
 - `BillingTransaction` + enums `BillingTransactionType`, `BillingTransactionStatus`

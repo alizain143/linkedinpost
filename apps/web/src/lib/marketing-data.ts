@@ -608,7 +608,7 @@ export const TERMS_SECTIONS = [
   {
     h: "5. Plans, credits & billing",
     p: [
-      "Paid plans are billed monthly in advance. AI credits reset each billing cycle and do not roll over. You can upgrade, downgrade, or cancel at any time; cancellations take effect at the end of the current period. Public plans are Free, Pro, and Agency. The Starter product has been discontinued; accounts still marked Starter should upgrade to Pro.",
+      "Paid plans are billed monthly in advance. Plan AI credits reset each billing cycle and do not roll over. One-time credit top-ups stay in your balance until used and stack with your plan allotment. You can upgrade, downgrade, or cancel at any time; cancellations take effect at the end of the current period. Public plans are Free, Pro, and Agency. The Starter product has been discontinued; accounts still marked Starter should upgrade to Pro.",
     ],
   },
   {

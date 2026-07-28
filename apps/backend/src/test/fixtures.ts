@@ -64,6 +64,7 @@ export function buildUser(overrides: Partial<User> = {}): User {
     emailPublishAlerts: true,
     pushEnabled: true,
     plan: UserPlan.pro,
+    purchasedCreditsBalance: 0,
     toursSeen: null,
     lastAcknowledgedPlan: UserPlan.pro,
     linkedInMemberId: null,
