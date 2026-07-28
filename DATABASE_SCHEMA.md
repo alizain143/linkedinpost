@@ -149,7 +149,7 @@ LLM / UI taxonomy for post format.
 | `adjustment` | Yes | Admin grants / billing corrections via `CreditsService.grant()` |
 | `purchase` | Yes | Lemon Squeezy credit top-up grant (positive amount) |
 
-Ledger: negative `amount` = consumption. Balance = sum of negative amounts in current credit period vs plan limit.
+Ledger: negative `amount` = consumption. Period `used` = abs sum of negative amounts in the credit period. Effective remaining = `max(0, planLimit - used) + User.purchasedCreditsBalance`.
 
 ### `GenerationJobStatus`
 
@@ -298,6 +298,7 @@ Account identity. Synced from Clerk on sign-in/webhook.
 | `emailPublishAlerts` | Boolean | No | `true` | Email pref for publish success/failure |
 | `pushEnabled` | Boolean | No | `true` | Master web push toggle (`PATCH /auth/me`) |
 | `plan` | UserPlan | No | `free` | **Denormalized** from Lemon Squeezy subscription webhooks. Credit limit source |
+| `purchasedCreditsBalance` | Int | No | `0` | Unused one-time top-up credits. Survives plan upgrades and billing period resets. Incremented on `purchase` grants; decremented when spend exceeds remaining plan allotment |
 | `toursSeen` | JSON | Yes | — | Map of tour id → ISO timestamp (e.g. `product-core-v1`). Updated via `markTourSeen` |
 | `lastAcknowledgedPlan` | UserPlan | Yes | — | Last plan the user dismissed unlock UI for. Compared to `plan` for Pro/Agency feature unlocks |
 | `linkedInMemberId` | String | Yes | — | LinkedIn member URN/id for publish API |
@@ -608,7 +609,7 @@ Append-only ledger. Negative amounts = spend.
 
 **Idempotency:** `CreditsService.consume()` uses `SELECT … FOR UPDATE` on the user row and no-ops when a row already exists for the same `(generationJobId, type)`.
 
-**Balance:** `limit = planLimit + purchased` where `purchased` is the sum of positive `purchase` amounts in the current period. `used` is the absolute sum of negative amounts. Paid users (`active`, `trialing`, `past_due`) use `Subscription.currentPeriodStart/End`; free users use UTC calendar month.
+**Balance:** `purchased` = `User.purchasedCreditsBalance` (persistent wallet). `limit = planLimit + purchased`. `used` = abs sum of negative amounts in the current credit period. `remaining = max(0, planLimit - used) + purchased`. Spend draws from plan allotment first, then decrements the wallet. Paid users (`active`, `trialing`, `past_due`) use `Subscription.currentPeriodStart/End`; free users use UTC calendar month.
 
 **Module:** `credits`
 
