@@ -9,15 +9,22 @@ import {
   Patch,
   Post,
   Query,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
+  BadRequestException,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
   ApiOperation,
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
 import type { User } from '@prisma/client';
+import { POST_MEDIA_MAX_SIZE_BYTES } from '../../common/constants/media.constants';
 import { ApiDataResponse } from '../../common/swagger/api-data-response.decorator';
 import {
   DeletePostResponseDto,
@@ -38,6 +45,10 @@ import {
   RejectPostDto,
   RequestChangesDto,
 } from '../approvals/dto/request-changes.dto';
+import {
+  InitPostMediaUploadDto,
+  ConfirmPostMediaUploadDto,
+} from './dto/post-media-upload.dto';
 import { CreatePostDto } from './dto/create-post.dto';
 import { ListPostsQueryDto } from './dto/list-posts-query.dto';
 import { TransitionPostStatusDto } from './dto/transition-post-status.dto';
@@ -220,6 +231,101 @@ export class PostsController {
     @Body() dto: GenerateMediaRequestDto,
   ) {
     return this.mediaJobService.enqueueMedia(workspaceId, user.id, id, dto);
+  }
+
+  @Post(':id/media/uploads/init')
+  @ApiOperation({
+    summary: 'Init upload slots for custom post images (0 credits)',
+  })
+  @ApiParam({ name: 'workspaceId', format: 'uuid' })
+  @ApiParam({ name: 'id', format: 'uuid' })
+  initMediaUpload(
+    @CurrentUser() user: User,
+    @Param('workspaceId') workspaceId: string,
+    @Param('id') id: string,
+    @Body() dto: InitPostMediaUploadDto,
+  ) {
+    return this.postsService.initMediaUpload(workspaceId, id, user.id, dto);
+  }
+
+  @Post(':id/media/uploads/confirm')
+  @ApiOperation({
+    summary: 'Confirm uploaded custom images and activate them on the post',
+  })
+  @ApiParam({ name: 'workspaceId', format: 'uuid' })
+  @ApiParam({ name: 'id', format: 'uuid' })
+  @ApiDataResponse(PostPackageResponseDto)
+  confirmMediaUpload(
+    @CurrentUser() user: User,
+    @Param('workspaceId') workspaceId: string,
+    @Param('id') id: string,
+    @Body() dto: ConfirmPostMediaUploadDto,
+  ) {
+    return this.postsService.confirmMediaUpload(workspaceId, id, user.id, dto);
+  }
+
+  @Post(':id/media/uploads/:mediaId')
+  @HttpCode(HttpStatus.OK)
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: POST_MEDIA_MAX_SIZE_BYTES },
+    }),
+  )
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['file'],
+      properties: {
+        file: { type: 'string', format: 'binary' },
+      },
+    },
+  })
+  @ApiOperation({
+    summary: 'Upload bytes for a pending media slot (proxied to R2; avoids CORS)',
+  })
+  @ApiParam({ name: 'workspaceId', format: 'uuid' })
+  @ApiParam({ name: 'id', format: 'uuid' })
+  @ApiParam({ name: 'mediaId', format: 'uuid' })
+  putMediaUpload(
+    @CurrentUser() user: User,
+    @Param('workspaceId') workspaceId: string,
+    @Param('id') id: string,
+    @Param('mediaId') mediaId: string,
+    @UploadedFile()
+    file:
+      | {
+          buffer: Buffer;
+          mimetype: string;
+        }
+      | undefined,
+  ) {
+    if (!file?.buffer?.length) {
+      throw new BadRequestException({
+        error: 'File is required',
+        code: 'INVALID_UPLOAD_CONFIRM',
+      });
+    }
+    return this.postsService.putMediaUpload(
+      workspaceId,
+      id,
+      user.id,
+      mediaId,
+      { buffer: file.buffer, mimetype: file.mimetype },
+    );
+  }
+
+  @Delete(':id/media')
+  @ApiOperation({ summary: 'Clear active media from a post (archive)' })
+  @ApiParam({ name: 'workspaceId', format: 'uuid' })
+  @ApiParam({ name: 'id', format: 'uuid' })
+  @ApiDataResponse(PostPackageResponseDto)
+  clearMedia(
+    @CurrentUser() user: User,
+    @Param('workspaceId') workspaceId: string,
+    @Param('id') id: string,
+  ) {
+    return this.postsService.clearMedia(workspaceId, id, user.id);
   }
 
   @Get(':id/versions')

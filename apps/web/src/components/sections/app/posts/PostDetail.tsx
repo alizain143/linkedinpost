@@ -23,6 +23,7 @@ import {
   useApplyPostChangesMutation,
   useApplyPostMediaVersionMutation,
   useApplyPostVersionMutation,
+  useClearPostMediaMutation,
   useGeneratePostMediaMutation,
   usePost,
   usePostMediaVersions,
@@ -30,6 +31,7 @@ import {
   useApprovePostMutation,
   useTransitionPostStatus,
   useUpdatePost,
+  useUploadPostMediaMutation,
 } from "@/hooks/api/use-posts-api";
 import { PromptModal } from "@/components/modals/prompt-modal";
 import {
@@ -68,8 +70,7 @@ import { versionMatchesPost } from "@/lib/post-version-utils";
 import { TONE_OPTIONS } from "@/lib/form-options";
 import { CouncilTimeline } from "@/components/sections/app/generate/CouncilTimeline";
 import { ApprovalSharePanel } from "@/components/sections/app/posts/ApprovalSharePanel";
-import { PostMediaList } from "@/components/ui/post-media-image";
-import { MediaGeneratingSkeleton } from "@/components/ui/media-generating-skeleton";
+import { PostMediaPanel } from "@/components/ui/post-media-panel";
 import { useAppUi } from "@/providers/app-ui-provider";
 import { usePpToast } from "@/providers/pp-toast-provider";
 
@@ -172,6 +173,8 @@ export default function PostDetail({ postId }: PostDetailProps) {
   const transitionStatus = useTransitionPostStatus(activeWorkspaceId, postId);
   const approvePostMutation = useApprovePostMutation(activeWorkspaceId);
   const generatePostMedia = useGeneratePostMediaMutation(activeWorkspaceId);
+  const uploadPostMedia = useUploadPostMediaMutation(activeWorkspaceId, postId);
+  const clearPostMedia = useClearPostMediaMutation(activeWorkspaceId, postId);
   const applyPostChanges = useApplyPostChangesMutation(activeWorkspaceId);
   const applyPostVersion = useApplyPostVersionMutation(activeWorkspaceId, postId);
   const applyPostMediaVersion = useApplyPostMediaVersionMutation(
@@ -227,8 +230,10 @@ export default function PostDetail({ postId }: PostDetailProps) {
     post?.status === "media_generating" ||
     generatePostMedia.isPending ||
     !!activeMediaJobId;
+  const isMediaBusy =
+    isMediaGenerating || uploadPostMedia.isPending || clearPostMedia.isPending;
   const isEditable =
-    (isDraft || isReadyForApproval) && !isMediaGenerating;
+    (isDraft || isReadyForApproval) && !isMediaBusy;
 
   useEffect(() => {
     if (post) setForm(postToForm(post));
@@ -340,6 +345,29 @@ export default function PostDetail({ postId }: PostDetailProps) {
 
   const handleGenerateMedia = () => {
     setGenerateMediaModalOpen(true);
+  };
+
+  const handleUploadMedia = async (files: File[]) => {
+    try {
+      await uploadPostMedia.mutateAsync({
+        files: files.map((file) => ({ file })),
+        replace: true,
+      });
+      showToast("Images uploaded", "image");
+      void refetchMediaVersions();
+    } catch (err) {
+      showToast(getApiErrorMessage(err), "error");
+    }
+  };
+
+  const handleClearMedia = async () => {
+    try {
+      await clearPostMedia.mutateAsync();
+      showToast("Media cleared", "image");
+      void refetchMediaVersions();
+    } catch (err) {
+      showToast(getApiErrorMessage(err), "error");
+    }
   };
 
   const confirmGenerateMedia = async () => {
@@ -780,41 +808,17 @@ export default function PostDetail({ postId }: PostDetailProps) {
 
             {(post.media.length > 0 || isMediaGenerating || isEditable) ? (
               <div className={`${appCard} p-5`}>
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                  <h3 className={appSectionTitle}>Media</h3>
-                  {isEditable ? (
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      disabled={isMediaGenerating}
-                      onClick={() => void handleGenerateMedia()}
-                    >
-                      <MsIcon
-                        name={
-                          isMediaGenerating ? "progress_activity" : "refresh"
-                        }
-                        size={16}
-                        className={isMediaGenerating ? "animate-ppspin" : undefined}
-                      />
-                      {isMediaGenerating
-                        ? "Generating…"
-                        : post.media.length > 0
-                          ? `Regenerate (${mediaCreditCost} cr)`
-                          : `Generate (${mediaCreditCost} cr)`}
-                    </Button>
-                  ) : null}
-                </div>
-                    {post.media.length === 0 && !isMediaGenerating ? (
-                      <p className={`${appMuted} mb-4 text-[13px]`}>
-                        No media yet. Generate an image for this post.
-                      </p>
-                    ) : null}
-                    {isMediaGenerating && post.media.length === 0 ? (
-                      <MediaGeneratingSkeleton label="Generating media…" />
-                    ) : post.media.length > 0 ? (
-                      <PostMediaList items={post.media} />
-                    ) : null}
+                <PostMediaPanel
+                  media={post.media}
+                  isEditable={isDraft || isReadyForApproval}
+                  isMediaGenerating={isMediaGenerating}
+                  mediaCreditCost={mediaCreditCost}
+                  isUploading={uploadPostMedia.isPending}
+                  isClearing={clearPostMedia.isPending}
+                  onGenerate={() => void handleGenerateMedia()}
+                  onUploadFiles={handleUploadMedia}
+                  onClearMedia={handleClearMedia}
+                />
                 {(mediaVersions?.length ?? 0) > 1 ? (
                   <div className="mt-5 border-t border-[#f1f3f8] pt-4">
                     <h4 className="mb-3 text-[13px] font-semibold text-[#1e293b]">
@@ -854,7 +858,7 @@ export default function PostDetail({ postId }: PostDetailProps) {
                                   </span>
                                 </div>
                                 <p className="truncate text-[13px] text-[#64748b]">
-                                  {media.altText || "Generated image"}
+                                  {media.altText || "Post image"}
                                 </p>
                               </button>
                               <div className="flex gap-2">

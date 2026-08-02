@@ -27,7 +27,10 @@ Per-slice implementation specs live at the repo root:
 - [SLICE-17-nano-banana-image-generation.md](SLICE-17-nano-banana-image-generation.md) — Done
 - [SLICE-18-stripe-billing.md](SLICE-18-stripe-billing.md) — Done (Lemon Squeezy; filename historical)
 - [SLICE-25-credit-topups.md](SLICE-25-credit-topups.md) — Done
+- [SLICE-26-custom-post-media-upload.md](SLICE-26-custom-post-media-upload.md) — Done
+- [FE-SLICE-22-custom-post-media-upload.md](FE-SLICE-22-custom-post-media-upload.md) — Done
 - [FE-SLICE-21-credit-topups.md](FE-SLICE-21-credit-topups.md) — Done
+- [FE-SLICE-22-custom-post-media-upload.md](FE-SLICE-22-custom-post-media-upload.md) — Done
 - [SLICE-19-agency-client-workspaces.md](SLICE-19-agency-client-workspaces.md) — Done
 - [SLICE-20-approval-share-links.md](SLICE-20-approval-share-links.md) — Done
 - [SLICE-22-topic-suggestions.md](SLICE-22-topic-suggestions.md) — Done
@@ -102,6 +105,7 @@ Update this section as features land. Tell the agent to mark items `[x]` when do
 
 - [x] Lemon Squeezy subscriptions + webhooks — [SLICE-18](SLICE-18-stripe-billing.md)
 - [x] Credit top-ups + billing transactions — [SLICE-25](SLICE-25-credit-topups.md)
+- [x] Custom post media upload (single + carousel) — [SLICE-26](SLICE-26-custom-post-media-upload.md) / [FE-SLICE-22](FE-SLICE-22-custom-post-media-upload.md)
 - [x] Agency client workspaces — [SLICE-19](SLICE-19-agency-client-workspaces.md)
 - [x] Approval share links for clients — [SLICE-20](SLICE-20-approval-share-links.md)
 
@@ -130,6 +134,7 @@ See [FRONTEND_IMPLEMENTATION.md](FRONTEND_IMPLEMENTATION.md) for slice order and
 - [x] Clients / agency (FE-SLICE-17)
 - [x] Billing — API wired (FE-SLICE-16)
 - [x] Credit top-ups + history (FE-SLICE-21)
+- [x] Custom post media upload (FE-SLICE-22)
 - [x] Approval share links (FE-SLICE-18)
 - [x] Notifications topbar + push (FE-SLICE-19)
 - [x] Notifications inbox + polish (FE-SLICE-20)
@@ -281,7 +286,7 @@ Unit that moves through the pipeline.
 | Feature | Difficulty | Notes |
 |---------|------------|-------|
 | User auth (Clerk) | **Done** | |
-| Document/media upload (R2) | **Done** | Extend for post media later |
+| Document/media upload (R2) | **Done** | Profile docs + custom post media uploads |
 | `/auth/me` + account settings | **Easy** | |
 | Notification preferences | **Easy** | |
 | Content Profile CRUD | **Easy** | |

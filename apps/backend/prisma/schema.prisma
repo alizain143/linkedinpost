@@ -122,6 +122,12 @@ enum PostMediaType {
   photo_illustration
   generated
   template
+  uploaded
+}
+
+enum PostMediaUploadStatus {
+  pending
+  ready
 }
 
 enum MediaMode {
@@ -522,20 +528,23 @@ model PostVersion {
 }
 
 model PostMedia {
-  id              String        @id @default(uuid()) @db.Uuid
-  postPackageId   String        @db.Uuid
-  generationJobId String?       @db.Uuid
+  id              String                 @id @default(uuid()) @db.Uuid
+  postPackageId   String                 @db.Uuid
+  generationJobId String?                @db.Uuid
+  mediaBatchId    String?                @db.Uuid
   mediaType       PostMediaType
+  uploadStatus    PostMediaUploadStatus?
+  uploadExpiresAt DateTime?              @db.Timestamptz(6)
   storageKey      String
   storageBucket   String
   mimeType        String
   sizeBytes       Int
   altText         String
-  sortOrder       Int           @default(0)
+  sortOrder       Int                    @default(0)
   metadata        Json?
-  archivedAt      DateTime?     @db.Timestamptz(6)
-  createdAt       DateTime      @default(now()) @db.Timestamptz(6)
-  updatedAt       DateTime      @updatedAt @db.Timestamptz(6)
+  archivedAt      DateTime?              @db.Timestamptz(6)
+  createdAt       DateTime               @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime               @updatedAt @db.Timestamptz(6)
 
   postPackage   PostPackage    @relation(fields: [postPackageId], references: [id], onDelete: Cascade)
   generationJob GenerationJob? @relation(fields: [generationJobId], references: [id], onDelete: SetNull)
@@ -543,6 +552,8 @@ model PostMedia {
   @@index([postPackageId])
   @@index([postPackageId, archivedAt])
   @@index([generationJobId])
+  @@index([mediaBatchId])
+  @@index([uploadStatus, uploadExpiresAt])
   @@map("post_media")
 }
 

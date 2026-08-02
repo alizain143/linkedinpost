@@ -8,6 +8,7 @@ import { QueryState } from "@/components/app/query-state";
 import { Button, filterVariant } from "@/components/ui/button";
 import { InputField } from "@/components/ui/input";
 import { MsIcon } from "@/components/ui/ms-icon";
+import { PostMediaThumbnail } from "@/components/ui/post-media-thumbnail";
 import { useCreatePost, usePosts } from "@/hooks/api/use-posts-api";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { getApiErrorMessage } from "@/lib/api-error-messages";
@@ -224,6 +225,10 @@ export default function PostsList() {
                 href={`/app/posts/${post.id}`}
                 className="flex flex-wrap items-center gap-3 px-5 py-3.5 text-sm transition-colors hover:bg-[#f8f9fc]"
               >
+                <PostMediaThumbnail
+                  media={post.media}
+                  className="h-10 w-10"
+                />
                 <div className="min-w-0 flex-1 font-medium text-[#1e293b]">
                   {post.hook}
                 </div>

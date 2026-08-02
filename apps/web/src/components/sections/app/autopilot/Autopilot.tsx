@@ -11,6 +11,7 @@ import {
 import { Button, toggleVariant } from "@/components/ui/button";
 import { InputField } from "@/components/ui/input";
 import { MsIcon } from "@/components/ui/ms-icon";
+import { PostMediaThumbnail } from "@/components/ui/post-media-thumbnail";
 import { SelectField } from "@/components/ui/select";
 import { useCurrentUser } from "@/hooks/api/use-auth-api";
 import {
@@ -683,9 +684,14 @@ export default function Autopilot() {
                   <Link
                     key={post.id}
                     href={`/app/posts/${post.id}`}
-                    className="flex items-center justify-between rounded-[11px] border border-[#eef0f5] px-4 py-3 hover:border-[#dfe3f0] hover:bg-[#fafbff]"
+                    className="flex items-center justify-between gap-3 rounded-[11px] border border-[#eef0f5] px-4 py-3 hover:border-[#dfe3f0] hover:bg-[#fafbff]"
                   >
-                    <div>
+                    <div className="flex min-w-0 flex-1 items-start gap-3">
+                      <PostMediaThumbnail
+                        media={post.media}
+                        className="mt-0.5 h-10 w-10"
+                      />
+                      <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-[#94a3b8]">
                         <span>
                           {post.scheduledAt
@@ -704,6 +710,7 @@ export default function Autopilot() {
                           {formatAutopilotPublishState(post.publishState)}
                         </div>
                       ) : null}
+                      </div>
                     </div>
                     <StatusBadge status={post.status} />
                   </Link>

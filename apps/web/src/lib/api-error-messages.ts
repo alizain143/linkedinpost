@@ -14,9 +14,16 @@ export function getApiErrorMessage(
       case "UNAUTHORIZED":
         return "Your session expired. Please sign in again.";
       case "FILE_TYPE_NOT_ALLOWED":
-        return "That file type is not allowed for profile photos.";
+        return "That file type is not allowed. Use JPEG or PNG for post images.";
       case "UPLOAD_VERIFICATION_FAILED":
+      case "UPLOAD_VERIFY_FAILED":
         return "Upload could not be verified. Try uploading again.";
+      case "INVALID_UPLOAD_FILE_COUNT":
+      case "INVALID_UPLOAD_SORT_ORDER":
+      case "INVALID_UPLOAD_CONFIRM":
+      case "UPLOAD_SLOTS_INVALID":
+      case "UPLOAD_BATCH_MISMATCH":
+        return error.message || "Could not upload images. Try again.";
       case "PENDING_UPLOAD_LIMIT":
         return "Too many pending uploads. Finish or cancel existing uploads first.";
       case "UPLOAD_EXPIRED":

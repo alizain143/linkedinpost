@@ -8,6 +8,7 @@ import {
   applyPostMediaVersion,
   applyPostVersion,
   approvePost,
+  clearPostMedia,
   createPost,
   deletePost,
   fetchPost,
@@ -36,6 +37,10 @@ import type {
   TransitionPostStatusBody,
   UpdatePostBody,
 } from "@/lib/api/types/post";
+import {
+  uploadPostMediaFiles,
+  type UploadPostMediaFile,
+} from "@/lib/media/upload-post-media";
 
 function stableListFilters(params?: ListPostsParams): ListPostsParams | undefined {
   if (!params) return undefined;
@@ -206,6 +211,58 @@ export function useGeneratePostMediaMutation(
     onSuccess: (job) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.credits });
       void queryClient.setQueryData(queryKeys.jobs.detail(job.id), job);
+    },
+  });
+}
+
+export function useUploadPostMediaMutation(
+  workspaceId: string | null | undefined,
+  postId: string | null | undefined,
+) {
+  const { getToken } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    ApiPostPackage,
+    Error,
+    { files: UploadPostMediaFile[]; replace?: boolean }
+  >({
+    mutationFn: async ({ files, replace }) => {
+      const token = await getToken();
+      if (!token || !workspaceId || !postId) throw new Error("Not authenticated");
+      return uploadPostMediaFiles({
+        token,
+        workspaceId,
+        postId,
+        files,
+        replace,
+      });
+    },
+    onSuccess: () => {
+      if (workspaceId && postId) {
+        invalidatePostQueries(queryClient, workspaceId, postId);
+      }
+    },
+  });
+}
+
+export function useClearPostMediaMutation(
+  workspaceId: string | null | undefined,
+  postId: string | null | undefined,
+) {
+  const { getToken } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation<ApiPostPackage, Error, void>({
+    mutationFn: async () => {
+      const token = await getToken();
+      if (!token || !workspaceId || !postId) throw new Error("Not authenticated");
+      return clearPostMedia(token, workspaceId, postId);
+    },
+    onSuccess: () => {
+      if (workspaceId && postId) {
+        invalidatePostQueries(queryClient, workspaceId, postId);
+      }
     },
   });
 }

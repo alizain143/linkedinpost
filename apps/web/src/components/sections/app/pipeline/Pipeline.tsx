@@ -8,6 +8,7 @@ import { StatusBadge } from "@/components/app/app-ui";
 import { QueryState } from "@/components/app/query-state";
 import { Button, segmentVariant } from "@/components/ui/button";
 import { MsIcon } from "@/components/ui/ms-icon";
+import { PostMediaThumbnail } from "@/components/ui/post-media-thumbnail";
 import {
   useInvalidatePipeline,
   usePipeline,
@@ -163,11 +164,16 @@ function PipelineCard({
       } ${isDragging ? "opacity-40" : "hover:border-[#dfe3f0]"}`}
     >
       <Link href={`/app/posts/${post.id}`} className="block" draggable={false}>
-        <span className="mb-2 inline-flex rounded-full bg-[#f1f3f8] px-2 py-0.5 text-[10px] font-bold text-[#64748b]">
-          {getPostSourceLabel(post.source)}
-        </span>
-        <div className="text-[13px] font-semibold leading-snug text-[#1e293b]">
-          {post.hook}
+        <div className="mb-2 flex items-start gap-2">
+          <PostMediaThumbnail media={post.media} className="h-9 w-9" />
+          <div className="min-w-0 flex-1">
+            <span className="mb-2 inline-flex rounded-full bg-[#f1f3f8] px-2 py-0.5 text-[10px] font-bold text-[#64748b]">
+              {getPostSourceLabel(post.source)}
+            </span>
+            <div className="text-[13px] font-semibold leading-snug text-[#1e293b]">
+              {post.hook}
+            </div>
+          </div>
         </div>
         <div className="mt-2 flex flex-wrap gap-2 text-[10.5px] text-[#94a3b8]">
           {formatPipelineCardSubtitle(post)}
@@ -321,6 +327,7 @@ function PipelineList({
             key={post.id}
             className="flex flex-wrap items-center gap-3 px-5 py-3.5 text-sm transition-colors hover:bg-[#f8f9fc]"
           >
+            <PostMediaThumbnail media={post.media} className="h-9 w-9" />
             <Link
               href={`/app/posts/${post.id}`}
               className="min-w-0 flex-1 font-medium text-[#1e293b] hover:text-[#4f46e5]"

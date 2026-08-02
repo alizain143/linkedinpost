@@ -25,6 +25,7 @@ describe('PostsService', () => {
   };
   const mediaService = {
     listForPost: jest.fn().mockResolvedValue([]),
+    listForPosts: jest.fn().mockResolvedValue(new Map()),
   };
   const reviseDraftJobService = {
     tryAutoApplyChanges: jest.fn().mockResolvedValue(null),
@@ -34,6 +35,7 @@ describe('PostsService', () => {
     jest.clearAllMocks();
     workspacesService.assertMember.mockResolvedValue(buildPost());
     mediaService.listForPost.mockResolvedValue([]);
+    mediaService.listForPosts.mockResolvedValue(new Map());
     reviseDraftJobService.tryAutoApplyChanges.mockResolvedValue(null);
 
     const module: TestingModule = await Test.createTestingModule({

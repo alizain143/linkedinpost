@@ -243,7 +243,13 @@ export class PostsService {
       skip: offset,
     });
 
-    return posts.map((post) => toPostPackageResponse(post));
+    const mediaByPost = await this.mediaService.listForPosts(
+      posts.map((post) => post.id),
+    );
+
+    return posts.map((post) =>
+      toPostPackageResponse(post, undefined, mediaByPost.get(post.id) ?? []),
+    );
   }
 
   async getOne(workspaceId: string, id: string, userId: string) {
@@ -427,6 +433,75 @@ export class PostsService {
     return this.mediaService.listVersionsForPost(id);
   }
 
+  async initMediaUpload(
+    workspaceId: string,
+    id: string,
+    userId: string,
+    dto: import('./dto/post-media-upload.dto').InitPostMediaUploadDto,
+  ) {
+    await this.workspacesService.assertMember(userId, workspaceId);
+    const post = await this.findPostInWorkspace(workspaceId, id);
+    this.assertContentEditable(post);
+    return this.mediaService.initUploadedMedia({
+      workspaceId,
+      postPackageId: id,
+      files: dto.files,
+    });
+  }
+
+  async putMediaUpload(
+    workspaceId: string,
+    id: string,
+    userId: string,
+    mediaId: string,
+    file: { buffer: Buffer; mimetype: string },
+  ) {
+    await this.workspacesService.assertMember(userId, workspaceId);
+    const post = await this.findPostInWorkspace(workspaceId, id);
+    this.assertContentEditable(post);
+    await this.mediaService.putPendingUploadBytes({
+      postPackageId: id,
+      postMediaId: mediaId,
+      buffer: file.buffer,
+      mimeType: file.mimetype,
+    });
+    return { uploaded: true };
+  }
+
+  async confirmMediaUpload(
+    workspaceId: string,
+    id: string,
+    userId: string,
+    dto: import('./dto/post-media-upload.dto').ConfirmPostMediaUploadDto,
+  ) {
+    await this.workspacesService.assertMember(userId, workspaceId);
+    const post = await this.findPostInWorkspace(workspaceId, id);
+    this.assertContentEditable(post);
+    const media = await this.mediaService.confirmUploadedMedia({
+      workspaceId,
+      postPackageId: id,
+      postMediaIds: dto.postMediaIds,
+      replace: dto.replace,
+    });
+    const withCount = await this.prisma.postPackage.findUniqueOrThrow({
+      where: { id },
+      include: { _count: { select: { versions: true } } },
+    });
+    return toPostPackageResponse(withCount, undefined, media);
+  }
+
+  async clearMedia(workspaceId: string, id: string, userId: string) {
+    await this.workspacesService.assertMember(userId, workspaceId);
+    const post = await this.findPostInWorkspace(workspaceId, id);
+    this.assertContentEditable(post);
+    await this.mediaService.clearActiveMedia(id);
+    const withCount = await this.prisma.postPackage.findUniqueOrThrow({
+      where: { id },
+      include: { _count: { select: { versions: true } } },
+    });
+    return toPostPackageResponse(withCount, undefined, []);
+  }
+
   async applyMediaVersion(
     workspaceId: string,
     id: string,
@@ -436,8 +511,7 @@ export class PostsService {
     await this.workspacesService.assertMember(userId, workspaceId);
     const post = await this.findPostInWorkspace(workspaceId, id);
     this.assertContentEditable(post);
-    await this.mediaService.applyMediaVersion(id, mediaId);
-    const media = await this.mediaService.listForPost(id);
+    const media = await this.mediaService.applyMediaVersion(id, mediaId);
     const withCount = await this.prisma.postPackage.findUniqueOrThrow({
       where: { id },
       include: { _count: { select: { versions: true } } },
@@ -567,11 +641,18 @@ export class PostsService {
       statusCounts.map((row) => [row.status, row._count._all]),
     );
 
+    const allPosts = columnPosts.flat();
+    const mediaByPost = await this.mediaService.listForPosts(
+      allPosts.map((post) => post.id),
+    );
+
     const columns = PIPELINE_COLUMN_ORDER.map((status, index) => ({
       status,
       label: PIPELINE_LABELS[status],
       count: countByStatus.get(status) ?? 0,
-      posts: columnPosts[index].map(toPostPackageSummary),
+      posts: columnPosts[index].map((post) =>
+        toPostPackageSummary(post, mediaByPost.get(post.id) ?? []),
+      ),
     }));
 
     return { columns };

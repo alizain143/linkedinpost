@@ -84,14 +84,19 @@ const client = new S3Client({
 });
 
 for (const bucket of buckets) {
-  await client.send(
-    new PutBucketCorsCommand({
-      Bucket: bucket,
-      CORSConfiguration: { CORSRules: corsRules },
-    }),
-  );
-  console.log(`CORS configured for bucket: ${bucket}`);
-  console.log(`  AllowedOrigins: ${allowedOrigins.join(', ')}`);
+  try {
+    await client.send(
+      new PutBucketCorsCommand({
+        Bucket: bucket,
+        CORSConfiguration: { CORSRules: corsRules },
+      }),
+    );
+    console.log(`CORS configured for bucket: ${bucket}`);
+    console.log(`  AllowedOrigins: ${allowedOrigins.join(', ')}`);
+  } catch (error) {
+    console.error(`Failed to configure CORS for bucket: ${bucket}`);
+    console.error(error instanceof Error ? error.message : error);
+  }
 }
 
 console.log('Done. Retry the image upload in the app.');

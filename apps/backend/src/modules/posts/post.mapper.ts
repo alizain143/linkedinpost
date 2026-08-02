@@ -58,6 +58,7 @@ export interface PostPackageSummary {
   score: number | null;
   scheduledAt: Date | null;
   updatedAt: Date;
+  media: PostMediaResponse[];
 }
 
 type PostPackageWithVersionCount = PostPackage & {
@@ -123,7 +124,10 @@ export function toPostPackageResponse(
   };
 }
 
-export function toPostPackageSummary(post: PostPackage): PostPackageSummary {
+export function toPostPackageSummary(
+  post: PostPackage,
+  media: PostMediaResponse[] = [],
+): PostPackageSummary {
   return {
     id: post.id,
     hook: post.hook,
@@ -134,6 +138,7 @@ export function toPostPackageSummary(post: PostPackage): PostPackageSummary {
     score: post.score,
     scheduledAt: post.scheduledAt,
     updatedAt: post.updatedAt,
+    media,
   };
 }
 

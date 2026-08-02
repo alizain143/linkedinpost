@@ -178,6 +178,67 @@ export async function generatePostMedia(
   );
 }
 
+export type InitPostMediaUploadFile = {
+  filename: string;
+  mimeType: "image/jpeg" | "image/png";
+  sizeBytes: number;
+  altText?: string;
+  sortOrder: number;
+};
+
+export type InitPostMediaUploadResult = {
+  mediaBatchId: string;
+  uploads: Array<{
+    postMediaId: string;
+    uploadUrl: string;
+    sortOrder: number;
+  }>;
+};
+
+export async function initPostMediaUpload(
+  token: string,
+  workspaceId: string,
+  postId: string,
+  files: InitPostMediaUploadFile[],
+): Promise<InitPostMediaUploadResult> {
+  return apiFetch<InitPostMediaUploadResult>(
+    token,
+    postsPath(workspaceId, postId, "media/uploads/init"),
+    {
+      method: "POST",
+      body: JSON.stringify({ files }),
+    },
+  );
+}
+
+export async function confirmPostMediaUpload(
+  token: string,
+  workspaceId: string,
+  postId: string,
+  body: { postMediaIds: string[]; replace?: boolean },
+): Promise<ApiPostPackage> {
+  return apiFetch<ApiPostPackage>(
+    token,
+    postsPath(workspaceId, postId, "media/uploads/confirm"),
+    {
+      method: "POST",
+      body: JSON.stringify(body),
+    },
+  );
+}
+
+export async function clearPostMedia(
+  token: string,
+  workspaceId: string,
+  postId: string,
+): Promise<ApiPostPackage> {
+  return apiFetch<ApiPostPackage>(
+    token,
+    postsPath(workspaceId, postId, "media"),
+    { method: "DELETE" },
+  );
+}
+
 export async function applyPostChanges(
   token: string,
   workspaceId: string,

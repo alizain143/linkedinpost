@@ -14,6 +14,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { DEFAULT_TIMEZONE } from '../calendar/calendar-date.util';
 import { CreditsService } from '../credits/credits.service';
 import { LinkedInConnectionService } from '../linkedin/linkedin.services';
+import { MediaService } from '../media/media.service';
 import { toPostPackageResponse } from '../posts/post.mapper';
 import { WorkspacesService } from '../workspaces/workspaces.service';
 import {
@@ -47,6 +48,7 @@ export class AutopilotService {
     private readonly workspacesService: WorkspacesService,
     private readonly creditsService: CreditsService,
     private readonly linkedInConnectionService: LinkedInConnectionService,
+    private readonly mediaService: MediaService,
   ) {}
 
   async getConfig(workspaceId: string, userId: string) {
@@ -177,8 +179,12 @@ export class AutopilotService {
       take: 10,
     });
 
+    const mediaByPost = await this.mediaService.listForPosts(
+      posts.map((post) => post.id),
+    );
+
     return posts.map((post) => ({
-      ...toPostPackageResponse(post),
+      ...toPostPackageResponse(post, undefined, mediaByPost.get(post.id) ?? []),
       publishState: toAutopilotPublishState(post.status),
     }));
   }

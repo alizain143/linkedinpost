@@ -7,6 +7,7 @@ import { QueryState } from "@/components/app/query-state";
 import { RequestChangesModal } from "@/components/modals/request-changes-modal";
 import { Button, filterVariant } from "@/components/ui/button";
 import { MsIcon } from "@/components/ui/ms-icon";
+import { PostMediaThumbnail } from "@/components/ui/post-media-thumbnail";
 import { useApprovals } from "@/hooks/api/use-approvals-api";
 import {
   useApplyPostChangesMutation,
@@ -231,7 +232,12 @@ export default function Approvals() {
                 className="rounded-2xl border border-[#eceef4] bg-white p-5"
               >
                 <div className="mb-3 flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
+                  <div className="flex min-w-0 flex-1 gap-3">
+                    <PostMediaThumbnail
+                      media={item.media}
+                      className="mt-0.5 h-12 w-12"
+                    />
+                    <div className="min-w-0 flex-1">
                     <div className="mb-1.5 flex flex-wrap items-center gap-2">
                       <StatusBadge status={item.status} />
                     </div>
@@ -241,6 +247,7 @@ export default function Approvals() {
                     <p className="mt-1.5 line-clamp-2 text-[13px] leading-relaxed text-[#64748b]">
                       {getApprovalPreviewLine(item, activeTab)}
                     </p>
+                    </div>
                   </div>
                   {item.score != null ? (
                     <span

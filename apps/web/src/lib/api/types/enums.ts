@@ -48,7 +48,8 @@ export type PostMediaType =
   | "infographic"
   | "photo_illustration"
   | "generated"
-  | "template";
+  | "template"
+  | "uploaded";
 
 export type MediaMode = "freestyle" | "template";
 

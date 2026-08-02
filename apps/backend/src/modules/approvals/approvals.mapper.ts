@@ -4,6 +4,7 @@ import {
   PostSource,
   PostType,
 } from '@prisma/client';
+import { PostMediaResponse } from '../media/media.types';
 
 export interface ApprovalQueueItem {
   id: string;
@@ -18,6 +19,7 @@ export interface ApprovalQueueItem {
   updatedAt: Date;
   workspaceId: string;
   workspaceName: string;
+  media: PostMediaResponse[];
 }
 
 type PostWithWorkspace = PostPackage & {
@@ -26,6 +28,7 @@ type PostWithWorkspace = PostPackage & {
 
 export function toApprovalQueueItem(
   post: PostWithWorkspace,
+  media: PostMediaResponse[] = [],
 ): ApprovalQueueItem {
   return {
     id: post.id,
@@ -40,5 +43,6 @@ export function toApprovalQueueItem(
     updatedAt: post.updatedAt,
     workspaceId: post.workspace.id,
     workspaceName: post.workspace.name,
+    media,
   };
 }
