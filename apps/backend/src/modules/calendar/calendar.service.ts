@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { PostPackageStatus } from '@prisma/client';
 import { NOT_DELETED } from '../../common/constants/soft-delete.constants';
 import { PrismaService } from '../../prisma/prisma.service';
+import { MediaService } from '../media/media.service';
 import { WorkspacesService } from '../workspaces/workspaces.service';
 import {
   DEFAULT_TIMEZONE,
@@ -37,6 +38,7 @@ export class CalendarService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly workspacesService: WorkspacesService,
+    private readonly mediaService: MediaService,
   ) {}
 
   async getCalendar(
@@ -115,7 +117,7 @@ export class CalendarService {
       rangeEnd,
       statuses,
     );
-    const grouped = this.groupPostsByLocalDate(posts, timezone);
+    const grouped = await this.groupPostsByLocalDate(posts, timezone);
 
     return {
       view: CalendarView.month,
@@ -147,7 +149,7 @@ export class CalendarService {
       rangeEnd,
       statuses,
     );
-    const grouped = this.groupPostsByLocalDate(posts, timezone);
+    const grouped = await this.groupPostsByLocalDate(posts, timezone);
 
     return {
       view: CalendarView.week,
@@ -184,15 +186,20 @@ export class CalendarService {
           instant && instant >= rangeStart && instant <= rangeEnd,
       )
       .sort((a, b) => a.instant!.getTime() - b.instant!.getTime())
-      .slice(0, limit)
-      .map(({ post }) => toCalendarEvent(post));
+      .slice(0, limit);
+
+    const mediaByPost = await this.mediaService.listForPosts(
+      items.map(({ post }) => post.id),
+    );
 
     return {
       view: CalendarView.list,
       timezone,
       rangeStart,
       rangeEnd,
-      items,
+      items: items.map(({ post }) =>
+        toCalendarEvent(post, mediaByPost.get(post.id) ?? []),
+      ),
     };
   }
 
@@ -266,7 +273,7 @@ export class CalendarService {
     return post.scheduledAt;
   }
 
-  private groupPostsByLocalDate(
+  private async groupPostsByLocalDate(
     posts: Array<{
       id: string;
       hook: string;
@@ -278,6 +285,9 @@ export class CalendarService {
     }>,
     timezone: string,
   ) {
+    const mediaByPost = await this.mediaService.listForPosts(
+      posts.map((post) => post.id),
+    );
     const grouped = new Map<string, ReturnType<typeof toCalendarEvent>[]>();
 
     for (const post of posts) {
@@ -288,7 +298,7 @@ export class CalendarService {
 
       const dateKey = toLocalDateKey(instant, timezone);
       const events = grouped.get(dateKey) ?? [];
-      events.push(toCalendarEvent(post));
+      events.push(toCalendarEvent(post, mediaByPost.get(post.id) ?? []));
       grouped.set(dateKey, events);
     }
 

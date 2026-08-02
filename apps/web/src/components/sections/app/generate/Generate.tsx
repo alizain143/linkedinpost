@@ -26,6 +26,12 @@ import {
 } from "@/hooks/api/use-posts-api";
 import { useMediaTemplates } from "@/hooks/api/use-media-templates-api";
 import { updatePost } from "@/lib/api/posts";
+import { uploadPostMediaFiles } from "@/lib/media/upload-post-media";
+import {
+  getPostMediaAccept,
+  POST_MEDIA_MAX_FILES,
+  validatePostMediaFiles,
+} from "@/lib/media/post-media-upload";
 import { CreditConfirmModal } from "@/components/modals/credit-confirm-modal";
 import {
   GenerateMediaModal,
@@ -159,6 +165,11 @@ export default function Generate() {
   const applyPostChanges = useApplyPostChangesMutation(activeWorkspaceId);
   const createPost = useCreatePost(activeWorkspaceId);
   const deletePost = useDeletePost(activeWorkspaceId);
+  const uploadFileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadTarget, setUploadTarget] = useState<
+    { kind: "variant"; index: number } | { kind: "council" } | null
+  >(null);
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
 
   const [mode, setMode] = useState<GenModeId>("quick");
   const [activeCouncilJobId, setActiveCouncilJobId] = useState<string | null>(
@@ -1562,6 +1573,64 @@ export default function Generate() {
     });
   };
 
+  const openMediaUploadPicker = (
+    target: { kind: "variant"; index: number } | { kind: "council" },
+  ) => {
+    setUploadTarget(target);
+    uploadFileInputRef.current?.click();
+  };
+
+  const handleMediaUploadSelected = async (fileList: FileList | null) => {
+    if (!fileList || fileList.length === 0 || !uploadTarget) return;
+    const files = Array.from(fileList).slice(0, POST_MEDIA_MAX_FILES);
+    const validationError = validatePostMediaFiles(files);
+    if (validationError) {
+      showToast(validationError, "error");
+      setUploadTarget(null);
+      return;
+    }
+
+    setIsUploadingMedia(true);
+    try {
+      const token = await getToken();
+      if (!token || !activeWorkspaceId) throw new Error("Not authenticated");
+
+      if (uploadTarget.kind === "variant") {
+        const postId = await ensureSavedPost(uploadTarget.index);
+        const updated = await uploadPostMediaFiles({
+          token,
+          workspaceId: activeWorkspaceId,
+          postId,
+          files: files.map((file) => ({ file })),
+          replace: true,
+        });
+        const firstUrl = updated.media[0]?.url;
+        if (firstUrl) {
+          setVariantMediaUrls((current) => ({
+            ...current,
+            [uploadTarget.index]: firstUrl,
+          }));
+        }
+        showToast("Images uploaded", "image");
+      } else if (councilPostId) {
+        await uploadPostMediaFiles({
+          token,
+          workspaceId: activeWorkspaceId,
+          postId: councilPostId,
+          files: files.map((file) => ({ file })),
+          replace: true,
+        });
+        showToast("Images uploaded", "image");
+        void councilPostQuery.refetch();
+      }
+    } catch (err) {
+      showToast(getApiErrorMessage(err), "error");
+    } finally {
+      setIsUploadingMedia(false);
+      setUploadTarget(null);
+    }
+  };
+
   const confirmGenerateMediaModal = () => {
     if (!generateMediaModal) return;
     const { kind, variantIndex, values } = generateMediaModal;
@@ -1950,6 +2019,17 @@ export default function Generate() {
 
   return (
     <div className={compareMode ? "block" : "pp-gen"}>
+      <input
+        ref={uploadFileInputRef}
+        type="file"
+        accept={getPostMediaAccept()}
+        multiple
+        className="hidden"
+        onChange={(event) => {
+          void handleMediaUploadSelected(event.target.files);
+          event.target.value = "";
+        }}
+      />
       {!compareMode ? (
         <div className="sticky top-[90px] rounded-[18px] border border-[#eceef4] bg-white p-[22px]">
           <div className="mb-[18px] flex items-center gap-2.5">
@@ -2116,6 +2196,18 @@ export default function Generate() {
                       >
                         <MsIcon name="refresh" size={16} />
                         Regenerate text (1 cr)
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        disabled={cardActionsDisabled || isUploadingMedia}
+                        onClick={() => openMediaUploadPicker({ kind: "council" })}
+                      >
+                        <MsIcon name="upload" size={16} />
+                        {isUploadingMedia && uploadTarget?.kind === "council"
+                          ? "Uploading…"
+                          : "Upload images"}
                       </Button>
                       <Button
                         type="button"
@@ -2669,6 +2761,31 @@ export default function Generate() {
                         <MsIcon name="rate_review" size={16} style={{ color: "#0891b2" }} />
                         {isSendingToReview ? "Sending…" : "Send to Review"}
                       </Button>
+                      <span
+                        className="inline-flex"
+                        title={generateMediaDisabledReason ?? undefined}
+                      >
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          disabled={
+                            generateMediaDisabled || isUploadingMedia
+                          }
+                          onClick={() =>
+                            openMediaUploadPicker({ kind: "variant", index: i })
+                          }
+                        >
+                          <MsIcon name="upload" size={16} style={{ color: "#0f766e" }} />
+                          {isUploadingMedia &&
+                          uploadTarget?.kind === "variant" &&
+                          uploadTarget.index === i
+                            ? "Uploading…"
+                            : mediaPreviewUrl
+                              ? "Replace with upload"
+                              : "Upload images"}
+                        </Button>
+                      </span>
                       <span
                         className="inline-flex"
                         title={generateMediaDisabledReason ?? undefined}

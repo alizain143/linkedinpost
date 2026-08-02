@@ -5,6 +5,7 @@ import { BillingModule } from '../billing/billing.module';
 import { CouncilModule } from '../council/council.module';
 import { CreditsModule } from '../credits/credits.module';
 import { LinkedInModule } from '../linkedin/linkedin.module';
+import { MediaModule } from '../media/media.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { WorkspacesModule } from '../workspaces/workspaces.module';
 import { AutopilotController } from './autopilot.controller';
@@ -22,6 +23,7 @@ import { AutopilotTickService } from './autopilot-tick.service';
     CreditsModule,
     CouncilModule,
     LinkedInModule,
+    MediaModule,
     NotificationsModule,
   ],
   controllers: [AutopilotController],

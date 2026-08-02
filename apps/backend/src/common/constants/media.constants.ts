@@ -10,9 +10,21 @@ export const MEDIA_TEMPLATE_CREDIT_COST = 1;
 export const MEDIA_CAROUSEL_CREDIT_PER_SLIDE = 2;
 export const CAROUSEL_MIN_SLIDES = 3;
 export const CAROUSEL_MAX_SLIDES = 10;
+/** User uploads: 1 = single; 2–10 = carousel (LinkedIn multiImage allows 2+). */
+export const UPLOADED_MEDIA_MIN_FILES = 1;
+export const UPLOADED_MEDIA_MAX_FILES = CAROUSEL_MAX_SLIDES;
+export const POST_MEDIA_UPLOAD_TTL_SECONDS = 15 * 60;
+export const POST_MEDIA_PENDING_MAX_AGE_MS = 2 * 60 * 60 * 1000;
 /** Default slide estimate when AI decides carousel length (credit pre-auth). */
 export const CAROUSEL_DEFAULT_SLIDE_ESTIMATE = 7;
 /** Max length for user image direction prompts (generate-media, council, post patch). */
 export const MEDIA_CUSTOM_PROMPT_MAX_LENGTH = 5000;
 /** @deprecated Use MEDIA_GENERATION_CREDIT_COST */
 export const MEDIA_REGEN_CREDIT_COST = MEDIA_GENERATION_CREDIT_COST;
+
+export function extensionForPostMediaMime(mimeType: string): string {
+  if (mimeType === 'image/jpeg') {
+    return 'jpg';
+  }
+  return 'png';
+}

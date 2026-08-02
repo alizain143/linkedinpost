@@ -57,7 +57,7 @@ AI LinkedIn content engine: generate posts → AI Council pipeline → human app
 | council | Multi-agent orchestration + timeline |
 | calendar-generation | Bulk 7/30-day calendar jobs |
 | autopilot | Cron config + dispatch to council |
-| media | Unbound AI image generation + R2 attach |
+| media | AI/template images + user-uploaded post media (R2) |
 | dashboard | Aggregated stats |
 | notifications | In-app feed, Resend email, FCM web push |
 
@@ -210,7 +210,7 @@ Council agent pipeline: writer → reviewer → editor → media_creator → med
 | Pipeline | `GET .../pipeline` |
 | Calendar | `GET .../calendar` |
 | Approvals | `GET .../approvals` |
-| Generate | `POST .../generate/quick`, `suggest-topics`, `council`, `calendar`; `POST .../posts/:id/generate-media` |
+| Generate | `POST .../generate/quick`, `suggest-topics`, `council`, `calendar`; `POST .../posts/:id/generate-media`; `POST .../posts/:id/media/uploads/init|confirm`; `DELETE .../posts/:id/media` |
 | Jobs | `GET /v1/jobs/:id` |
 | Council | `GET .../posts/:postId/council` |
 | Credits | `GET /v1/credits` |
@@ -239,7 +239,7 @@ Council agent pipeline: writer → reviewer → editor → media_creator → med
 |---------|-------|
 | Clerk | App auth (email, Google); optional single LinkedIn sign-in — not used for per-workspace publish |
 | Lemon Squeezy | Subscriptions; plan synced to `User.plan` |
-| R2 | Profile images, post media (AI feed images) |
+| R2 | Profile images, post media (AI + user uploads) |
 | OpenAI | Text generation (GPT-5.4 default) |
 | Google Gemini | Feed images (Nano Banana 2) |
 | Resend | Transactional notification email + public contact form |

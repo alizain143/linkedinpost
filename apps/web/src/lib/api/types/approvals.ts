@@ -3,6 +3,7 @@ import type {
   PostSource,
   PostType,
 } from "@/lib/api/types/enums";
+import type { ApiPostMedia } from "@/lib/api/types/post";
 
 export type ApprovalTab = "mine" | "client" | "changes" | "approved";
 
@@ -19,6 +20,7 @@ export type ApiApprovalQueueItem = {
   updatedAt: string;
   workspaceId: string;
   workspaceName: string;
+  media: ApiPostMedia[];
 };
 
 export type ApiApprovalTabCounts = {

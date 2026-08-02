@@ -64,6 +64,9 @@ export class PostMediaResponseDto {
 
   @ApiProperty({ description: 'Whether this media is the active post image' })
   isActive!: boolean;
+
+  @ApiProperty({ format: 'uuid', nullable: true })
+  mediaBatchId!: string | null;
 }
 
 export class PostPackageResponseDto {

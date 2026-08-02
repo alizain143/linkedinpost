@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { WorkspaceType } from '@prisma/client';
 import { NOT_DELETED } from '../../common/constants/soft-delete.constants';
 import { PrismaService } from '../../prisma/prisma.service';
+import { MediaService } from '../media/media.service';
 import { WorkspacesService } from '../workspaces/workspaces.service';
 import {
   ApprovalTab,
@@ -17,6 +18,7 @@ export class ApprovalsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly workspacesService: WorkspacesService,
+    private readonly mediaService: MediaService,
   ) {}
 
   async getApprovals(
@@ -49,10 +51,16 @@ export class ApprovalsService {
       skip: offset,
     });
 
+    const mediaByPost = await this.mediaService.listForPosts(
+      posts.map((post) => post.id),
+    );
+
     return {
       tab,
       counts,
-      items: posts.map(toApprovalQueueItem),
+      items: posts.map((post) =>
+        toApprovalQueueItem(post, mediaByPost.get(post.id) ?? []),
+      ),
     };
   }
 

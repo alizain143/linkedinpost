@@ -1,0 +1,13 @@
+export const ANTI_SLOP_PLAYBOOKS_BLOCK = `Hard bans (anti-slop / AI LinkedIn tells):
+- No em dashes or en dashes. Use commas, periods, colons, parentheses, or plain hyphens in ranges (3-5).
+- No essay openers: "In today's…", "Let's talk about…", "Here's the thing…", "It is important to note…"
+- No fake-smart filler: delve, landscape, game-changer, leverage, synergy, unlock, elevate, supercharge, "it's not X, it's Y" as a default move
+- No "The fix is not X. The fix is Y" closers
+- No default "N mistakes / N signs / N reasons" listicles unless postType is list_post
+- No parallel framework sections that all end with the same tidy takeaway
+- No vague abstractions without an immediate concrete referent from the topic
+- No engagement bait CTAs ("Comment YES", "Agree?", "Thoughts?")
+- No hard-sell CTAs ("Buy now", "DM me for the link")
+- No emojis unless writing_sample uses them. No markdown.
+- No blind clickbait hooks (intrigue with no targeted benefit)
+- Prefer cutting a soft summary over padding the body`;

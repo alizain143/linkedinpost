@@ -3,6 +3,7 @@ import type {
   PostSource,
   PostType,
 } from "@/lib/api/types/enums";
+import type { ApiPostMedia } from "@/lib/api/types/post";
 
 export type ApiPostPackageSummary = {
   id: string;
@@ -14,6 +15,7 @@ export type ApiPostPackageSummary = {
   score: number | null;
   scheduledAt: string | null;
   updatedAt: string;
+  media: ApiPostMedia[];
 };
 
 export type ApiPipelineColumn = {

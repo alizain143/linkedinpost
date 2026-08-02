@@ -8,6 +8,7 @@ import { QueryState } from "@/components/app/query-state";
 import { CalendarEventChip } from "@/components/sections/app/calendar/CalendarEventChip";
 import { Button, filterVariant, segmentVariant } from "@/components/ui/button";
 import { MsIcon } from "@/components/ui/ms-icon";
+import { PostMediaThumbnail } from "@/components/ui/post-media-thumbnail";
 import { useCurrentUser } from "@/hooks/api/use-auth-api";
 import { useCalendar } from "@/hooks/api/use-calendar-api";
 import { useWorkspace } from "@/hooks/use-workspace";
@@ -562,6 +563,10 @@ export default function Calendar() {
                           {dateParts.day}
                         </span>
                       </div>
+                      <PostMediaThumbnail
+                        media={item.media}
+                        className="h-11 w-11"
+                      />
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-sm font-semibold text-[#1e293b]">
                           {item.hook}

@@ -11,12 +11,14 @@ export interface PostMediaResponse {
   sizeBytes: number;
   createdAt: Date;
   isActive: boolean;
+  mediaBatchId: string | null;
 }
 
 export interface AttachCouncilMediaInput {
   workspaceId: string;
   postPackageId: string;
   generationJobId: string;
+  mediaBatchId?: string;
   mediaType: PostMediaType;
   altText: string;
   imageBuffer: Buffer;
@@ -35,7 +37,35 @@ export interface AttachCarouselMediaInput {
   workspaceId: string;
   postPackageId: string;
   generationJobId: string;
+  mediaBatchId?: string;
   slides: AttachCarouselSlideInput[];
+}
+
+export interface InitUploadedMediaFileInput {
+  filename: string;
+  mimeType: string;
+  sizeBytes: number;
+  altText?: string;
+  sortOrder: number;
+}
+
+export interface InitUploadedMediaInput {
+  workspaceId: string;
+  postPackageId: string;
+  files: InitUploadedMediaFileInput[];
+}
+
+export interface InitUploadedMediaSlot {
+  postMediaId: string;
+  uploadUrl: string;
+  sortOrder: number;
+}
+
+export interface ConfirmUploadedMediaInput {
+  workspaceId: string;
+  postPackageId: string;
+  postMediaIds: string[];
+  replace?: boolean;
 }
 
 export function toPostMediaResponse(
@@ -53,5 +83,6 @@ export function toPostMediaResponse(
     sizeBytes: media.sizeBytes,
     createdAt: media.createdAt,
     isActive: media.archivedAt == null,
+    mediaBatchId: media.mediaBatchId,
   };
 }

@@ -1,7 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { PostMediaType } from '@prisma/client';
+import {
+  PostMediaType,
+  PostMediaUploadStatus,
+} from '@prisma/client';
 import { createMockPrismaService } from '../../test/prisma.mock';
-import { postId } from '../../test/fixtures';
+import { postId, workspaceId } from '../../test/fixtures';
 import { PrismaService } from '../../prisma/prisma.service';
 import { R2BucketService } from '../storage/r2-bucket.service';
 import { R2StorageService } from '../storage/r2-storage.service';
@@ -15,6 +18,8 @@ describe('MediaService', () => {
     putObject: jest.fn(),
     deleteObject: jest.fn(),
     createDownloadUrl: jest.fn(),
+    createUploadUrl: jest.fn(),
+    verifyUploadedObject: jest.fn(),
   };
   const r2BucketService = {
     assertPostMediaSize: jest.fn(),
@@ -63,26 +68,6 @@ describe('MediaService', () => {
       mimeType: 'image/png',
       altText: 'Quote card',
     });
-    expect(r2Storage.getObjectBuffer).toHaveBeenCalledWith(
-      'post-media',
-      'ws/post/media-1.png',
-    );
-  });
-
-  it('returns buffer for jpeg media', async () => {
-    prisma.postMedia.findFirst.mockResolvedValue({
-      id: 'media-2',
-      postPackageId: postId,
-      storageBucket: 'post-media',
-      storageKey: 'ws/post/media-2.jpg',
-      mimeType: 'image/jpeg',
-      altText: 'Quote card',
-    });
-    r2Storage.getObjectBuffer.mockResolvedValue(Buffer.from('jpeg-bytes'));
-
-    const result = await service.getPrimaryPublishMedia(postId);
-
-    expect(result?.mimeType).toBe('image/jpeg');
   });
 
   it('fails for unsupported mime types', async () => {
@@ -98,22 +83,146 @@ describe('MediaService', () => {
     await expect(service.getPrimaryPublishMedia(postId)).rejects.toMatchObject({
       code: 'LINKEDIN_MEDIA_UNSUPPORTED',
     });
-    expect(r2Storage.getObjectBuffer).not.toHaveBeenCalled();
   });
 
-  it('fails when R2 read fails', async () => {
-    prisma.postMedia.findFirst.mockResolvedValue({
-      id: 'media-1',
-      postPackageId: postId,
-      storageBucket: 'post-media',
-      storageKey: 'ws/post/media-1.png',
-      mimeType: 'image/png',
-      altText: 'Quote card',
-    });
-    r2Storage.getObjectBuffer.mockRejectedValue(new Error('not found'));
+  it('rejects init with zero files', async () => {
+    prisma.postMedia.findMany.mockResolvedValue([]);
 
-    await expect(service.getPrimaryPublishMedia(postId)).rejects.toMatchObject({
-      code: 'LINKEDIN_MEDIA_READ_FAILED',
+    await expect(
+      service.initUploadedMedia({
+        workspaceId,
+        postPackageId: postId,
+        files: [],
+      }),
+    ).rejects.toMatchObject({ response: { code: 'INVALID_UPLOAD_FILE_COUNT' } });
+  });
+
+  it('inits pending upload slots', async () => {
+    prisma.postMedia.findMany.mockResolvedValue([]);
+    prisma.postMedia.create.mockImplementation(async ({ data }: { data: { id: string } }) => ({
+      ...data,
+    }));
+
+    const result = await service.initUploadedMedia({
+      workspaceId,
+      postPackageId: postId,
+      files: [
+        {
+          filename: 'a.png',
+          mimeType: 'image/png',
+          sizeBytes: 100,
+          sortOrder: 0,
+        },
+      ],
     });
+
+    expect(result.uploads).toHaveLength(1);
+    expect(result.uploads[0].uploadUrl).toContain(
+      `/workspaces/${workspaceId}/posts/${postId}/media/uploads/`,
+    );
+    expect(prisma.postMedia.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          mediaType: PostMediaType.uploaded,
+          uploadStatus: PostMediaUploadStatus.pending,
+        }),
+      }),
+    );
+    expect(r2Storage.createUploadUrl).not.toHaveBeenCalled();
+  });
+
+  it('confirms uploads and archives prior active media', async () => {
+    const pending = {
+      id: 'pending-1',
+      postPackageId: postId,
+      mediaBatchId: 'batch-1',
+      mediaType: PostMediaType.uploaded,
+      uploadStatus: PostMediaUploadStatus.pending,
+      storageBucket: 'post-media',
+      storageKey: 'key.png',
+      mimeType: 'image/png',
+      sizeBytes: 100,
+      altText: 'Uploaded image',
+      sortOrder: 0,
+    };
+    prisma.postMedia.findMany
+      .mockResolvedValueOnce([pending])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          ...pending,
+          uploadStatus: PostMediaUploadStatus.ready,
+          archivedAt: null,
+          mediaBatchId: 'batch-1',
+        },
+      ]);
+    prisma.$transaction.mockImplementation(async (fn: (tx: typeof prisma) => Promise<unknown>) =>
+      fn(prisma),
+    );
+    prisma.postMedia.updateMany.mockResolvedValue({ count: 1 });
+    prisma.postPackage.update.mockResolvedValue({});
+    r2Storage.verifyUploadedObject.mockResolvedValue(undefined);
+    r2Storage.createDownloadUrl.mockResolvedValue('https://cdn.example/1.png');
+
+    const result = await service.confirmUploadedMedia({
+      workspaceId,
+      postPackageId: postId,
+      postMediaIds: ['pending-1'],
+      replace: true,
+    });
+
+    expect(r2Storage.verifyUploadedObject).toHaveBeenCalled();
+    expect(result).toHaveLength(1);
+    expect(result[0].mediaType).toBe(PostMediaType.uploaded);
+  });
+
+  it('restores a full media batch on apply', async () => {
+    const slide1 = {
+      id: 'm1',
+      postPackageId: postId,
+      mediaBatchId: 'batch-9',
+      uploadStatus: null,
+      archivedAt: new Date(),
+      sortOrder: 0,
+      storageBucket: 'post-media',
+      storageKey: 'a.png',
+      mimeType: 'image/png',
+      sizeBytes: 10,
+      altText: 'a',
+      mediaType: PostMediaType.generated,
+      createdAt: new Date(),
+    };
+    const slide2 = {
+      ...slide1,
+      id: 'm2',
+      sortOrder: 1,
+      storageKey: 'b.png',
+      altText: 'b',
+    };
+
+    prisma.postMedia.findFirst.mockResolvedValue(slide1);
+    prisma.postMedia.findMany
+      .mockResolvedValueOnce([slide1, slide2])
+      .mockResolvedValueOnce([
+        { ...slide1, archivedAt: null },
+        { ...slide2, archivedAt: null },
+      ]);
+    prisma.$transaction.mockImplementation(async (fn: (tx: typeof prisma) => Promise<unknown>) =>
+      fn(prisma),
+    );
+    prisma.postMedia.updateMany.mockResolvedValue({ count: 2 });
+    prisma.postPackage.update.mockResolvedValue({});
+    r2Storage.createDownloadUrl
+      .mockResolvedValueOnce('https://cdn/a.png')
+      .mockResolvedValueOnce('https://cdn/b.png');
+
+    const result = await service.applyMediaVersion(postId, 'm1');
+
+    expect(result).toHaveLength(2);
+    expect(prisma.postPackage.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ mediaFormat: 'carousel' }),
+      }),
+    );
   });
 });

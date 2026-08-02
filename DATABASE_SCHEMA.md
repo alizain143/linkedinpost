@@ -2,7 +2,7 @@
 
 > **Source of truth:** `apps/backend/prisma/schema.prisma`  
 > **Companion docs:** [CURRENT_ARCHITECTURE.md](CURRENT_ARCHITECTURE.md) · [PRODUCT_OVERVIEW.md](PRODUCT_OVERVIEW.md)  
-> **Last synced:** July 2026 (credit top-ups + billing_transactions)
+> **Last synced:** August 2026 (custom post media upload)
 
 Developer reference for every PostgreSQL table, field, enum, and relationship. Read this before writing Prisma queries, migrations, or API mappers.
 
@@ -186,12 +186,22 @@ Council jobs use this status exclusively (no separate run status).
 |-------|---------|
 | `generated` | Unbound AI feed image (freestyle lane) |
 | `template` | Deterministic layout render (template lane) |
+| `uploaded` | User-uploaded JPEG/PNG (single or carousel) |
 | `quote_card` | Legacy — historical rows only |
 | `branded_quote_card` | Legacy template — historical rows only |
 | `stat_highlight` | Legacy template — historical rows only |
 | `tip_card` | Legacy template — historical rows only |
 | `infographic` | Legacy — historical rows only |
 | `photo_illustration` | Legacy — historical rows only |
+
+### `PostMediaUploadStatus`
+
+| Value | Meaning |
+|-------|---------|
+| `pending` | Presigned upload initiated; object not confirmed yet |
+| `ready` | Client upload verified; eligible as active media |
+
+AI/template rows leave `uploadStatus` null.
 
 ### `MediaMode`
 
@@ -542,18 +552,21 @@ Immutable content snapshots when copy changes.
 
 ### `post_media` → `PostMedia`
 
-Generated media assets (AI feed images) on a post.
+Feed media assets on a post (AI-generated, template-rendered, or user-uploaded).
 
 | Field | Type | Null | Default | Description |
 |-------|------|------|---------|-------------|
 | `id` | UUID | No | uuid() | |
 | `postPackageId` | UUID | No | — | FK → `post_packages.id` CASCADE |
-| `generationJobId` | UUID | Yes | — | FK → `generation_jobs.id` SET NULL. Which council job produced this |
-| `mediaType` | PostMediaType | No | — | New rows: `generated` or `template` |
+| `generationJobId` | UUID | Yes | — | FK → `generation_jobs.id` SET NULL. Which job produced this (AI paths) |
+| `mediaBatchId` | UUID | Yes | — | Groups a single/carousel replace set for version restore. Written by `media` on attach/upload |
+| `mediaType` | PostMediaType | No | — | New rows: `generated`, `template`, or `uploaded` |
+| `uploadStatus` | PostMediaUploadStatus | Yes | — | `pending`/`ready` for uploads; null for AI/template |
+| `uploadExpiresAt` | Timestamptz | Yes | — | When pending upload expires; cleaned on next init |
 | `storageKey` | String | No | — | R2 key |
 | `storageBucket` | String | No | — | R2 bucket |
 | `mimeType` | String | No | — | e.g. `image/png` |
-| `sizeBytes` | Int | No | — | File size |
+| `sizeBytes` | Int | No | — | File size (client claim until confirm for uploads) |
 | `altText` | String | No | — | Accessibility / LinkedIn alt |
 | `sortOrder` | Int | No | `0` | Order when multiple assets |
 | `archivedAt` | Timestamptz | Yes | — | When set, media is kept for version history but not shown as active |
@@ -561,6 +574,8 @@ Generated media assets (AI feed images) on a post.
 | `updatedAt` | Timestamptz | No | auto | |
 
 **Module:** `media`, `council`, `linkedin` (publish with media), `media-templates`
+
+**Caveat:** Pending uploads (`uploadStatus=pending`) are excluded from list/publish until confirm.
 
 ---
 

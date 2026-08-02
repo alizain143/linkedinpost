@@ -143,9 +143,24 @@ Council agents also receive `priorSteps` in rendered prompts.
 
 ## Prompts
 
-Registry keys: `quick-draft` v4 (3 format-locked variants + hook/CTA curiosity playbook + specificity critic), `quick-draft-single` v3 (calendar slots / regen), `specificity-critic` v1, `council-writer`, `council-reviewer`, `council-editor`, `council-media-creator`, `council-media-reviewer` v1, `calendar-planner` v1.
+Registry keys: `quick-draft` v4 (3 format-locked variants + hook/CTA + anti-slop + specificity critic), `quick-draft-single` v3 (calendar slots / regen), `specificity-critic` v1, `council-writer`, `council-reviewer`, `council-editor`, `council-media-creator`, `council-media-reviewer` v1, `revise-draft` v1, `calendar-planner` v1.
 
 Quick draft variants are always returned in order: `concise`, `detailed`, `pattern_interrupt` (UI: Concise / Detailed / Scroll-stopper). Hooks must combine burning intrigue + a targeted audience benefit (no blind clickbait). CTAs stay soft and specific. User tone, post type, pillar, and content profile still apply across all three. Compare-pick (“Select for me”) remains in the API but is paused in the generate UI.
+
+### Copy-quality playbooks by flow
+
+Shared blocks: `HOOK_CTA_PLAYBOOKS_BLOCK`, `ANTI_SLOP_PLAYBOOKS_BLOCK` (hard bans: em/en dashes, AI filler, soft-summary closers, bait CTAs).
+
+| Flow | Hook/CTA | Anti-slop | Body guidance | Notes |
+|------|----------|-----------|---------------|-------|
+| Quick draft (3 formats) | Yes | Yes | Per-format budgets | + specificity critic |
+| Quick-draft-single / calendar `quick_draft` | Yes | Yes | ~500–900 | One post per slot |
+| Council writer (+ autopilot / calendar `council`) | Yes | Yes | ~500–1000 | Reviewer scores intrigue+benefit |
+| Council editor | Preserve intrigue+benefit + soft CTA | Yes | Polish only | Must not flatten hook/CTA |
+| Revise / apply-changes | Yes | Yes | ~500–1000 | |
+| Calendar planner | — | — | Topics only | Prefer concrete / curiosity-friendly topics |
+
+Council / autopilot / calendar-council stay **one post** (no Concise/Detailed/Scroll-stopper UI).
 
 ### Prompt design (token efficiency)
 

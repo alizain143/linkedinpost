@@ -89,6 +89,7 @@ export type MockPrismaService = {
     findFirst: jest.Mock;
     findMany: jest.Mock;
     create: jest.Mock;
+    updateMany: jest.Mock;
     deleteMany: jest.Mock;
   };
   subscription: {
@@ -211,6 +212,7 @@ export function createMockPrismaService(): MockPrismaService {
       findFirst: jest.fn(),
       findMany: jest.fn(),
       create: jest.fn(),
+      updateMany: jest.fn(),
       deleteMany: jest.fn(),
     },
     subscription: {

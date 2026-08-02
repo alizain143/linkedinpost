@@ -10,6 +10,7 @@ import {
 } from '../../test/fixtures';
 import { createMockPrismaService } from '../../test/prisma.mock';
 import { WorkspacesService } from '../workspaces/workspaces.service';
+import { MediaService } from '../media/media.service';
 import { ApprovalTab } from './approvals.constants';
 import { ApprovalsService } from './approvals.service';
 
@@ -17,6 +18,9 @@ describe('ApprovalsService', () => {
   let service: ApprovalsService;
   const prisma = createMockPrismaService();
   const workspacesService = { assertMember: jest.fn() };
+  const mediaService = {
+    listForPosts: jest.fn().mockResolvedValue(new Map()),
+  };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -24,12 +28,14 @@ describe('ApprovalsService', () => {
     prisma.workspace.findMany.mockResolvedValue([]);
     prisma.postPackage.count.mockResolvedValue(0);
     prisma.postPackage.findMany.mockResolvedValue([]);
+    mediaService.listForPosts.mockResolvedValue(new Map());
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ApprovalsService,
         { provide: PrismaService, useValue: prisma },
         { provide: WorkspacesService, useValue: workspacesService },
+        { provide: MediaService, useValue: mediaService },
       ],
     }).compile();
 

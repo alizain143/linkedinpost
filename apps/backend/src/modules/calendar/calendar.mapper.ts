@@ -1,4 +1,5 @@
 import { PostPackage, PostPackageStatus } from '@prisma/client';
+import { PostMediaResponse } from '../media/media.types';
 
 export interface CalendarEvent {
   id: string;
@@ -7,6 +8,7 @@ export interface CalendarEvent {
   status: PostPackage['status'];
   postType: PostPackage['postType'];
   scheduledAt: Date;
+  media: PostMediaResponse[];
 }
 
 type CalendarPostRow = Pick<
@@ -20,7 +22,10 @@ type CalendarPostRow = Pick<
   | 'publishedAt'
 >;
 
-export function toCalendarEvent(post: CalendarPostRow): CalendarEvent {
+export function toCalendarEvent(
+  post: CalendarPostRow,
+  media: PostMediaResponse[] = [],
+): CalendarEvent {
   const scheduledAt =
     post.status === PostPackageStatus.published
       ? (post.publishedAt ?? post.scheduledAt)
@@ -33,5 +38,6 @@ export function toCalendarEvent(post: CalendarPostRow): CalendarEvent {
     status: post.status,
     postType: post.postType,
     scheduledAt: scheduledAt!,
+    media,
   };
 }

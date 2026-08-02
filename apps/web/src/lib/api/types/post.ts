@@ -18,6 +18,7 @@ export type ApiPostMedia = {
   sizeBytes: number;
   createdAt: string;
   isActive: boolean;
+  mediaBatchId: string | null;
 };
 
 export type ApiPostPackage = {

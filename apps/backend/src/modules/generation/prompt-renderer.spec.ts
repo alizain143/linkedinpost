@@ -60,6 +60,7 @@ describe('PromptRenderer', () => {
     expect(messages[0].content).toContain('pattern_interrupt');
     expect(messages[0].content).toContain('burning intrigue');
     expect(messages[0].content).toContain('targeted benefit');
+    expect(messages[0].content).toContain('No em dashes or en dashes');
     expect(messages[1].role).toBe('user');
     expect(messages[1].content).toContain('Maya');
     expect(messages[1].content).toContain('Weekly shipping');
@@ -92,9 +93,40 @@ describe('PromptRenderer', () => {
     expect(messages[0].content).toContain('overall ≥ 90');
   });
 
-  it('uses compact calendar dates', () => {
+  it('council-writer includes hook/CTA + anti-slop bans and tighter body length', () => {
+    const messages = renderer.renderFlow('council-writer', 1, context, {
+      agentRole: CouncilAgentRole.writer,
+    });
+
+    expect(messages[0].content).toContain('burning intrigue');
+    expect(messages[0].content).toContain('No em dashes or en dashes');
+    expect(messages[0].content).toContain('The fix is not X');
+    expect(messages[0].content).toContain('~500–1000');
+  });
+
+  it('council-editor preserves hook/CTA and applies anti-slop bans', () => {
+    const messages = renderer.renderFlow('council-editor', 1, context, {
+      agentRole: CouncilAgentRole.editor,
+    });
+
+    expect(messages[0].content).toContain('Hook intrigue + targeted benefit');
+    expect(messages[0].content).toContain('Soft specific CTA');
+    expect(messages[0].content).toContain('No em dashes or en dashes');
+    expect(messages[0].content).toContain('Allowed polish only');
+  });
+
+  it('revise-draft includes anti-slop bans and ~500–1000 body guidance', () => {
+    const messages = renderer.renderFlow('revise-draft', 1, context);
+
+    expect(messages[0].content).toContain('No em dashes or en dashes');
+    expect(messages[0].content).toContain('~500–1000');
+    expect(messages[0].content).toContain('burning intrigue');
+  });
+
+  it('calendar-planner prefers concrete curiosity-friendly topics', () => {
     const messages = renderer.renderFlow('calendar-planner', 1, context);
 
+    expect(messages[0].content).toContain('curiosity-friendly topics');
     expect(messages[1].content).toContain('dates: 2026-07-01,2026-07-03');
     expect(messages[1].content).not.toContain('"date"');
   });

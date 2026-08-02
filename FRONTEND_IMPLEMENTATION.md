@@ -165,6 +165,7 @@ Mark `[x]` when slice is shipped (API wired, mocks removed for that screen, basi
 - [x] **FE-SLICE-15** — Autopilot config + planned posts
 - [x] **FE-SLICE-16** — Billing + Lemon Squeezy checkout/cancel
 - [x] **FE-SLICE-21** — Credit top-ups + billing transaction history
+- [x] **FE-SLICE-22** — Custom post media upload (single + carousel)
 - [x] **FE-SLICE-17** — Agency client workspaces
 - [x] **FE-SLICE-18** — Approval share links
 

@@ -1,4 +1,5 @@
 import type { PostPackageStatus, PostType } from "@/lib/api/types/enums";
+import type { ApiPostMedia } from "@/lib/api/types/post";
 
 export type CalendarView = "month" | "week" | "list";
 
@@ -9,6 +10,7 @@ export type ApiCalendarEvent = {
   status: PostPackageStatus;
   postType: PostType | null;
   scheduledAt: string;
+  media: ApiPostMedia[];
 };
 
 export type ApiCalendarMonthCell = {
