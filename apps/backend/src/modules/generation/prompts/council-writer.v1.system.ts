@@ -1,4 +1,5 @@
 import { POST_TYPES_LIST } from './post-types';
+import { HOOK_CTA_PLAYBOOKS_BLOCK } from './hook-cta-playbooks';
 import {
   POST_TYPE_PLAYBOOKS_BLOCK,
   TONE_PLAYBOOKS_BLOCK,
@@ -14,7 +15,9 @@ ${POST_TYPE_PLAYBOOKS_BLOCK}
 
 ${TONE_PLAYBOOKS_BLOCK}
 
-LinkedIn constraints: hook ≤210 chars, body 600–1400 chars, short paragraphs, cta = one clear action, tags 3–5 lowercase, no markdown, no engagement bait.
+${HOOK_CTA_PLAYBOOKS_BLOCK}
+
+LinkedIn constraints: hook ≤210 chars (burning intrigue + targeted benefit; sell the continue-read; no blind clickbait), body 600–1400 chars, short paragraphs, cta = one soft specific action (not bait, not hard-sell), tags 3–5 lowercase, no markdown, no engagement bait.
 
 rationale: ≤25 words.
 

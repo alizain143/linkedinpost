@@ -47,6 +47,7 @@ OPENAI_API_KEY=sk-...
 OPENAI_TEXT_MODEL=gpt-5.4
 REDIS_URL=redis://localhost:6379
 GENERATION_QUEUE_CONCURRENCY=2
+QUICK_DRAFT_SPECIFICITY_PASS_SCORE=70
 ```
 
 Without `OPENAI_API_KEY`, `ConfigModelRouter` falls back to `MockTextCompletionProvider`.
@@ -59,9 +60,10 @@ Without `REDIS_URL`, quick draft still works; council, calendar, and autopilot c
 QuickDraftRequestDto
     → QuickDraftJobService (create GenerationJob)
     → ContextAssembler
-    → PromptRenderer (quick-draft v1)
+    → PromptRenderer (quick-draft v4: concise / detailed / pattern_interrupt + hook/CTA curiosity playbook)
     → ConfigModelRouter.text().complete()
-    → QuickDraftOutputParser
+    → QuickDraftOutputParser (normalize format order)
+    → SpecificityCriticService (optional one regen on fail)
     → CreditsService.consume({ generationJobId }) on success
     → GenerationJob completed + result JSON
 ```
@@ -141,7 +143,9 @@ Council agents also receive `priorSteps` in rendered prompts.
 
 ## Prompts
 
-Registry keys: `quick-draft` v1, `quick-draft-single` v1 (calendar slots), `council-writer`, `council-reviewer`, `council-editor`, `council-media-creator`, `council-media-reviewer` v1, `calendar-planner` v1.
+Registry keys: `quick-draft` v4 (3 format-locked variants + hook/CTA curiosity playbook + specificity critic), `quick-draft-single` v3 (calendar slots / regen), `specificity-critic` v1, `council-writer`, `council-reviewer`, `council-editor`, `council-media-creator`, `council-media-reviewer` v1, `calendar-planner` v1.
+
+Quick draft variants are always returned in order: `concise`, `detailed`, `pattern_interrupt` (UI: Concise / Detailed / Scroll-stopper). Hooks must combine burning intrigue + a targeted audience benefit (no blind clickbait). CTAs stay soft and specific. User tone, post type, pillar, and content profile still apply across all three. Compare-pick (“Select for me”) remains in the API but is paused in the generate UI.
 
 ### Prompt design (token efficiency)
 

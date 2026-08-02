@@ -11,7 +11,6 @@ import { SelectField } from "@/components/ui/select";
 import { useContentProfiles } from "@/hooks/api/use-content-profiles-api";
 import { useCredits } from "@/hooks/api/use-credits-api";
 import {
-  useComparePickMutation,
   useCouncilMutation,
   useGenerationJob,
   useQuickDraftMutation,
@@ -68,6 +67,7 @@ import {
 import { isCreditsExhaustedError } from "@/lib/credits-errors";
 import { shouldPollJob } from "@/lib/council-utils";
 import { POST_TYPE_SELECT_OPTIONS, getPostTypeLabel } from "@/lib/post-types";
+import { getQuickDraftFormatLabel } from "@/lib/quick-draft-formats";
 import { TONE_OPTIONS } from "@/lib/form-options";
 import {
   countWords,
@@ -153,7 +153,6 @@ export default function Generate() {
   const quickDraft = useQuickDraftMutation(activeWorkspaceId);
   const quickDraftSingle = useQuickDraftSingleMutation(activeWorkspaceId);
   const topicSuggestionsMutation = useTopicSuggestionsMutation(activeWorkspaceId);
-  const comparePickMutation = useComparePickMutation(activeWorkspaceId);
   const councilMutation = useCouncilMutation(activeWorkspaceId);
   const { data: mediaTemplatesData } = useMediaTemplates(activeWorkspaceId);
   const generatePostMedia = useGeneratePostMediaMutation(activeWorkspaceId);
@@ -200,10 +199,6 @@ export default function Generate() {
     state: Exclude<SpeechPlaybackState, "idle">;
   } | null>(null);
   const [compareMode, setCompareMode] = useState(false);
-  const [aiPick, setAiPick] = useState<{
-    variantIndex: number;
-    reason: string;
-  } | null>(null);
   const [topicFingerprint, setTopicFingerprint] = useState<string | null>(null);
   const [staleSessionBanner, setStaleSessionBanner] = useState(false);
   const [skipCreditConfirm, setSkipCreditConfirm] = useState(false);
@@ -982,7 +977,6 @@ export default function Generate() {
       setVariantMediaUrls({});
       setOriginalVariants([]);
       setStaleSessionBanner(false);
-      setAiPick(null);
       setCompareMode(false);
       stopSpeech();
       setSpeechPlayback(null);
@@ -1181,7 +1175,6 @@ export default function Generate() {
       });
     }
     dismissVariant(variantIndex);
-    if (aiPick?.variantIndex === variantIndex) setAiPick(null);
     trackProductEvent("variant_rejected");
     setUndoDismissIndex(variantIndex);
     if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
@@ -1353,7 +1346,6 @@ export default function Generate() {
       if (savedPostIdBefore) {
         await syncVariantToSavedPost(variantIndex, nextVariant);
       }
-      if (aiPick?.variantIndex === variantIndex) setAiPick(null);
       trackProductEvent("variant_regenerated");
       showToast("Option regenerated", "auto_awesome");
     } catch (err) {
@@ -1687,39 +1679,6 @@ export default function Generate() {
 
   const exitCompareMode = () => {
     setCompareMode(false);
-    setAiPick(null);
-  };
-
-  const handleSelectForMe = async () => {
-    if (visibleVariants.length < 2) {
-      showToast("Need at least two options to compare", "error");
-      return;
-    }
-    try {
-      const result = await comparePickMutation.mutateAsync({
-        variants: visibleVariants.map(({ variant }) => ({
-          hook: variant.hook,
-          body: variant.body,
-          cta: variant.cta,
-          tags: variant.tags,
-        })),
-        contentProfileId: form.contentProfileId || undefined,
-        topic: form.topic.trim() || undefined,
-      });
-      const picked = visibleVariants[result.recommendedIndex];
-      if (!picked) {
-        showToast("Could not map AI recommendation", "error");
-        return;
-      }
-      setAiPick({
-        variantIndex: picked.index,
-        reason: result.reason,
-      });
-      if (!compareMode) setCompareMode(true);
-      showToast(`AI recommends Option ${picked.index + 1}`, "auto_awesome");
-    } catch (err) {
-      showToast(getApiErrorMessage(err), "error");
-    }
   };
 
   const compareGridClass =
@@ -2368,32 +2327,6 @@ export default function Generate() {
                     Comparing {visibleVariants.length} options side by side
                   </span>
                 </div>
-                <Button
-                  type="button"
-                  variant="primary"
-                  size="xs"
-                  disabled={
-                    cardActionsDisabled ||
-                    visibleVariants.length < 2 ||
-                    comparePickMutation.isPending
-                  }
-                  onClick={() => void handleSelectForMe()}
-                >
-                  <MsIcon
-                    name={
-                      comparePickMutation.isPending
-                        ? "progress_activity"
-                        : "auto_awesome"
-                    }
-                    size={16}
-                    className={
-                      comparePickMutation.isPending ? "animate-ppspin" : undefined
-                    }
-                  />
-                  {comparePickMutation.isPending
-                    ? "Choosing…"
-                    : "Select for me"}
-                </Button>
               </div>
             ) : (
               <div className="flex items-center justify-between gap-2">
@@ -2416,34 +2349,6 @@ export default function Generate() {
                     type="button"
                     variant="muted"
                     size="xs"
-                    disabled={
-                      cardActionsDisabled ||
-                      visibleVariants.length < 2 ||
-                      comparePickMutation.isPending
-                    }
-                    onClick={() => void handleSelectForMe()}
-                  >
-                    <MsIcon
-                      name={
-                        comparePickMutation.isPending
-                          ? "progress_activity"
-                          : "auto_awesome"
-                      }
-                      size={16}
-                      className={
-                        comparePickMutation.isPending
-                          ? "animate-ppspin"
-                          : undefined
-                      }
-                    />
-                    {comparePickMutation.isPending
-                      ? "Choosing…"
-                      : "Select for me"}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="muted"
-                    size="xs"
                     onClick={() =>
                       requestCreditAction(
                         QUICK_DRAFT_CREDIT_COST,
@@ -2461,14 +2366,6 @@ export default function Generate() {
                 </div>
               </div>
             )}
-            {aiPick ? (
-              <div className="rounded-[11px] border border-[#c7d2fe] bg-[#eef2ff] px-3.5 py-3 text-[13px] leading-relaxed text-[#312e81]">
-                <span className="font-semibold">
-                  AI recommends Option {aiPick.variantIndex + 1}:{" "}
-                </span>
-                {aiPick.reason}
-              </div>
-            ) : null}
             <div
               className={
                 compareMode ? compareGridClass : "flex flex-col gap-4"
@@ -2492,29 +2389,21 @@ export default function Generate() {
                 isGeneratingMedia ||
                 !!generateMediaDisabledReason;
 
-              const isAiPick = aiPick?.variantIndex === i;
+              const formatLabel = getQuickDraftFormatLabel(variant.format);
 
               return (
                 <div
                   key={`variant-${i}`}
-                  className={`animate-ppscale overflow-hidden rounded-2xl border bg-white shadow-[0_1px_3px_rgba(24,28,64,0.05)] ${
-                    isAiPick
-                      ? "border-[#4f46e5] ring-2 ring-[#4f46e5]/ring-offset-2"
-                      : "border-[#eceef4]"
-                  }`}
+                  className="animate-ppscale overflow-hidden rounded-2xl border border-[#eceef4] bg-white shadow-[0_1px_3px_rgba(24,28,64,0.05)]"
                 >
                   <div className="flex items-center justify-between border-b border-[#f1f3f8] bg-[#fbfbfd] px-[18px] py-3">
                     <span className="inline-flex flex-wrap items-center gap-1.5">
                       <span className="inline-flex items-center gap-1.5 rounded-full bg-[#eef2ff] px-2 py-1 text-[10.5px] font-bold tracking-wide text-[#4f46e5]">
                         <MsIcon name="auto_awesome" size={13} />
-                        AI DRAFT · OPTION {i + 1}
+                        {formatLabel
+                          ? formatLabel.toUpperCase()
+                          : `AI DRAFT · OPTION ${i + 1}`}
                       </span>
-                      {isAiPick ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-[#4f46e5] px-2 py-1 text-[10.5px] font-bold tracking-wide text-white">
-                          <MsIcon name="check_circle" size={13} />
-                          AI PICK
-                        </span>
-                      ) : null}
                     </span>
                     <div className="flex items-center gap-1">
                       <span className="mr-1 text-[11.5px] text-[#94a3b8]">
@@ -2604,6 +2493,11 @@ export default function Generate() {
                     ) : (
                     <>
                     <div className="mb-3 flex flex-wrap gap-1.5">
+                      {formatLabel ? (
+                        <span className="rounded-full bg-[#eef2ff] px-2 py-0.5 text-[10.5px] font-semibold text-[#4338ca]">
+                          {formatLabel}
+                        </span>
+                      ) : null}
                       {getPostTypeLabel(variant.postType) ? (
                         <span className="rounded-full bg-[#f1f5f9] px-2 py-0.5 text-[10.5px] font-semibold text-[#475569]">
                           {getPostTypeLabel(variant.postType)}

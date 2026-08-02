@@ -32,7 +32,7 @@ export class QuickDraftSingleOutputParser {
     const postType = this.requirePostType(variant.postType, 'postType');
     const tags = this.requireStringArray(variant.tags, 'tags');
 
-    return { hook, body, cta, tags, postType, tone, pillar };
+    return { format: 'detailed', hook, body, cta, tags, postType, tone, pillar };
   }
 
   private requireString(value: unknown, field: string): string {

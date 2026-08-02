@@ -45,7 +45,7 @@ describe('QuickDraftJobService', () => {
       type: GenerationJobType.quick_draft,
       status: GenerationJobStatus.pending,
       flowId: 'quick-draft',
-      promptVersion: 'v1',
+      promptVersion: 'v4',
       model: null,
       input: {},
       result: null,
@@ -67,7 +67,7 @@ describe('QuickDraftJobService', () => {
       type: GenerationJobType.quick_draft,
       status: data.status ?? GenerationJobStatus.completed,
       flowId: 'quick-draft',
-      promptVersion: 'v1',
+      promptVersion: 'v4',
       model: data.model ?? 'mock-text',
       input: {},
       result: data.result ?? { variants: [] },
@@ -85,6 +85,7 @@ describe('QuickDraftJobService', () => {
     quickDraftGenerator.generate.mockResolvedValue({
       variants: [
         {
+          format: 'concise',
           hook: 'Hook',
           body: 'Body',
           cta: 'CTA',
@@ -94,6 +95,7 @@ describe('QuickDraftJobService', () => {
           pillar: 'Lessons',
         },
         {
+          format: 'detailed',
           hook: 'Hook 2',
           body: 'Body 2',
           cta: 'CTA 2',
@@ -103,6 +105,7 @@ describe('QuickDraftJobService', () => {
           pillar: 'Lessons',
         },
         {
+          format: 'pattern_interrupt',
           hook: 'Hook 3',
           body: 'Body 3',
           cta: 'CTA 3',
@@ -113,7 +116,7 @@ describe('QuickDraftJobService', () => {
         },
       ],
       promptId: 'quick-draft',
-      promptVersion: 'v1',
+      promptVersion: 'v4',
       model: 'mock-text',
       usage: { inputTokens: 100, outputTokens: 200 },
     });

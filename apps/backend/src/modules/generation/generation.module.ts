@@ -2,6 +2,7 @@ import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import googleConfig from '../../config/google.config';
 import mediaConfig from '../../config/media.config';
+import generationConfig from '../../config/generation.config';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { CalendarGenerationModule } from '../calendar-generation/calendar-generation.module';
 import { CreditsModule } from '../credits/credits.module';
@@ -39,6 +40,8 @@ import { PromptRenderer } from './prompt-renderer';
 import { QuickDraftOutputParser } from './quick-draft-output.parser';
 import { QuickDraftSingleOutputParser } from './quick-draft-single-output.parser';
 import { TopicSuggestionsOutputParser } from './topic-suggestions-output.parser';
+import { SpecificityCriticOutputParser } from './specificity-critic-output.parser';
+import { SpecificityCriticService } from './specificity-critic.service';
 import { QuickDraftJobService } from './quick-draft-job.service';
 import { QuickDraftSingleJobService } from './quick-draft-single-job.service';
 import { ReviseDraftJobService } from './revise-draft-job.service';
@@ -48,6 +51,7 @@ import { TopicSuggestionsService } from './topic-suggestions.service';
   imports: [
     ConfigModule.forFeature(googleConfig),
     ConfigModule.forFeature(mediaConfig),
+    ConfigModule.forFeature(generationConfig),
     PrismaModule,
     AuthModule,
     WorkspacesModule,
@@ -66,6 +70,8 @@ import { TopicSuggestionsService } from './topic-suggestions.service';
     QuickDraftOutputParser,
     QuickDraftSingleOutputParser,
     TopicSuggestionsOutputParser,
+    SpecificityCriticOutputParser,
+    SpecificityCriticService,
     MockTextCompletionProvider,
     MockImageGenerationProvider,
     GoogleGenAIClientFactory,

@@ -1,7 +1,9 @@
-import { QUICK_DRAFT_V1_SYSTEM } from './quick-draft.v1.system';
-import { QUICK_DRAFT_V1_USER } from './quick-draft.v1.user';
-import { QUICK_DRAFT_SINGLE_V1_SYSTEM } from './quick-draft-single.v1.system';
+import { QUICK_DRAFT_V4_SYSTEM } from './quick-draft.v4.system';
+import { QUICK_DRAFT_V4_USER } from './quick-draft.v4.user';
+import { QUICK_DRAFT_SINGLE_V3_SYSTEM } from './quick-draft-single.v3.system';
 import { QUICK_DRAFT_SINGLE_V1_USER } from './quick-draft-single.v1.user';
+import { SPECIFICITY_CRITIC_V1_SYSTEM } from './specificity-critic.v1.system';
+import { SPECIFICITY_CRITIC_V1_USER } from './specificity-critic.v1.user';
 import { COUNCIL_WRITER_V1_SYSTEM } from './council-writer.v1.system';
 import { COUNCIL_WRITER_V1_USER } from './council-writer.v1.user';
 import { COUNCIL_REVIEWER_V1_SYSTEM } from './council-reviewer.v1.system';
@@ -31,15 +33,21 @@ export interface PromptTemplate {
 export const PROMPT_REGISTRY: Record<string, PromptTemplate> = {
   'quick-draft': {
     id: 'quick-draft',
-    version: 1,
-    system: QUICK_DRAFT_V1_SYSTEM,
-    user: QUICK_DRAFT_V1_USER,
+    version: 4,
+    system: QUICK_DRAFT_V4_SYSTEM,
+    user: QUICK_DRAFT_V4_USER,
   },
   'quick-draft-single': {
     id: 'quick-draft-single',
-    version: 1,
-    system: QUICK_DRAFT_SINGLE_V1_SYSTEM,
+    version: 3,
+    system: QUICK_DRAFT_SINGLE_V3_SYSTEM,
     user: QUICK_DRAFT_SINGLE_V1_USER,
+  },
+  'specificity-critic': {
+    id: 'specificity-critic',
+    version: 1,
+    system: SPECIFICITY_CRITIC_V1_SYSTEM,
+    user: SPECIFICITY_CRITIC_V1_USER,
   },
   'council-writer': {
     id: 'council-writer',

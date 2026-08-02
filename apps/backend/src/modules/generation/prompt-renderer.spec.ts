@@ -51,11 +51,15 @@ describe('PromptRenderer', () => {
     ],
   };
 
-  it('renders quick-draft v1 messages with placeholders replaced', () => {
-    const messages = renderer.renderQuickDraftV1(context);
+  it('renders quick-draft v4 messages with placeholders replaced', () => {
+    const messages = renderer.renderQuickDraftV4(context);
 
     expect(messages).toHaveLength(2);
     expect(messages[0].role).toBe('system');
+    expect(messages[0].content).toContain('format "concise"');
+    expect(messages[0].content).toContain('pattern_interrupt');
+    expect(messages[0].content).toContain('burning intrigue');
+    expect(messages[0].content).toContain('targeted benefit');
     expect(messages[1].role).toBe('user');
     expect(messages[1].content).toContain('Maya');
     expect(messages[1].content).toContain('Weekly shipping');
@@ -67,7 +71,7 @@ describe('PromptRenderer', () => {
 
   it('truncates long writing samples', () => {
     const longSample = 'a'.repeat(PROMPT_FIELD_LIMITS.writingSample + 50);
-    const messages = renderer.renderQuickDraftV1({
+    const messages = renderer.renderQuickDraftV4({
       ...context,
       contentProfile: {
         ...context.contentProfile!,

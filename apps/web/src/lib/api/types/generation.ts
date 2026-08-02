@@ -47,6 +47,7 @@ export type ComparePickResult = {
 };
 
 export type QuickDraftVariant = {
+  format?: "concise" | "detailed" | "pattern_interrupt";
   hook: string;
   body: string;
   cta: string;
