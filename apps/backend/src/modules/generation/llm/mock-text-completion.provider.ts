@@ -343,10 +343,49 @@ export class MockTextCompletionProvider implements TextCompletionProvider {
       };
     }
 
+    if (system.includes('specificity critic')) {
+      return {
+        content: JSON.stringify({
+          overall: 82,
+          passed: true,
+          variants: [
+            {
+              format: 'concise',
+              specificity: 80,
+              genericness: 20,
+              padding: 15,
+              passed: true,
+              formatOk: true,
+            },
+            {
+              format: 'detailed',
+              specificity: 78,
+              genericness: 25,
+              padding: 20,
+              passed: true,
+              formatOk: true,
+            },
+            {
+              format: 'pattern_interrupt',
+              specificity: 84,
+              genericness: 18,
+              padding: 12,
+              passed: true,
+              formatOk: true,
+            },
+          ],
+          hints: [],
+        }),
+        model: 'mock-text',
+        usage: { inputTokens: 30, outputTokens: 40 },
+      };
+    }
+
     const variants = [
       {
+        format: 'concise',
         hook: 'Most founders skip this step.',
-        body: 'I spent years posting without a system. Then I built one.',
+        body: 'I spent years posting without a system. Then I built one weekly ritual that stuck.',
         cta: 'What is your content system?',
         tags: ['founders', 'linkedin'],
         postType: PostType.personal_story,
@@ -354,18 +393,20 @@ export class MockTextCompletionProvider implements TextCompletionProvider {
         pillar: 'Founder lessons',
       },
       {
-        hook: '3 lessons from shipping weekly.',
-        body: '1. Consistency beats perfection.\n2. Hooks matter.\n3. Repurpose everything.',
-        cta: 'Which lesson resonates?',
+        format: 'detailed',
+        hook: 'Shipping weekly changed my pipeline more than posting daily ever did.',
+        body: 'I used to spray advice at everyone. Then I picked one ICP and wrote about the exact friction in their first sales call. Reply quality jumped in two weeks because the posts finally sounded hireable, not just smart.',
+        cta: 'Which friction would your best client recognize immediately?',
         tags: ['content', 'growth'],
-        postType: PostType.list_post,
+        postType: PostType.personal_story,
         tone: 'Direct',
         pillar: 'Founder lessons',
       },
       {
-        hook: 'Stop writing for everyone.',
-        body: 'Pick one audience. Solve one problem. Repeat.',
-        cta: 'Who is your one audience?',
+        format: 'pattern_interrupt',
+        hook: 'Posting more is making you look less hireable.',
+        body: 'That sounds wrong until you check who engages. Peers like general tips. Buyers ignore them. The path that worked for me was fewer posts, each one walking through a real client problem and what I changed. Visibility went down. Qualified replies went up.',
+        cta: 'Are you optimizing for nods or for pipeline?',
         tags: ['strategy'],
         postType: PostType.contrarian_take,
         tone: 'Provocative',

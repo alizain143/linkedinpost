@@ -51,7 +51,7 @@ export class QuickDraftSingleJobService {
         type: GenerationJobType.quick_draft_single,
         status: GenerationJobStatus.pending,
         flowId: 'quick-draft-single',
-        promptVersion: 'v1',
+        promptVersion: 'v3',
         creditCost: 1,
         input: input as unknown as Prisma.InputJsonValue,
       },

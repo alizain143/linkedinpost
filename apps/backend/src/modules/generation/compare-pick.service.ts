@@ -3,6 +3,7 @@ import { WorkspacesService } from '../workspaces/workspaces.service';
 import { ComparePickRequestDto } from './dto/compare-pick-request.dto';
 import { ComparePickGenerator } from './flows/compare-pick.generator';
 import { ComparePickResult, QuickDraftVariant } from './generation.types';
+import { QUICK_DRAFT_VARIANT_FORMATS } from './quick-draft-format';
 import { PostType } from '@prisma/client';
 
 @Injectable()
@@ -19,7 +20,8 @@ export class ComparePickService {
   ): Promise<ComparePickResult> {
     await this.workspacesService.assertMember(userId, workspaceId);
 
-    const variants: QuickDraftVariant[] = dto.variants.map((variant) => ({
+    const variants: QuickDraftVariant[] = dto.variants.map((variant, index) => ({
+      format: QUICK_DRAFT_VARIANT_FORMATS[Math.min(index, 2)],
       hook: variant.hook,
       body: variant.body,
       cta: variant.cta,

@@ -4,6 +4,9 @@ import {
   PostType,
   UserPlan,
 } from '@prisma/client';
+import type { QuickDraftVariantFormat } from './quick-draft-format';
+
+export type { QuickDraftVariantFormat } from './quick-draft-format';
 
 export interface PreviousVariantInput {
   hook: string;
@@ -192,6 +195,7 @@ export interface CalendarJobResult {
 export type GenerationContextSlice = Partial<GenerationContext>;
 
 export interface QuickDraftVariant {
+  format: QuickDraftVariantFormat;
   hook: string;
   body: string;
   cta: string;

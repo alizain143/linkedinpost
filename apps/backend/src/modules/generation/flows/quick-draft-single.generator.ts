@@ -24,7 +24,7 @@ export class QuickDraftSingleGenerator implements GenerationFlow<
 
   async generate(input: QuickDraftInput): Promise<QuickDraftSingleResult> {
     const context = await this.contextAssembler.assemble(input);
-    const messages = this.promptRenderer.renderQuickDraftSingleV1(context);
+    const messages = this.promptRenderer.renderQuickDraftSingleV3(context);
     const completion = await this.modelRouter
       .text()
       .complete({ messages, responseFormat: 'json', temperature: 0.95 });
@@ -33,7 +33,7 @@ export class QuickDraftSingleGenerator implements GenerationFlow<
     return {
       variant,
       promptId: 'quick-draft-single',
-      promptVersion: 'v1',
+      promptVersion: 'v3',
       model: completion.model,
       usage: completion.usage,
     };

@@ -2,6 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { PostType } from '@prisma/client';
 import { generationParseError } from './generation.errors';
 import { QuickDraftVariant } from './generation.types';
+import {
+  isQuickDraftVariantFormat,
+  QUICK_DRAFT_VARIANT_FORMATS,
+  type QuickDraftVariantFormat,
+} from './quick-draft-format';
 
 const POST_TYPES = new Set<string>(Object.values(PostType));
 
@@ -28,11 +33,41 @@ export class QuickDraftOutputParser {
       );
     }
 
+    const parsedVariants = variants.map((variant, index) =>
+      this.parseVariant(variant, index),
+    );
+
     return {
-      variants: variants.map((variant, index) =>
-        this.parseVariant(variant, index),
-      ),
+      variants: this.normalizeFormatOrder(parsedVariants),
     };
+  }
+
+  private normalizeFormatOrder(
+    variants: QuickDraftVariant[],
+  ): QuickDraftVariant[] {
+    const byFormat = new Map<QuickDraftVariantFormat, QuickDraftVariant>();
+
+    for (const variant of variants) {
+      if (!byFormat.has(variant.format)) {
+        byFormat.set(variant.format, variant);
+      }
+    }
+
+    const hasAllFormats = QUICK_DRAFT_VARIANT_FORMATS.every((format) =>
+      byFormat.has(format),
+    );
+
+    if (hasAllFormats) {
+      return QUICK_DRAFT_VARIANT_FORMATS.map(
+        (format) => byFormat.get(format)!,
+      );
+    }
+
+    // Fallback: force contract order by index
+    return variants.map((variant, index) => ({
+      ...variant,
+      format: QUICK_DRAFT_VARIANT_FORMATS[index],
+    }));
   }
 
   private parseVariant(value: unknown, index: number): QuickDraftVariant {
@@ -57,8 +92,21 @@ export class QuickDraftOutputParser {
       variant.tags,
       `variants[${index}].tags`,
     );
+    const format = this.requireFormat(variant.format, index);
 
-    return { hook, body, cta, tags, postType, tone, pillar };
+    return { format, hook, body, cta, tags, postType, tone, pillar };
+  }
+
+  private requireFormat(
+    value: unknown,
+    index: number,
+  ): QuickDraftVariantFormat {
+    if (isQuickDraftVariantFormat(value)) {
+      return value;
+    }
+
+    // Tolerate missing format by assigning slot order
+    return QUICK_DRAFT_VARIANT_FORMATS[index];
   }
 
   private requireString(value: unknown, field: string): string {

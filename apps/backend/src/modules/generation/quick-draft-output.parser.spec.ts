@@ -6,6 +6,7 @@ describe('QuickDraftOutputParser', () => {
   const parser = new QuickDraftOutputParser();
 
   const validVariant = {
+    format: 'concise',
     hook: 'Hook',
     body: 'Body',
     cta: 'CTA',
@@ -15,15 +16,39 @@ describe('QuickDraftOutputParser', () => {
     pillar: 'Lessons',
   };
 
-  it('parses exactly 3 valid variants', () => {
+  it('parses exactly 3 valid variants and normalizes format order', () => {
     const result = parser.parse(
       JSON.stringify({
-        variants: [validVariant, validVariant, validVariant],
+        variants: [
+          { ...validVariant, format: 'pattern_interrupt' },
+          { ...validVariant, format: 'concise' },
+          { ...validVariant, format: 'detailed' },
+        ],
       }),
     );
 
     expect(result.variants).toHaveLength(3);
+    expect(result.variants.map((v) => v.format)).toEqual([
+      'concise',
+      'detailed',
+      'pattern_interrupt',
+    ]);
     expect(result.variants[0].hook).toBe('Hook');
+  });
+
+  it('assigns formats by index when format is missing', () => {
+    const { format: _format, ...withoutFormat } = validVariant;
+    const result = parser.parse(
+      JSON.stringify({
+        variants: [withoutFormat, withoutFormat, withoutFormat],
+      }),
+    );
+
+    expect(result.variants.map((v) => v.format)).toEqual([
+      'concise',
+      'detailed',
+      'pattern_interrupt',
+    ]);
   });
 
   it('throws GENERATION_PARSE_ERROR for invalid JSON', () => {

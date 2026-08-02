@@ -6,6 +6,7 @@ import appConfig from './config/app.config';
 import lemonsqueezyConfig from './config/lemonsqueezy.config';
 import clerkConfig from './config/clerk.config';
 import councilConfig from './config/council.config';
+import generationConfig from './config/generation.config';
 import openaiConfig from './config/openai.config';
 import r2Config from './config/r2.config';
 import linkedinConfig from './config/linkedin.config';
@@ -52,6 +53,7 @@ import { HealthController } from './health.controller';
         lemonsqueezyConfig,
         redisConfig,
         councilConfig,
+        generationConfig,
         schedulingConfig,
         linkedinConfig,
         mediaConfig,

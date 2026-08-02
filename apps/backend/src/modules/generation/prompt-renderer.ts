@@ -1,6 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { CouncilAgentRole } from '@prisma/client';
-import { GenerationContext, LlmMessage } from './generation.types';
+import {
+  GenerationContext,
+  LlmMessage,
+  QuickDraftVariant,
+} from './generation.types';
 import {
   projectPriorSteps,
   serializePriorSteps,
@@ -28,16 +32,40 @@ export interface RenderFlowOptions {
 
 @Injectable()
 export class PromptRenderer {
-  renderQuickDraftV1(context: GenerationContext): LlmMessage[] {
-    return this.renderFlow('quick-draft', 1, context);
+  renderQuickDraftV4(context: GenerationContext): LlmMessage[] {
+    return this.renderFlow('quick-draft', 4, context);
   }
 
-  renderQuickDraftSingleV1(context: GenerationContext): LlmMessage[] {
-    return this.renderFlow('quick-draft-single', 1, context);
+  renderQuickDraftSingleV3(context: GenerationContext): LlmMessage[] {
+    return this.renderFlow('quick-draft-single', 3, context);
   }
 
   renderReviseDraftV1(context: GenerationContext): LlmMessage[] {
     return this.renderFlow('revise-draft', 1, context);
+  }
+
+  renderSpecificityCriticV1(
+    context: GenerationContext,
+    variants: QuickDraftVariant[],
+    passScore: number,
+  ): LlmMessage[] {
+    const template = getPromptTemplate('specificity-critic', 1);
+    const values = {
+      ...this.buildPlaceholderValues(context),
+      'critic.variants': this.formatCriticVariants(variants),
+      'generation.specificityPassScore': String(passScore),
+    };
+
+    return [
+      {
+        role: 'system',
+        content: this.renderTemplate(template.system, values),
+      },
+      {
+        role: 'user',
+        content: this.renderTemplate(template.user, values),
+      },
+    ];
   }
 
   renderComparePickV1(
@@ -82,6 +110,21 @@ export class PromptRenderer {
         content: this.renderTemplate(template.user, values),
       },
     ];
+  }
+
+  private formatCriticVariants(variants: QuickDraftVariant[]): string {
+    return variants
+      .map((variant, index) => {
+        return [
+          `variant_${index + 1}:`,
+          `format: ${variant.format}`,
+          `postType: ${variant.postType}`,
+          `hook: ${variant.hook}`,
+          `body: ${truncateText(variant.body, 700)}`,
+          `cta: ${variant.cta}`,
+        ].join('\n');
+      })
+      .join('\n\n');
   }
 
   private buildPlaceholderValues(

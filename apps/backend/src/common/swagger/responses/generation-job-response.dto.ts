@@ -6,6 +6,12 @@ import {
 } from '@prisma/client';
 
 export class QuickDraftVariantDto {
+  @ApiProperty({
+    enum: ['concise', 'detailed', 'pattern_interrupt'],
+    example: 'concise',
+  })
+  format!: 'concise' | 'detailed' | 'pattern_interrupt';
+
   @ApiProperty()
   hook!: string;
 
