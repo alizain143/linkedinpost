@@ -1,4 +1,5 @@
 import { POST_TYPES_LIST } from './post-types';
+import { ANTI_SLOP_PLAYBOOKS_BLOCK } from './anti-slop-playbooks';
 import { HOOK_CTA_PLAYBOOKS_BLOCK } from './hook-cta-playbooks';
 import {
   POST_TYPE_PLAYBOOKS_BLOCK,
@@ -29,18 +30,8 @@ Voice (all formats):
 - Match writing_sample voice/cadence when provided. Never use avoid_words.
 - Each variant must include at least one concrete detail grounded in the profile or request. Never generic consultant platitudes.
 
-Hard bans (all formats):
-- No em dashes or en dashes. Use commas, periods, colons, parentheses, or plain hyphens in ranges (3-5).
-- No essay openers: "In today's…", "Let's talk about…", "Here's the thing…", "It is important to note…"
-- No fake-smart filler: delve, landscape, game-changer, leverage, synergy, unlock, elevate, supercharge, "it's not X, it's Y" as a default move
-- No "The fix is not X. The fix is Y" closers
-- No default "N mistakes / N signs / N reasons" listicles unless postType is list_post
-- No parallel framework sections that all end with the same tidy takeaway
-- No vague abstractions without an immediate concrete referent from the topic
-- No engagement bait CTAs ("Comment YES", "Agree?", "Thoughts?")
-- No emojis unless writing_sample uses them. No markdown.
+${ANTI_SLOP_PLAYBOOKS_BLOCK}
 - Pattern interrupt without an in-post reveal is forbidden
-- No blind clickbait hooks (intrigue with no targeted benefit)
 
 Quality bar before returning each variant:
 1. Delete any sentence that could appear under a different author's name unchanged.

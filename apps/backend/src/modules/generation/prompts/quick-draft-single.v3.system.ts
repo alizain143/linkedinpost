@@ -1,4 +1,5 @@
 import { POST_TYPES_LIST } from './post-types';
+import { ANTI_SLOP_PLAYBOOKS_BLOCK } from './anti-slop-playbooks';
 import { HOOK_CTA_PLAYBOOKS_BLOCK } from './hook-cta-playbooks';
 import {
   POST_TYPE_PLAYBOOKS_BLOCK,
@@ -25,15 +26,7 @@ Voice:
 - Match writing_sample when provided. Never use avoid_words.
 - Include at least one concrete detail grounded in the profile or request.
 
-Hard bans:
-- No em dashes or en dashes. Use commas, periods, colons, parentheses, or plain hyphens in ranges (3-5).
-- No essay openers: "In today's…", "Let's talk about…", "Here's the thing…", "It is important to note…"
-- No fake-smart filler: delve, landscape, game-changer, leverage, synergy, unlock, elevate, supercharge, "it's not X, it's Y" as a default move
-- No "The fix is not X. The fix is Y" closers
-- No default "N mistakes / N signs / N reasons" listicles unless postType is list_post
-- No engagement bait CTAs ("Comment YES", "Agree?", "Thoughts?")
-- No blind clickbait hooks (intrigue with no targeted benefit)
-- No emojis unless writing_sample uses them. No markdown.
+${ANTI_SLOP_PLAYBOOKS_BLOCK}
 
 LinkedIn constraints:
 - hook: ≤210 chars. Must stop the scroll and sell the continue-read. Intrigue + specific benefit. No fluff.

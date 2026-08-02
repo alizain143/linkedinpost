@@ -23,6 +23,7 @@ Requires **Redis** (`REDIS_URL`). Without Redis, council POST returns `503 REDIS
 
 ## Pipeline
 
+- **Copy quality:** Writer uses hook/CTA + anti-slop playbooks (body ~500–1000). Reviewer scores intrigue+benefit. Editor polishes only and must preserve hook intrigue + soft specific CTA (same anti-slop bans). See `GENERATION.md` playbook matrix.
 - **Text revision loop:** if reviewer `overall < COUNCIL_PASS_SCORE` (default 75), writer revises once (max `COUNCIL_MAX_TEXT_REVISIONS=1`).
 - **Media phase:** Media Creator designs a freeform `imagePrompt` from post copy + profile brand colors + optional `mediaCustomPrompt`; Nano Banana renders the image; Media Reviewer QAs.
 - **Media regen loop:** media reviewer may fail once (max `COUNCIL_MAX_MEDIA_REGENS=1`); each regen charges **2 credits** (`CreditTransactionType.media`).
